@@ -418,6 +418,159 @@
   .members-grid-disabled .member-card .email a { color: #6b6b6b !important; }
   .members-grid-disabled .member-card .email a { color: #6b6b6b !important; text-decoration: none; }
 
+  /* Profile page */
+  .profile-empty { padding: 40px 0; text-align: center; color: #6b6b6b; font-size: 14px; }
+  .profile-picker {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    padding: 14px; background: #fff; border: 1px solid #ececea; border-radius: 12px; margin-bottom: 16px;
+  }
+  .profile-picker .picker-search { flex: 1; min-width: 200px; }
+  .profile-picker .picker-strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .profile-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px 4px 4px; border: 1px solid #ececea; border-radius: 999px;
+    background: #fff; cursor: pointer; font-size: 12px; font-weight: 600; color: #1a1a1a;
+    transition: all .12s;
+  }
+  .profile-chip:hover { background: #f7f6f2; border-color: #d8d6d1; }
+  .profile-chip.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .profile-chip .av { width: 22px; height: 22px; border-radius: 50%; }
+  .profile-chip .av img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+
+  .profile-header {
+    background: #fff; border: 1px solid #ececea; border-radius: 14px;
+    padding: 20px; display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: start;
+    margin-bottom: 16px;
+  }
+  .profile-header .av-big { width: 72px; height: 72px; border-radius: 50%; background: #ececea; overflow: hidden; }
+  .profile-header .av-big img { width: 72px; height: 72px; object-fit: cover; }
+  .profile-header h3 { margin: 0 0 4px; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .profile-header .meta-line { font-size: 12.5px; color: #6b6b6b; margin-bottom: 10px; }
+  .profile-header .meta-line span + span::before { content: " · "; padding: 0 4px; color: #c4c2bd; }
+  .profile-header .tags-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+  .profile-header .actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .profile-fields-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px; margin-top: 10px;
+  }
+  .profile-field {
+    display: flex; flex-direction: column; gap: 4px;
+    background: #faf9f6; border: 1px solid #ececea; border-radius: 10px; padding: 8px 10px;
+  }
+  .profile-field label { font-size: 10.5px; color: #6b6b6b; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .profile-field input, .profile-field select, .profile-field textarea {
+    border: none; background: transparent; padding: 0; font-size: 13px; font-family: inherit; color: #1a1a1a;
+    outline: none; width: 100%;
+  }
+  .profile-field textarea { resize: vertical; min-height: 36px; }
+  .profile-field.checkbox { flex-direction: row; align-items: center; gap: 8px; }
+
+  .profile-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .profile-stat-card {
+    background: #fff; border: 1px solid #ececea; border-radius: 12px; padding: 14px;
+  }
+  .profile-stat-card .num { font-size: 26px; font-weight: 700; color: #1a1a1a; }
+  .profile-stat-card .lbl { font-size: 11px; color: #6b6b6b; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+  .profile-stat-card .sub { font-size: 11px; color: #9a9a9a; margin-top: 2px; }
+
+  .profile-section-title {
+    font-size: 13px; font-weight: 700; color: #1a1a1a;
+    text-transform: uppercase; letter-spacing: .04em; margin: 20px 0 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .profile-section-title .count { color: #9a9a9a; font-weight: 600; }
+
+  .profile-rm-list { display: flex; flex-direction: column; gap: 10px; }
+  .profile-rm-card {
+    background: #fff; border: 1px solid #ececea; border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .profile-rm-card .rm-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .profile-rm-card .rm-head .lhs { display: flex; align-items: center; gap: 8px; }
+  .profile-rm-card .rm-name {
+    font-size: 14px; font-weight: 700; color: #1a1a1a; cursor: pointer;
+  }
+  .profile-rm-card .rm-name:hover { text-decoration: underline; }
+  .profile-rm-card .rm-meta { font-size: 11.5px; color: #6b6b6b; }
+  .profile-rm-card .rm-role-pill {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px; letter-spacing: .04em;
+  }
+  .profile-rm-card .rm-role-pill.owner { background: #1a1a1a; color: #fff; }
+  .profile-rm-card .rm-role-pill.assigned { background: #f0efeb; color: #6b6b6b; }
+  .mini-7day {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px;
+  }
+  .mini-7day .mini-day {
+    background: #faf9f6; border: 1px solid #ececea; border-radius: 8px;
+    min-height: 56px; padding: 4px 6px;
+    display: flex; flex-direction: column; gap: 2px; position: relative;
+  }
+  .mini-7day .mini-day.weekend { background: #f5f4ef; }
+  .mini-7day .mini-day.holiday { background: #f5f4ef; }
+  .mini-7day .mini-day.timeoff::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, transparent 0 4px, rgba(160,160,150,.25) 4px 6px);
+    pointer-events: none; border-radius: 8px;
+  }
+  .mini-7day .mini-day.today { box-shadow: 0 0 0 2px #1a1a1a inset; }
+  .mini-7day .mini-day .mini-dnum {
+    font-size: 11px; font-weight: 700; color: #1a1a1a;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .mini-7day .mini-day .mini-dwd { font-size: 9px; color: #9a9a9a; text-transform: uppercase; font-weight: 600; }
+  .mini-7day .mini-day .mini-event {
+    font-size: 9.5px; font-weight: 600; color: #fff;
+    padding: 1px 4px; border-radius: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    line-height: 1.3;
+  }
+  .profile-rm-card .rm-task-row {
+    display: flex; align-items: center; gap: 8px; padding: 6px 0;
+    border-top: 1px solid #f0efeb; font-size: 12.5px;
+  }
+  .profile-rm-card .rm-task-row:first-of-type { border-top: none; }
+  .profile-rm-card .rm-task-row .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .profile-rm-card .rm-task-row .text { flex: 1; cursor: pointer; }
+  .profile-rm-card .rm-task-row .text:hover { color: #1a1a1a; text-decoration: underline; }
+  .profile-rm-card .rm-task-row .dates { font-size: 11px; color: #9a9a9a; }
+
+  .profile-tasks-toolbar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .profile-tasks-toolbar label { font-size: 11px; color: #6b6b6b; text-transform: uppercase; font-weight: 600; letter-spacing: .04em; }
+  .profile-tasks-toolbar select {
+    border: 1px solid #d8d6d1; border-radius: 8px; padding: 5px 10px; font-size: 12.5px; font-family: inherit; background: #fff; cursor: pointer;
+  }
+
+  .profile-task-group {
+    background: #fff; border: 1px solid #ececea; border-radius: 12px;
+    margin-bottom: 10px; overflow: hidden;
+  }
+  .profile-task-group .group-head {
+    padding: 10px 14px; background: #faf9f6; border-bottom: 1px solid #ececea;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 12.5px; font-weight: 700; color: #1a1a1a; cursor: pointer;
+  }
+  .profile-task-group .group-head:hover { background: #f5f4ef; }
+  .profile-task-group .group-head .gh-count { font-size: 11px; color: #6b6b6b; font-weight: 600; }
+  .profile-task-group.collapsed .group-body { display: none; }
+  .profile-task-group .group-body { padding: 4px 0; }
+  .profile-task-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 14px;
+    border-top: 1px solid #f0efeb; font-size: 13px;
+  }
+  .profile-task-row:first-child { border-top: none; }
+  .profile-task-row:hover { background: #faf9f6; }
+  .profile-task-row .text { flex: 1; cursor: pointer; }
+  .profile-task-row .badges { display: flex; gap: 4px; flex-wrap: wrap; }
+
   /* Modals */
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
   .modal-bg.show { display: flex; }
@@ -642,6 +795,7 @@
       <button class="nav-item" data-view="home"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="nav-label">Home</span></button>
       <button class="nav-item" data-view="tasks"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="nav-label">Tasks</span> <span class="nav-count" id="nav-tasks-count"></span></button>
       <button class="nav-item" data-view="members"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">Team</span> <span class="nav-count" id="nav-members-count"></span></button>
+      <button class="nav-item" data-view="profile"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="nav-label">Profile</span></button>
       <button class="nav-item" data-view="roadmaps"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="nav-label">Roadmaps</span> <span class="nav-count" id="nav-roadmaps-count"></span></button>
     </aside>
     <main class="main-content">
@@ -753,6 +907,16 @@
         <input class="search-input" id="memberPageSearch" placeholder="Search members..." style="max-width:240px">
       </div>
       <div id="membersGrid"></div>
+    </section>
+
+    <section id="view-profile" class="view-section" style="display:none">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Profile</h2>
+          <div class="page-subtitle">Pick a team member to see and edit everything about them.</div>
+        </div>
+      </div>
+      <div id="profilePageContent"></div>
     </section>
 
     <section id="view-roadmaps" class="view-section" style="display:none">
@@ -1748,6 +1912,10 @@ function render() {
   }
   if (currentView === "members") {
     renderMembersPage();
+    return;
+  }
+  if (currentView === "profile") {
+    renderProfilePage();
     return;
   }
   if (currentView === "roadmaps") {
@@ -3174,6 +3342,438 @@ if (memberPageSearchEl) {
   });
 }
 
+// ---- Profile page ----
+let profilePersonId = localStorage.getItem("bookline-profilePersonId") || null;
+let profileGroupBy = localStorage.getItem("bookline-profileGroupBy") || "status";
+let profilePersonSearch = "";
+const profileCollapsedGroups = new Set(JSON.parse(localStorage.getItem("bookline-profileCollapsedGroups") || "[]"));
+
+function setProfilePerson(id) {
+  profilePersonId = id;
+  if (id) localStorage.setItem("bookline-profilePersonId", id);
+  else localStorage.removeItem("bookline-profilePersonId");
+  renderProfilePage();
+}
+function setProfileGroupBy(g) {
+  profileGroupBy = g;
+  localStorage.setItem("bookline-profileGroupBy", g);
+  renderProfilePage();
+}
+function toggleProfileGroup(key) {
+  if (profileCollapsedGroups.has(key)) profileCollapsedGroups.delete(key);
+  else profileCollapsedGroups.add(key);
+  localStorage.setItem("bookline-profileCollapsedGroups", JSON.stringify([...profileCollapsedGroups]));
+}
+
+function getRoadmapsForPerson(personId) {
+  return getRoadmaps().filter(r => {
+    if (r.responsibleId === personId) return true;
+    return (r.tasks || []).some(entry => {
+      const t = STORE.tasks.find(x => x.id === entry.taskId);
+      return t && t.responsibleId === personId;
+    });
+  });
+}
+
+function renderProfilePage() {
+  const cont = document.getElementById("profilePageContent");
+  if (!cont) return;
+
+  // Validate selection still exists
+  if (profilePersonId && !findPerson(profilePersonId)) profilePersonId = null;
+
+  // Build picker (search + chips)
+  const q = (profilePersonSearch || "").toLowerCase().trim();
+  const personListAll = TEAM.slice();
+  const personListShown = q
+    ? personListAll.filter(p => (p.name||"").toLowerCase().includes(q) || (p.displayName||"").toLowerCase().includes(q) || (p.email||"").toLowerCase().includes(q))
+    : personListAll;
+
+  let html = '';
+  html += '<div class="profile-picker">';
+  html += '<input class="search-input picker-search" id="profilePersonSearchInput" placeholder="Search people..." value="' + escapeHtml(profilePersonSearch || "") + '">';
+  html += '<div class="picker-strip">';
+  personListShown.forEach(p => {
+    const ini = initials(p.name);
+    const photo = p.photo || "";
+    const active = (p.id === profilePersonId) ? ' active' : '';
+    html += '<span class="profile-chip' + active + '" data-pid="' + p.id + '">' +
+      '<span class="av" style="background:' + (p.color || '#9a9a9a') + ';display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">' +
+      (photo ? '<img src="' + escapeHtml(photo) + '" alt="" onerror="this.remove()">' : escapeHtml(ini)) +
+      '</span>' +
+      escapeHtml(p.displayName || p.name) +
+      '</span>';
+  });
+  html += '</div></div>';
+
+  if (!profilePersonId) {
+    html += '<div class="profile-empty">Pick a person above to see their profile.</div>';
+    cont.innerHTML = html;
+    wireProfilePicker();
+    return;
+  }
+
+  const person = findPerson(profilePersonId);
+  if (!person) {
+    html += '<div class="profile-empty">Person not found.</div>';
+    cont.innerHTML = html;
+    wireProfilePicker();
+    return;
+  }
+
+  const settings = getPersonSettings(person.id);
+  const personTags = getTagsFor(person.id);
+  const tagLib = getTagLibrary();
+  const personTasks = STORE.tasks.filter(t => t.responsibleId === person.id);
+  const counts = {
+    total: personTasks.length,
+    in_progress: personTasks.filter(t=>t.panelStatus==="in_progress").length,
+    pending: personTasks.filter(t=>t.panelStatus==="pending").length,
+    completed: personTasks.filter(t=>t.panelStatus==="completed").length,
+    archived: personTasks.filter(t=>t.panelStatus==="archived").length,
+    discarded: personTasks.filter(t=>t.panelStatus==="discarded").length,
+  };
+  const personRoadmaps = getRoadmapsForPerson(person.id);
+  const ini = initials(person.name);
+
+  // Header card
+  html += '<div class="profile-header">';
+  html += '<div class="av-big" style="background:' + (person.color || '#9a9a9a') + ';display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:700">';
+  html += person.photo ? ('<img src="' + escapeHtml(person.photo) + '" alt="" onerror="this.remove()">') : escapeHtml(ini);
+  html += '</div>';
+  html += '<div>';
+  html += '<h3>' + escapeHtml(person.name || person.displayName || '?') + '</h3>';
+  html += '<div class="meta-line">';
+  if (person.role) html += '<span>' + escapeHtml(person.role) + '</span>';
+  if (person.email) html += '<span>' + escapeHtml(person.email) + '</span>';
+  html += '<span>Slack: <code style="font-size:11px">' + escapeHtml(person.id) + '</code></span>';
+  html += '</div>';
+  // Tags row
+  html += '<div class="tags-row">';
+  if (personTags.length) {
+    personTags.forEach(t => { html += tagBadgeHtml(t, true); });
+  } else {
+    html += '<span style="color:#9a9a9a;font-size:12px">No tags</span>';
+  }
+  html += ' <select id="profileAddTag" style="border:1px solid #d8d6d1;border-radius:6px;padding:3px 6px;font-size:11px"><option value="">+ Add tag…</option>';
+  tagLib.forEach(t => { if (!personTags.includes(t.name)) html += '<option value="' + escapeHtml(t.name) + '">' + escapeHtml(t.name) + '</option>'; });
+  html += '</select>';
+  html += '</div>';
+  // Editable fields
+  html += '<div class="profile-fields-grid">';
+  html += '<div class="profile-field"><label>Hours / week</label><input id="profileHoursInput" type="number" step="0.5" min="0" max="80" placeholder="—" value="' + ((settings.availableWeekTime != null && settings.availableWeekTime !== "") ? settings.availableWeekTime : "") + '"></div>';
+  html += '<div class="profile-field checkbox"><input id="profileDisabledInput" type="checkbox"' + (settings.disabled ? ' checked' : '') + '><label style="margin:0;cursor:pointer" for="profileDisabledInput">Disabled</label></div>';
+  html += '</div>';
+  html += '</div>';
+  // Actions
+  html += '<div class="actions">';
+  html += '<button class="btn" id="profileOpenModalBtn">More options…</button>';
+  html += '</div>';
+  html += '</div>';
+
+  // Stats
+  html += '<div class="profile-stats">';
+  html += '<div class="profile-stat-card"><div class="num">' + counts.total + '</div><div class="lbl">Tasks</div><div class="sub">all time</div></div>';
+  html += '<div class="profile-stat-card"><div class="num">' + counts.in_progress + '</div><div class="lbl">In progress</div></div>';
+  html += '<div class="profile-stat-card"><div class="num">' + counts.pending + '</div><div class="lbl">Pending</div></div>';
+  html += '<div class="profile-stat-card"><div class="num">' + counts.completed + '</div><div class="lbl">Completed</div></div>';
+  html += '<div class="profile-stat-card"><div class="num">' + personRoadmaps.length + '</div><div class="lbl">Roadmaps</div></div>';
+  html += '</div>';
+
+  // Roadmaps section
+  html += '<div class="profile-section-title">Roadmaps <span class="count">' + personRoadmaps.length + '</span></div>';
+  if (personRoadmaps.length === 0) {
+    html += '<div class="profile-empty" style="padding:20px;background:#fff;border:1px dashed #ececea;border-radius:12px">Not in any roadmap yet.</div>';
+  } else {
+    html += '<div class="profile-rm-list">';
+    personRoadmaps.forEach(rm => {
+      html += renderProfileRoadmapCard(rm, person.id);
+    });
+    html += '</div>';
+  }
+
+  // Tasks section
+  html += '<div class="profile-section-title">Tasks <span class="count">' + counts.total + '</span></div>';
+  html += '<div class="profile-tasks-toolbar">';
+  html += '<label>Group by</label>';
+  html += '<select id="profileGroupBySel">';
+  ['none','status','priority','type','roadmap','tag','dueMonth'].forEach(opt => {
+    const lblMap = {none:'None',status:'Status',priority:'Priority',type:'Type',roadmap:'Roadmap',tag:'Tag',dueMonth:'Due month'};
+    html += '<option value="' + opt + '"' + (profileGroupBy === opt ? ' selected' : '') + '>' + lblMap[opt] + '</option>';
+  });
+  html += '</select>';
+  html += '</div>';
+  html += renderProfileTasks(personTasks, profileGroupBy);
+
+  cont.innerHTML = html;
+  wireProfilePicker();
+  wireProfileHeader(person);
+  wireProfileTasks();
+}
+
+function wireProfilePicker() {
+  const input = document.getElementById("profilePersonSearchInput");
+  if (input) {
+    input.addEventListener("input", e => {
+      profilePersonSearch = e.target.value;
+      // Re-render only the picker (avoid full reload of tasks/roadmaps)
+      // For simplicity, just full re-render
+      renderProfilePage();
+      // Restore focus + caret
+      const newInput = document.getElementById("profilePersonSearchInput");
+      if (newInput) {
+        newInput.focus();
+        newInput.setSelectionRange(profilePersonSearch.length, profilePersonSearch.length);
+      }
+    });
+  }
+  document.querySelectorAll(".profile-chip").forEach(node => {
+    node.addEventListener("click", () => setProfilePerson(node.dataset.pid));
+  });
+}
+
+function wireProfileHeader(person) {
+  const tags = document.querySelectorAll('#profilePageContent .profile-header .tag');
+  tags.forEach(node => {
+    node.addEventListener("click", () => {
+      const t = node.dataset.tag;
+      setTagsFor(person.id, getTagsFor(person.id).filter(x => x !== t));
+      renderProfilePage();
+    });
+  });
+  const addSel = document.getElementById("profileAddTag");
+  if (addSel) {
+    addSel.addEventListener("change", e => {
+      const v = e.target.value;
+      if (!v) return;
+      const cur = getTagsFor(person.id);
+      if (!cur.includes(v)) setTagsFor(person.id, [...cur, v]);
+      renderProfilePage();
+    });
+  }
+  const hoursInput = document.getElementById("profileHoursInput");
+  if (hoursInput) {
+    hoursInput.addEventListener("change", e => {
+      const v = e.target.value === "" ? null : parseFloat(e.target.value);
+      setPersonSettings(person.id, { availableWeekTime: (isNaN(v) ? null : v) });
+    });
+  }
+  const disabledInput = document.getElementById("profileDisabledInput");
+  if (disabledInput) {
+    disabledInput.addEventListener("change", e => {
+      setPersonSettings(person.id, { disabled: e.target.checked });
+    });
+  }
+  const moreBtn = document.getElementById("profileOpenModalBtn");
+  if (moreBtn) {
+    moreBtn.addEventListener("click", () => openPersonModal(person.id));
+  }
+}
+
+function renderProfileRoadmapCard(rm, personId) {
+  const isOwner = rm.responsibleId === personId;
+  const personTaskEntries = (rm.tasks || []).filter(entry => {
+    const t = STORE.tasks.find(x => x.id === entry.taskId);
+    return t && t.responsibleId === personId;
+  });
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = [];
+  for (let i = 0; i < 7; i++) days.push(addDays(today, i));
+
+  // Status colors (same as calendar)
+  const statusColors = {
+    pending: '#fbbf24', in_progress: '#60a5fa', completed: '#34d399',
+    archived: '#a98c5a', discarded: '#94a3b8'
+  };
+  const wdLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  let html = '<div class="profile-rm-card">';
+  html += '<div class="rm-head">';
+  html += '<div class="lhs">';
+  html += '<span class="rm-name" data-rm="' + rm.id + '">' + escapeHtml(rm.name || '(unnamed)') + '</span>';
+  html += '<span class="rm-role-pill ' + (isOwner ? 'owner' : 'assigned') + '">' + (isOwner ? 'Owner' : 'Assigned') + '</span>';
+  html += '</div>';
+  html += '<span class="rm-meta">' + personTaskEntries.length + ' task' + (personTaskEntries.length===1?'':'s') + '</span>';
+  html += '</div>';
+  // Mini 7-day calendar
+  html += '<div class="mini-7day">';
+  days.forEach((d, idx) => {
+    const wd = d.getDay(); // 0 Sun..6 Sat
+    const wdMon = (wd + 6) % 7; // 0 Mon..6 Sun
+    const isWeekend = (wdMon >= 5);
+    const isToday = (d.getTime() === today.getTime());
+    const worked = isWorkedOverride(d);
+    const timeOff = isTimeOff(d);
+    const hol = holidayName(d);
+    const cls = ['mini-day'];
+    if (isWeekend && !worked) cls.push('weekend');
+    if (hol && !worked) cls.push('holiday');
+    if (timeOff) cls.push('timeoff');
+    if (isToday) cls.push('today');
+    html += '<div class="' + cls.join(' ') + '">';
+    html += '<div class="mini-dwd">' + wdLabels[wdMon] + '</div>';
+    html += '<div class="mini-dnum">' + d.getDate() + '</div>';
+    // Events for this day
+    personTaskEntries.forEach(entry => {
+      const start = parseDate(entry.startDate);
+      const end = parseDate(entry.endDate) || (start ? new Date(2099,11,31) : null);
+      if (!start) return;
+      if (d >= start && d <= end) {
+        const t = STORE.tasks.find(x => x.id === entry.taskId);
+        if (!t) return;
+        const color = statusColors[t.panelStatus] || '#94a3b8';
+        html += '<div class="mini-event" style="background:' + color + '" title="' + escapeHtml(t.subject) + '">' + escapeHtml(t.subject) + '</div>';
+      }
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  // Task list (just titles + dates)
+  if (personTaskEntries.length > 0) {
+    personTaskEntries.slice(0, 12).forEach(entry => {
+      const t = STORE.tasks.find(x => x.id === entry.taskId);
+      if (!t) return;
+      const color = statusColors[t.panelStatus] || '#94a3b8';
+      const dateRange = (entry.startDate || entry.endDate) ? (escapeHtml(entry.startDate||'?') + ' → ' + escapeHtml(entry.endDate||'open')) : '<em>unscheduled</em>';
+      html += '<div class="rm-task-row">';
+      html += '<span class="dot" style="background:' + color + '"></span>';
+      html += '<span class="text" data-tid="' + t.id + '">' + escapeHtml(t.subject) + '</span>';
+      html += '<span class="dates">' + dateRange + '</span>';
+      html += '</div>';
+    });
+    if (personTaskEntries.length > 12) {
+      html += '<div class="rm-task-row" style="color:#9a9a9a;font-size:11px;justify-content:center"><em>+' + (personTaskEntries.length - 12) + ' more</em></div>';
+    }
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderProfileTasks(tasks, groupBy) {
+  if (tasks.length === 0) {
+    return '<div class="profile-empty" style="padding:20px;background:#fff;border:1px dashed #ececea;border-radius:12px">No tasks for this person.</div>';
+  }
+  // Build groups
+  const groups = new Map(); // key -> {label, tasks, sortKey}
+  const ungrouped = [];
+  const STATUS_LABELS = {in_progress:'In progress',pending:'Pending',completed:'Completed',archived:'Archived',discarded:'Discarded'};
+  const STATUS_ORDER = {in_progress:0,pending:1,completed:2,archived:3,discarded:4};
+
+  function pushGroup(key, label, t, sortKey) {
+    if (!groups.has(key)) groups.set(key, { label, tasks: [], sortKey });
+    groups.get(key).tasks.push(t);
+  }
+
+  if (groupBy === 'none') {
+    pushGroup('all', 'All tasks', null, 0);
+    tasks.forEach(t => groups.get('all').tasks.push(t));
+  } else {
+    tasks.forEach(t => {
+      if (groupBy === 'status') {
+        const k = t.panelStatus || 'pending';
+        pushGroup(k, STATUS_LABELS[k] || k, t, STATUS_ORDER[k] != null ? STATUS_ORDER[k] : 99);
+      } else if (groupBy === 'priority') {
+        const k = t.priority || '__none';
+        const lbl = t.priority || 'No priority';
+        pushGroup(k, lbl, t, PRIORITY_ORDER[t.priority] != null ? PRIORITY_ORDER[t.priority] : 99);
+      } else if (groupBy === 'type') {
+        const k = t.type || '__none';
+        const lbl = t.type || 'No type';
+        pushGroup(k, lbl, t, 0);
+      } else if (groupBy === 'roadmap') {
+        const rms = getTaskRoadmaps(t.id);
+        if (rms.length === 0) pushGroup('__none', 'No roadmap', t, 99);
+        else rms.forEach(r => pushGroup(r.id, r.name || '(unnamed)', t, 0));
+      } else if (groupBy === 'tag') {
+        const tagsArr = (t.taskTags || []);
+        if (tagsArr.length === 0) pushGroup('__none', 'No tags', t, 99);
+        else tagsArr.forEach(tg => pushGroup(tg, tg, t, 0));
+      } else if (groupBy === 'dueMonth') {
+        if (!t.dueDate) pushGroup('__none', 'No due date', t, 99);
+        else {
+          const k = t.dueDate.slice(0,7);
+          pushGroup(k, k, t, 0);
+        }
+      }
+    });
+  }
+
+  const sortedGroups = [...groups.entries()].sort((a, b) => {
+    const sa = a[1].sortKey != null ? a[1].sortKey : 0;
+    const sb = b[1].sortKey != null ? b[1].sortKey : 0;
+    if (sa !== sb) return sa - sb;
+    return a[1].label.localeCompare(b[1].label);
+  });
+
+  let html = '';
+  sortedGroups.forEach(([key, g]) => {
+    const collapsed = profileCollapsedGroups.has(groupBy + ':' + key);
+    html += '<div class="profile-task-group' + (collapsed ? ' collapsed' : '') + '" data-gkey="' + escapeHtml(groupBy + ':' + key) + '">';
+    html += '<div class="group-head">';
+    html += '<span>' + escapeHtml(g.label) + '</span>';
+    html += '<span class="gh-count">' + g.tasks.length + ' task' + (g.tasks.length===1?'':'s') + ' ' + (collapsed ? '▸' : '▾') + '</span>';
+    html += '</div>';
+    html += '<div class="group-body">';
+    g.tasks.forEach(t => {
+      const prioCls = "prio-" + (t.priority || "").replace(/\s+/g, '');
+      const typeCls = "type-" + (t.type || "").replace(/\s+/g, '');
+      const badges = [];
+      if (t.priority) badges.push('<span class="badge ' + prioCls + '">' + escapeHtml(t.priority) + '</span>');
+      if (t.type) badges.push('<span class="badge ' + typeCls + '">' + escapeHtml(t.type) + '</span>');
+      if (t.dueDate) badges.push('<span class="badge due">' + escapeHtml(t.dueDate) + '</span>');
+      const statusColors = { pending: '#fbbf24', in_progress: '#60a5fa', completed: '#34d399', archived: '#a98c5a', discarded: '#94a3b8' };
+      const dotColor = statusColors[t.panelStatus] || '#94a3b8';
+      html += '<div class="profile-task-row" data-tid="' + t.id + '">';
+      html += '<span style="width:8px;height:8px;border-radius:50%;background:' + dotColor + '"></span>';
+      html += '<span class="text">' + escapeHtml(t.subject) + '</span>';
+      html += '<span class="badges">' + badges.join(' ') + '</span>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+  });
+  return html;
+}
+
+function wireProfileTasks() {
+  const sel = document.getElementById("profileGroupBySel");
+  if (sel) sel.addEventListener("change", e => setProfileGroupBy(e.target.value));
+
+  document.querySelectorAll('#profilePageContent .profile-task-group .group-head').forEach(node => {
+    node.addEventListener("click", () => {
+      const group = node.closest('.profile-task-group');
+      const key = group.dataset.gkey;
+      toggleProfileGroup(key);
+      group.classList.toggle('collapsed');
+      // Update arrow
+      const arrow = node.querySelector('.gh-count');
+      if (arrow) arrow.textContent = arrow.textContent.replace(/[▾▸]/, group.classList.contains('collapsed') ? '▸' : '▾');
+    });
+  });
+
+  document.querySelectorAll('#profilePageContent .profile-task-row .text').forEach(node => {
+    node.addEventListener("click", () => {
+      const row = node.closest('.profile-task-row');
+      if (row && row.dataset.tid) openModal(row.dataset.tid);
+    });
+  });
+
+  document.querySelectorAll('#profilePageContent .profile-rm-card .rm-name').forEach(node => {
+    node.addEventListener("click", () => {
+      const rmId = node.dataset.rm;
+      if (!rmId) return;
+      selectedRoadmapTimelineId = rmId;
+      localStorage.setItem("bookline-selectedRoadmap", rmId);
+      switchView("roadmaps");
+    });
+  });
+
+  document.querySelectorAll('#profilePageContent .profile-rm-card .rm-task-row .text').forEach(node => {
+    node.addEventListener("click", () => {
+      if (node.dataset.tid) openModal(node.dataset.tid);
+    });
+  });
+}
+
 // ---- Roadmaps timeline (Gantt) page ----
 let selectedRoadmapTimelineId = localStorage.getItem("bookline-selectedRoadmap") || null;
 
@@ -3407,17 +4007,18 @@ let selectedRoadmapPageId = null;
 
 function switchView(view) {
   if (view === "team") view = "tasks";
-  if (!["home","tasks","members","roadmaps"].includes(view)) view = "home";
+  if (!["home","tasks","members","profile","roadmaps"].includes(view)) view = "home";
   currentView = view;
   localStorage.setItem("bookline-currentView", view);
   document.querySelectorAll(".nav-item").forEach(t => t.classList.toggle("active", t.dataset.view === view));
   document.getElementById("view-home").style.display     = view === "home"     ? "" : "none";
   document.getElementById("view-members").style.display  = view === "members"  ? "" : "none";
+  document.getElementById("view-profile").style.display  = view === "profile"  ? "" : "none";
   document.getElementById("view-tasks").style.display    = view === "tasks"    ? "" : "none";
   document.getElementById("view-roadmaps").style.display = view === "roadmaps" ? "" : "none";
-  // Hide global action buttons on Roadmaps page (it has its own controls)
+  // Hide global action buttons on Roadmaps & Profile pages (they have their own controls)
   const headerTop = document.querySelector("header.top");
-  if (headerTop) headerTop.style.display = (view === "roadmaps") ? "none" : "";
+  if (headerTop) headerTop.style.display = (view === "roadmaps" || view === "profile") ? "none" : "";
   render();
 }
 
