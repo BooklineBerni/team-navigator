@@ -3345,11 +3345,12 @@ if (memberPageSearchEl) {
 // ---- Profile page ----
 let profilePersonId = localStorage.getItem("bookline-profilePersonId") || null;
 let profileGroupBy = localStorage.getItem("bookline-profileGroupBy") || "status";
-let profilePersonSearch = "";
+let profileEditMode = false;
 const profileCollapsedGroups = new Set(JSON.parse(localStorage.getItem("bookline-profileCollapsedGroups") || "[]"));
 
 function setProfilePerson(id) {
   profilePersonId = id;
+  profileEditMode = false; // reset edit mode when switching person
   if (id) localStorage.setItem("bookline-profilePersonId", id);
   else localStorage.removeItem("bookline-profilePersonId");
   renderProfilePage();
@@ -3382,16 +3383,11 @@ function renderProfilePage() {
   // Validate selection still exists
   if (profilePersonId && !findPerson(profilePersonId)) profilePersonId = null;
 
-  // Build picker (search + chips)
-  const q = (profilePersonSearch || "").toLowerCase().trim();
-  const personListAll = TEAM.slice();
-  const personListShown = q
-    ? personListAll.filter(p => (p.name||"").toLowerCase().includes(q) || (p.displayName||"").toLowerCase().includes(q) || (p.email||"").toLowerCase().includes(q))
-    : personListAll;
+  // Build picker (chips only)
+  const personListShown = TEAM.slice();
 
   let html = '';
   html += '<div class="profile-picker">';
-  html += '<input class="search-input picker-search" id="profilePersonSearchInput" placeholder="Search people..." value="' + escapeHtml(profilePersonSearch || "") + '">';
   html += '<div class="picker-strip">';
   personListShown.forEach(p => {
     const ini = initials(p.name);
@@ -3451,23 +3447,35 @@ function renderProfilePage() {
   // Tags row
   html += '<div class="tags-row">';
   if (personTags.length) {
-    personTags.forEach(t => { html += tagBadgeHtml(t, true); });
+    personTags.forEach(t => { html += tagBadgeHtml(t, profileEditMode); });
   } else {
     html += '<span style="color:#9a9a9a;font-size:12px">No tags</span>';
   }
-  html += ' <select id="profileAddTag" style="border:1px solid #d8d6d1;border-radius:6px;padding:3px 6px;font-size:11px"><option value="">+ Add tag…</option>';
-  tagLib.forEach(t => { if (!personTags.includes(t.name)) html += '<option value="' + escapeHtml(t.name) + '">' + escapeHtml(t.name) + '</option>'; });
-  html += '</select>';
+  if (profileEditMode) {
+    html += ' <select id="profileAddTag" style="border:1px solid #d8d6d1;border-radius:6px;padding:3px 6px;font-size:11px"><option value="">+ Add tag…</option>';
+    tagLib.forEach(t => { if (!personTags.includes(t.name)) html += '<option value="' + escapeHtml(t.name) + '">' + escapeHtml(t.name) + '</option>'; });
+    html += '</select>';
+  }
   html += '</div>';
-  // Editable fields
+  // Fields (read-only or editable)
+  const hoursVal = (settings.availableWeekTime != null && settings.availableWeekTime !== "") ? settings.availableWeekTime : "";
   html += '<div class="profile-fields-grid">';
-  html += '<div class="profile-field"><label>Hours / week</label><input id="profileHoursInput" type="number" step="0.5" min="0" max="80" placeholder="—" value="' + ((settings.availableWeekTime != null && settings.availableWeekTime !== "") ? settings.availableWeekTime : "") + '"></div>';
-  html += '<div class="profile-field checkbox"><input id="profileDisabledInput" type="checkbox"' + (settings.disabled ? ' checked' : '') + '><label style="margin:0;cursor:pointer" for="profileDisabledInput">Disabled</label></div>';
+  if (profileEditMode) {
+    html += '<div class="profile-field"><label>Hours / week</label><input id="profileHoursInput" type="number" step="0.5" min="0" max="80" placeholder="—" value="' + hoursVal + '"></div>';
+    html += '<div class="profile-field checkbox"><input id="profileDisabledInput" type="checkbox"' + (settings.disabled ? ' checked' : '') + '><label style="margin:0;cursor:pointer" for="profileDisabledInput">Disabled</label></div>';
+  } else {
+    html += '<div class="profile-field"><label>Hours / week</label><div style="font-size:13px;color:#1a1a1a;padding:0">' + (hoursVal !== "" ? escapeHtml(String(hoursVal)) + 'h' : '<span style="color:#9a9a9a">—</span>') + '</div></div>';
+    html += '<div class="profile-field"><label>Status</label><div style="font-size:13px;color:#1a1a1a;padding:0">' + (settings.disabled ? '<span style="color:#9a9a9a">Disabled</span>' : 'Active') + '</div></div>';
+  }
   html += '</div>';
   html += '</div>';
-  // Actions
+  // Actions (Edit / Done button)
   html += '<div class="actions">';
-  html += '<button class="btn" id="profileOpenModalBtn">More options…</button>';
+  if (profileEditMode) {
+    html += '<button class="btn primary" id="profileEditToggleBtn">Done</button>';
+  } else {
+    html += '<button class="btn" id="profileEditToggleBtn">Edit</button>';
+  }
   html += '</div>';
   html += '</div>';
 
@@ -3512,61 +3520,52 @@ function renderProfilePage() {
 }
 
 function wireProfilePicker() {
-  const input = document.getElementById("profilePersonSearchInput");
-  if (input) {
-    input.addEventListener("input", e => {
-      profilePersonSearch = e.target.value;
-      // Re-render only the picker (avoid full reload of tasks/roadmaps)
-      // For simplicity, just full re-render
-      renderProfilePage();
-      // Restore focus + caret
-      const newInput = document.getElementById("profilePersonSearchInput");
-      if (newInput) {
-        newInput.focus();
-        newInput.setSelectionRange(profilePersonSearch.length, profilePersonSearch.length);
-      }
-    });
-  }
   document.querySelectorAll(".profile-chip").forEach(node => {
     node.addEventListener("click", () => setProfilePerson(node.dataset.pid));
   });
 }
 
 function wireProfileHeader(person) {
-  const tags = document.querySelectorAll('#profilePageContent .profile-header .tag');
-  tags.forEach(node => {
-    node.addEventListener("click", () => {
-      const t = node.dataset.tag;
-      setTagsFor(person.id, getTagsFor(person.id).filter(x => x !== t));
+  // Tags are clickable to remove ONLY in edit mode (tagBadgeHtml builds them with the X)
+  if (profileEditMode) {
+    const tags = document.querySelectorAll('#profilePageContent .profile-header .tag');
+    tags.forEach(node => {
+      node.addEventListener("click", () => {
+        const t = node.dataset.tag;
+        setTagsFor(person.id, getTagsFor(person.id).filter(x => x !== t));
+        renderProfilePage();
+      });
+    });
+    const addSel = document.getElementById("profileAddTag");
+    if (addSel) {
+      addSel.addEventListener("change", e => {
+        const v = e.target.value;
+        if (!v) return;
+        const cur = getTagsFor(person.id);
+        if (!cur.includes(v)) setTagsFor(person.id, [...cur, v]);
+        renderProfilePage();
+      });
+    }
+    const hoursInput = document.getElementById("profileHoursInput");
+    if (hoursInput) {
+      hoursInput.addEventListener("change", e => {
+        const v = e.target.value === "" ? null : parseFloat(e.target.value);
+        setPersonSettings(person.id, { availableWeekTime: (isNaN(v) ? null : v) });
+      });
+    }
+    const disabledInput = document.getElementById("profileDisabledInput");
+    if (disabledInput) {
+      disabledInput.addEventListener("change", e => {
+        setPersonSettings(person.id, { disabled: e.target.checked });
+      });
+    }
+  }
+  const editBtn = document.getElementById("profileEditToggleBtn");
+  if (editBtn) {
+    editBtn.addEventListener("click", () => {
+      profileEditMode = !profileEditMode;
       renderProfilePage();
     });
-  });
-  const addSel = document.getElementById("profileAddTag");
-  if (addSel) {
-    addSel.addEventListener("change", e => {
-      const v = e.target.value;
-      if (!v) return;
-      const cur = getTagsFor(person.id);
-      if (!cur.includes(v)) setTagsFor(person.id, [...cur, v]);
-      renderProfilePage();
-    });
-  }
-  const hoursInput = document.getElementById("profileHoursInput");
-  if (hoursInput) {
-    hoursInput.addEventListener("change", e => {
-      const v = e.target.value === "" ? null : parseFloat(e.target.value);
-      setPersonSettings(person.id, { availableWeekTime: (isNaN(v) ? null : v) });
-    });
-  }
-  const disabledInput = document.getElementById("profileDisabledInput");
-  if (disabledInput) {
-    disabledInput.addEventListener("change", e => {
-      setPersonSettings(person.id, { disabled: e.target.checked });
-    });
-  }
-  const moreBtn = document.getElementById("profileOpenModalBtn");
-  if (moreBtn) {
-    moreBtn.addEventListener("click", () => openPersonModal(person.id));
   }
 }
 
