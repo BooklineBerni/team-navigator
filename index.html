@@ -10,7 +10,7 @@
   /* ===== Core layout (was lost during dark-theme revert) ===== */
   body { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif; background: #f7f7f5; color: #1a1a1a; line-height: 1.45; margin: 0; }
   * { box-sizing: border-box; }
-  .wrap { max-width: 1400px; margin: 0 auto; padding: 20px 24px 64px; }
+  .wrap { max-width: none; margin: 0; padding: 16px 24px 40px; }
   header.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
   header.top h1 { font-size: 22px; font-weight: 650; margin: 0 0 4px; letter-spacing: -0.01em; }
   header.top .sub { color: #6b6b6b; font-size: 13px; }
@@ -185,8 +185,8 @@
   .cal-today-btn:hover { background: #f0efeb; }
   .cal-grid {
     display: flex; flex-direction: column;
-    background: #ececea;
-    border: 1px solid #ececea; border-radius: 12px; overflow: hidden;
+    background: transparent;
+    border: none; border-radius: 0; overflow: visible;
   }
   .cal-headers {
     display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ececea;
@@ -194,23 +194,30 @@
   .cal-day-header {
     background: #fff; padding: 10px 8px; font-weight: 700; font-size: 11px; color: #6b6b6b;
     text-transform: uppercase; letter-spacing: 0.05em; text-align: center;
+    box-shadow: 0 0 0 1px #ececea;
   }
   .cal-week {
-    display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ececea;
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: transparent;
     position: relative; min-height: 110px;
   }
   .cal-day {
     background: #fff; padding: 6px 8px; font-size: 12px; position: relative;
+    box-shadow: 0 0 0 1px #ececea;
   }
-  .cal-day.other-month { background: #faf9f7; }
-  .cal-day.other-month .day-num { color: #c0c0c0; }
+  .cal-day.other-month {
+    background: #f7f7f5 !important;
+    box-shadow: none !important;
+    outline: none;
+    position: relative;
+    z-index: 1;
+  }
+  .cal-day.other-month > * { display: none !important; }
   .cal-day .day-num { font-weight: 600; color: #1a1a1a; display: inline-block; }
   .cal-day.weekend { background: #fbfaf7; }
-  .cal-day.today .day-num {
-    width: 24px; height: 24px; background: #1a1a1a; color: #fff;
-    border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-    font-size: 11px;
-  }
+  .cal-day.today { background: #1a1a1a !important; color: #fff; }
+  .cal-day.today .day-num { color: #fff; font-weight: 700; }
+  .cal-day.today .holiday-name { color: rgba(255,255,255,0.7); }
+  .cal-day.today .day-num.toggle:hover { background: rgba(255,255,255,0.15); }
   .cal-events-overlay {
     position: absolute; left: 0; right: 0;
     top: 30px; bottom: 4px;
@@ -241,9 +248,9 @@
 
 
   /* Non-working days (weekends + holidays) */
-  .cal-day.holiday { background: #fef2f2; }
+  .cal-day.holiday { background: #ededec; }
   .cal-day.holiday .holiday-name {
-    position: absolute; top: 4px; right: 6px; font-size: 9px; color: #b42318;
+    position: absolute; top: 4px; right: 6px; font-size: 9px; color: #44403c;
     font-weight: 600; max-width: 60%; text-align: right;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     text-transform: uppercase; letter-spacing: 0.02em;
@@ -259,6 +266,8 @@
   }
   .cal-day.worked { background: #ecfdf3 !important; }
   .cal-day.worked .holiday-name { color: #027a48; }
+  .cal-day.time-off { background: #fef2f2; }
+  .cal-day.time-off .holiday-name { color: #b42318; }
   /* Striped overlay over non-working day columns inside events overlay */
   .no-work-stripes {
     position: absolute; top: 0; bottom: 0;
@@ -266,15 +275,148 @@
       135deg,
       transparent 0,
       transparent 5px,
-      rgba(180,35,24,0.18) 5px,
-      rgba(180,35,24,0.18) 7px
+      var(--stripe-color, rgba(100,116,139,0.30)) 5px,
+      var(--stripe-color, rgba(100,116,139,0.30)) 7px
     );
     pointer-events: none;
     z-index: 5;
   }
+  .no-work-stripes.time-off { --stripe-color: rgba(220,38,38,0.32); }
+  /* Time-off day cell */
+  .cal-day.time-off { background: #fef2f2; }
+  .cal-day.time-off .holiday-name { color: #b42318; }
+  .cal-day.time-off .day-num.toggle::before {
+    content: "🏖"; margin-right: 3px; font-size: 11px;
+  }
+  /* Make ALL day numbers clickable to toggle their state */
+  .cal-day .day-num.toggle { cursor: pointer; padding: 2px 5px; border-radius: 5px; transition: background .12s; }
+  .cal-day .day-num.toggle:hover { background: rgba(0,0,0,0.06); }
   .cal-toolbar-help {
     margin-left: auto; font-size: 11px; color: #9a9a9a;
   }
+
+
+  /* Task multi-select for roadmap assign */
+  .rm-add-panel { margin-top: 14px; padding-top: 14px; border-top: 1px solid #eee; }
+  .rm-add-panel h4 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+  .rm-add-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+  .rm-add-filters input.search-input { flex: 1; min-width: 180px; max-width: none; }
+  .rm-add-filters select {
+    border: 1px solid #d8d6d1; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-family: inherit; background: #fff;
+  }
+  .rm-add-task-list {
+    max-height: 280px; overflow-y: auto; border: 1px solid #ececea; border-radius: 8px;
+    background: #faf9f7;
+  }
+  .rm-add-task-row {
+    display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center;
+    padding: 6px 10px; border-bottom: 1px solid #efeeea; font-size: 12.5px; cursor: pointer;
+  }
+  .rm-add-task-row:last-child { border-bottom: none; }
+  .rm-add-task-row:hover { background: #f0efeb; }
+  .rm-add-task-row input[type="checkbox"] { cursor: pointer; }
+  .rm-add-task-row.selected { background: #ecfdf3; }
+  .rm-add-task-row .task-resp { font-size: 10.5px; color: #6b6b6b; }
+  .rm-add-task-row .task-prio { font-size: 9.5px; padding: 1px 6px; border-radius: 999px; font-weight: 600; }
+  .rm-add-actions { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .rm-add-actions .selected-count { font-size: 12px; color: #6b6b6b; }
+  /* Roadmap badge on tasks */
+  .badge.roadmap-badge { background: #e0e7ff; color: #3730a3; }
+
+
+  /* Roadmap calendar split layout (calendar left, unscheduled right) */
+  .rm-content-row {
+    display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start;
+  }
+  @media (max-width: 1200px) { .rm-content-row { grid-template-columns: 1fr; } }
+  .rm-cal-area { min-width: 0; }
+  .rm-side-area .rm-unscheduled {
+    margin-top: 0 !important;
+    position: sticky; top: 16px;
+    max-height: calc(100vh - 80px); overflow-y: auto;
+  }
+
+
+  /* Fixed full-height sidebar (independent of scroll) */
+  .wrap { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: 100vh; }
+  .app-layout { display: block !important; padding: 0 !important; margin: 0 !important; gap: 0 !important; }
+  .sidebar {
+    position: fixed !important;
+    top: 0; left: 0; bottom: 0;
+    width: 220px;
+    border-radius: 0 !important;
+    border: none !important;
+    border-right: 1px solid #ececea !important;
+    padding: 16px 14px !important;
+    overflow-y: auto;
+    z-index: 50;
+    background: #fff !important;
+  }
+  header.top { padding: 14px 24px; margin-left: 220px; }
+  .main-content { margin-left: 220px; padding: 0 24px 32px 24px; min-height: calc(100vh - 80px); }
+  footer.bot { margin-left: 220px; padding: 24px 24px 16px 24px; }
+  /* On narrow screens collapse to top bar */
+  @media (max-width: 800px) {
+    .sidebar {
+      position: static !important;
+      width: auto;
+      border-right: none !important;
+      border-bottom: 1px solid #ececea !important;
+    }
+    header.top, .main-content, footer.bot { margin-left: 0; }
+  }
+
+
+  .cal-toggle {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #6b6b6b;
+    cursor: pointer; user-select: none; padding: 4px 8px; border-radius: 6px;
+    margin-left: auto;
+  }
+  .cal-toggle:hover { background: #f0efeb; }
+  .cal-toggle input { cursor: pointer; margin: 0; }
+  .cal-toolbar-help { display: none; }
+  /* Compact unscheduled rows in side panel */
+  .rm-side-area .rm-unscheduled { padding: 12px; max-width: 100%; }
+  .rm-side-area .rm-task-row {
+    display: flex !important; flex-direction: column; gap: 4px; align-items: stretch;
+    padding: 8px; font-size: 12px;
+  }
+  .rm-side-area .rm-task-row > span:first-child {
+    font-weight: 500; line-height: 1.3; word-break: break-word;
+  }
+  .rm-side-area .rm-task-row .rmt-start,
+  .rm-side-area .rm-task-row .rmt-end {
+    width: 100%; font-size: 10.5px; padding: 3px 6px; min-width: 0;
+  }
+  .rm-side-area .rm-task-row .rm-task-del {
+    align-self: flex-end; padding: 0 6px;
+  }
+
+
+  .rm-owner-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 2px 10px 2px 2px; background: #f0efeb; border-radius: 999px;
+    cursor: pointer; transition: background .12s;
+    font-weight: 600; color: #1a1a1a;
+  }
+  .rm-owner-chip:hover { background: #e2e0db; }
+  .rm-owner-chip .rm-owner-name { font-size: 13px; }
+
+
+  .members-section-heading {
+    font-size: 14px; font-weight: 700; color: #6b6b6b;
+    margin: 24px 0 10px; padding-top: 14px; border-top: 1px solid #ececea;
+  }
+  .members-grid-disabled .member-card {
+    opacity: 0.7;
+    filter: grayscale(0.7);
+    background: #f5f5f4 !important;
+    border-color: #e7e5e4 !important;
+  }
+  .members-grid-disabled .member-card .name,
+  .members-grid-disabled .member-card .role,
+  .members-grid-disabled .member-card .email a { color: #6b6b6b !important; }
+  .members-grid-disabled .member-card .email a { color: #6b6b6b !important; text-decoration: none; }
 
   /* Modals */
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
@@ -471,10 +613,7 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <div>
-      <h1>Berni Navigator</h1>
-      <div class="sub">Your task panel, synced with the <strong>Berni</strong> list in Slack. Click any task to edit all fields. Click avatars to filter; <kbd>Shift</kbd>/<kbd>Cmd</kbd> + click to multi-select.</div>
-    </div>
+    <div></div>
     <div class="actions">
       <span id="pendingSyncBadge" class="pending-sync-counter" style="display:none">
         <span>Pending sync:</span><strong id="pendingSyncCount">0</strong>
@@ -613,7 +752,7 @@
         </div>
         <input class="search-input" id="memberPageSearch" placeholder="Search members..." style="max-width:240px">
       </div>
-      <div class="members-grid" id="membersGrid"></div>
+      <div id="membersGrid"></div>
     </section>
 
     <section id="view-roadmaps" class="view-section" style="display:none">
@@ -644,9 +783,7 @@
   </div>
     </main>
   </div>
-  <footer class="bot">
-    Data imported from the <em>Berni</em> list in Slack &middot; Changes saved in <code>localStorage</code>
-  </footer>
+  <footer class="bot"></footer>
 </div>
 
 <div class="modal-bg" id="roadmapsListBg">
@@ -687,10 +824,38 @@
     </div>
     <h3 style="margin:14px 0 8px; font-size:14px; font-weight:600">Assigned tasks <span id="rmf_taskCount" style="color:#9a9a9a; font-weight:400; font-size:12px"></span></h3>
     <div class="rm-task-list" id="rmf_tasks"></div>
-    <div class="rm-add-task">
-      <input type="text" id="rmf_taskSearch" class="rm-task-input-search" placeholder="Search a task to assign…" autocomplete="off">
+    <div class="rm-add-panel">
+      <h4>+ Assign tasks (filter and select multiple)</h4>
+      <div class="rm-add-filters">
+        <input type="text" id="rmf_addSearch" class="search-input" placeholder="Search by title or comments...">
+        <select id="rmf_addStatus">
+          <option value="all">Status: All</option>
+          <option value="pending">Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+          <option value="archived">Archived</option>
+          <option value="discarded">Discarded</option>
+        </select>
+        <select id="rmf_addPrio">
+          <option value="all">Priority: All</option>
+          <option value="Critical">Critical</option>
+          <option value="Alta">Alta</option>
+          <option value="Media">Media</option>
+          <option value="Baja">Baja</option>
+          <option value="Muy Baja">Muy Baja</option>
+        </select>
+        <select id="rmf_addPerson">
+          <option value="all">Responsible: All</option>
+        </select>
+      </div>
+      <div class="rm-add-task-list" id="rmf_addList"></div>
+      <div class="rm-add-actions">
+        <button class="btn" id="rmf_addSelectAll">Select all visible</button>
+        <button class="btn" id="rmf_addClearSel">Clear selection</button>
+        <span class="selected-count" id="rmf_addSelectedCount">0 selected</span>
+        <button class="btn primary" id="rmf_addApplyBtn" disabled>+ Add selected to roadmap</button>
+      </div>
     </div>
-    <div id="rmf_taskSearchResults" style="margin-top:6px; max-height:160px; overflow-y:auto;"></div>
     <div class="modal-actions">
       <button class="btn danger" id="rmf_deleteBtn">Delete roadmap</button>
       <div style="display:flex; gap:8px">
@@ -775,6 +940,10 @@
     <h2 id="personModalTitle">Edit person</h2>
     <div class="field"><label>Available week time <span style="font-weight:400; color:#9a9a9a">(hours/week)</span></label>
       <input type="number" id="f_availableWeekTime" min="0" step="0.5" placeholder="e.g. 20" style="max-width:200px">
+    </div>
+    <div class="checkbox-field" style="margin-bottom:14px; padding:10px 12px; background:#fef2f2; border:1px solid #fecdca; border-radius:8px">
+      <input type="checkbox" id="f_personDisabled">
+      <label for="f_personDisabled" style="margin:0; font-weight:600">Disable this person <span style="font-weight:400; color:#6b6b6b">(left the company / inactive — appears in disabled section, greyed out)</span></label>
     </div>
     <div class="field"><label>Assigned tags</label>
       <div class="person-modal-tags" id="personTagsContainer"></div>
@@ -1063,7 +1232,13 @@ function setTagsFor(personId, tags) {
   saveStore(STORE);
 }
 function isDeactivated(personId) {
-  return getTagsFor(personId).some(t => t.toLowerCase() === "desactivado");
+  const s = getPersonSettings(personId);
+  if (s.disabled) return true;
+  // Legacy fallback: also detect the tag (for users who haven't migrated)
+  return getTagsFor(personId).some(t => {
+    const tl = t.toLowerCase();
+    return tl === "desactivado" || tl === "disabled";
+  });
 }
 
 // ---- Task Tag Library ----
@@ -1718,6 +1893,10 @@ function taskHtml(t) {
   if (t.dueDate)  badges.push('<span class="badge due">' + escapeHtml(t.dueDate) + '</span>');
   if (t.dedicatedHours || t.estimatedHours) badges.push('<span class="badge hours">' + (t.dedicatedHours||0) + 'h / ' + (t.estimatedHours||0) + 'h</span>');
   if (t._pendingSync) badges.push('<span class="badge pending-sync">No sync</span>');
+  // Roadmap badges
+  getTaskRoadmaps(t.id).forEach(rm => {
+    badges.push('<span class="badge roadmap-badge" title="In roadmap: ' + escapeHtml(rm.name||'') + '">📍 ' + escapeHtml((rm.name||'').slice(0,18)) + '</span>');
+  });
   // Task tags (ordered by library order, then any extras at end)
   const lib = getTaskTagLibrary();
   const orderedTags = lib.map(x => x.name).filter(n => Array.isArray(t.taskTags) && t.taskTags.includes(n));
@@ -1864,10 +2043,11 @@ function openPersonModal(personId) {
   editingPersonId = personId;
   const p = findPerson(personId);
   document.getElementById("personModalTitle").textContent = "Edit " + (p ? p.displayName : "person");
-  // Pre-fill available week time
+  // Pre-fill available week time and disabled checkbox
   const settings = getPersonSettings(personId);
   const awtInput = document.getElementById("f_availableWeekTime");
   awtInput.value = (settings.availableWeekTime != null && settings.availableWeekTime !== "") ? settings.availableWeekTime : "";
+  document.getElementById("f_personDisabled").checked = !!settings.disabled;
   renderPersonModal();
   document.getElementById("personModalBg").classList.add("show");
 }
@@ -1941,6 +2121,12 @@ document.getElementById("f_availableWeekTime").addEventListener("change", e => {
   if (!editingPersonId) return;
   const v = e.target.value === "" ? null : parseFloat(e.target.value);
   setPersonSettings(editingPersonId, { availableWeekTime: (isNaN(v) ? null : v) });
+});
+document.getElementById("f_personDisabled").addEventListener("change", e => {
+  if (!editingPersonId) return;
+  setPersonSettings(editingPersonId, { disabled: e.target.checked });
+  // Re-render team page to move person to correct section
+  if (currentView === "members") render();
 });
 
 document.getElementById("addCustomTagBtn").addEventListener("click", () => {
@@ -2386,7 +2572,16 @@ function holidayName(d) {
   return HOLIDAYS[dateKey(d)] || null;
 }
 function isWorkedOverride(d) { return ((STORE.workedDates || []).indexOf(dateKey(d)) >= 0); }
+function isTimeOff(d) { return ((STORE.timeOffDates || []).indexOf(dateKey(d)) >= 0); }
+function toggleTimeOff(dateStr) {
+  STORE.timeOffDates = STORE.timeOffDates || [];
+  const idx = STORE.timeOffDates.indexOf(dateStr);
+  if (idx >= 0) STORE.timeOffDates.splice(idx, 1);
+  else STORE.timeOffDates.push(dateStr);
+  saveStore(STORE);
+}
 function isNonWorkingDay(d) {
+  if (isTimeOff(d)) return true; // time-off always non-working
   if (isWorkedOverride(d)) return false;
   return isWeekendDay(d) || !!holidayName(d);
 }
@@ -2399,7 +2594,7 @@ function toggleWorkedOverride(dateStr) {
 }
 
 // ---- Roadmap Calendar (Google Calendar-style) ----
-let roadmapCalState = { yearMonth: null }; // {year, month} where month is 0-11
+let roadmapCalState = { yearMonth: null, hideWeekends: localStorage.getItem("bookline-rm-hide-weekends") === "true" };
 
 function renderRoadmapCalendar(roadmapId) {
   const cont = document.getElementById('rmPageContent');
@@ -2416,15 +2611,20 @@ function renderRoadmapCalendar(roadmapId) {
   const ym = roadmapCalState.yearMonth;
   const today = new Date(); today.setHours(0,0,0,0);
 
-  // Build event list (with both dates, real task)
+  // Build event list — task must have at least startDate; missing endDate → extend to far future ("infinity")
+  const FAR_FUTURE = new Date(2099, 11, 31);
   const events = (r.tasks || []).map(entry => {
     const task = STORE.tasks.find(t => t.id === entry.taskId);
-    return { entry, task, start: parseDate(entry.startDate), end: parseDate(entry.endDate) };
+    let start = parseDate(entry.startDate);
+    let end = parseDate(entry.endDate);
+    if (start && !end) end = FAR_FUTURE;
+    return { entry, task, start, end, openEnded: start && !parseDate(entry.endDate) };
   }).filter(e => e.task && e.start && e.end);
 
+  // Unscheduled = no start date at all (end-only tasks also live here)
   const unscheduled = (r.tasks || []).filter(entry => {
     const t = STORE.tasks.find(x => x.id === entry.taskId);
-    return t && !(parseDate(entry.startDate) && parseDate(entry.endDate));
+    return t && !parseDate(entry.startDate);
   });
 
   // Status color map
@@ -2446,16 +2646,26 @@ function renderRoadmapCalendar(roadmapId) {
   // Build summary
   const completedCount = events.filter(e => e.task.panelStatus === 'completed').length;
   const dateRange = (r.startDate || r.endDate) ? (escapeHtml(r.startDate||'?') + ' → ' + escapeHtml(r.endDate||'?')) : 'no dates';
+  const ownerHtml = owner
+    ? '<div class="rm-owner-chip" data-owner="' + owner.id + '" title="Open ' + escapeHtml(owner.displayName) + ' in Team">' +
+        '<span class="avatar" style="width:28px;height:28px;font-size:11px;background:' + owner.color + '">' +
+          '<img src="' + owner.photo + '" alt="" onerror="this.remove()">' +
+          '<span class="ini">' + initials(owner.name) + '</span>' +
+        '</span>' +
+        '<span class="rm-owner-name">' + escapeHtml(owner.name) + '</span>' +
+      '</div>'
+    : '<em>no owner</em>';
   let html = '<div class="rm-summary-card">' +
     '<div><div class="rm-summary-name">' + escapeHtml(r.name||'(unnamed)') + '</div>' +
-    '<div class="rm-summary-meta">' + (owner ? escapeHtml(owner.name) : '<em>no owner</em>') + ' · ' + dateRange + ' · ' + (r.tasks||[]).length + ' tasks</div></div>' +
+    '<div class="rm-summary-meta">' + ownerHtml + ' · ' + dateRange + ' · ' + (r.tasks||[]).length + ' tasks</div></div>' +
     '<div class="rm-summary-actions">' +
       '<button class="btn" id="rmEditBtn">Edit</button>' +
-      '<button class="btn" id="rmAddTaskBtn">+ Assign task</button>' +
+      '<button class="btn" id="rmAddTaskBtn">+ Assign Tasks</button>' +
       '<button class="btn danger" id="rmDeleteBtn">Delete</button>' +
     '</div></div>';
 
   // Toolbar with navigation
+  html += '<div class="rm-content-row"><div class="rm-cal-area">';
   const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const monthLabel = monthNames[ym.month] + ' ' + ym.year;
   html += '<div class="cal-toolbar">' +
@@ -2465,40 +2675,57 @@ function renderRoadmapCalendar(roadmapId) {
       '<button class="cal-nav-btn" id="calNext" title="Next month">›</button>' +
     '</div>' +
     '<div class="cal-month-label">' + monthLabel + '</div>' +
-    '<div class="cal-toolbar-help">Click día festivo/finde &rarr; marca como trabajado</div>' +
+    '<label class="cal-toggle"><input type="checkbox" id="calHideWeekends" ' + (roadmapCalState.hideWeekends ? "checked" : "") + '> <span>Hide weekends</span></label>' +
     '</div>';
 
-  if (events.length === 0 && unscheduled.length === 0) {
-    html += '<div class="cal-no-tasks">No tasks assigned to this roadmap yet. Click "+ Assign task" to add some.</div>';
-  } else {
-    // Day headers (Mon-first)
+  {
+    // Day headers (Mon-first) — always render the grid
     html += '<div class="cal-grid">';
-    html += '<div class="cal-headers">';
-    ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => {
+    html += '<div class="cal-headers" style="grid-template-columns: repeat(' + (roadmapCalState.hideWeekends ? 5 : 7) + ', 1fr)">';
+    const headerDays = roadmapCalState.hideWeekends ? ['Mon','Tue','Wed','Thu','Fri'] : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    headerDays.forEach(d => {
       html += '<div class="cal-day-header">' + d + '</div>';
     });
     html += '</div>';
 
+    // Day list invariant across weeks (depends only on hide-weekends toggle)
+    const dayList = roadmapCalState.hideWeekends ? [0,1,2,3,4] : [0,1,2,3,4,5,6];
+    const nDays = dayList.length;
     // For each week, build day cells + event overlay
     for (let w = 0; w < totalWeeks; w++) {
-      const weekStart = new Date(gridStart.getTime() + w * 7 * DAY_MS);
-      const weekEnd = new Date(weekStart.getTime() + 6 * DAY_MS);
+      const weekStart = addDays(gridStart, w * 7);
+      const weekEnd = addDays(weekStart, 6);
       // Find events that intersect this week
       const visibleEvents = events.filter(e => e.end >= weekStart && e.start <= weekEnd);
-      // Compute segments: clipped to this week
-      const segments = visibleEvents.map(e => {
+      // Compute segments: clipped to this week, mapped to visible columns (skip weekends if toggled)
+      function dayToCol(idx) {
+        // idx 0..6 (Mon..Sun)
+        if (!roadmapCalState.hideWeekends) return idx;
+        // When hidden, only Mon-Fri (0..4); Sat=5,Sun=6 don't exist
+        return idx <= 4 ? idx : null;
+      }
+      const segments = [];
+      visibleEvents.forEach(e => {
         const segStart = e.start < weekStart ? new Date(weekStart) : new Date(e.start);
         segStart.setHours(0,0,0,0);
         const segEnd = e.end > weekEnd ? new Date(weekEnd) : new Date(e.end);
         segEnd.setHours(0,0,0,0);
-        const startCol = Math.round((segStart - weekStart) / DAY_MS);
-        const endCol = Math.round((segEnd - weekStart) / DAY_MS);
-        const span = endCol - startCol + 1;
-        return {
+        const rawStart = Math.round((segStart - weekStart) / DAY_MS);
+        const rawEnd = Math.round((segEnd - weekStart) / DAY_MS);
+        // Clamp to visible day range and translate to column
+        let visStart = rawStart, visEnd = rawEnd;
+        if (roadmapCalState.hideWeekends) {
+          if (rawStart > 4 && rawEnd > 4) return; // entirely on weekend
+          if (visStart > 4) visStart = 4; // shouldn't happen but safety
+          if (visEnd > 4) visEnd = 4;
+        }
+        const startCol = visStart;
+        const span = visEnd - visStart + 1;
+        segments.push({
           event: e, startCol, span,
           continuesLeft: e.start < weekStart,
           continuesRight: e.end > weekEnd
-        };
+        });
       });
       // Lane assignment
       segments.sort((a,b) => a.startCol - b.startCol || b.span - a.span);
@@ -2514,45 +2741,52 @@ function renderRoadmapCalendar(roadmapId) {
       const minHeight = 110;
       const calculatedHeight = Math.max(minHeight, 36 + lanes.length * 22);
 
-      html += '<div class="cal-week" style="min-height:' + calculatedHeight + 'px">';
-      // 7 day cells with weekend/holiday awareness
-      const nonWorkingCols = [];
-      for (let d = 0; d < 7; d++) {
-        const dayDate = new Date(weekStart.getTime() + d * DAY_MS);
+      html += '<div class="cal-week" style="min-height:' + calculatedHeight + 'px; grid-template-columns: repeat(' + nDays + ', 1fr)">';
+      // Day cells loop
+      const nonWorkingCols = []; // [{col, type: "default" | "time-off"}]
+      for (let di = 0; di < nDays; di++) {
+        const d = dayList[di];
+        const dayDate = addDays(weekStart, d);
         const dayKey = dateKey(dayDate);
         const isOtherMonth = dayDate.getMonth() !== ym.month;
         const isToday = dayDate.getTime() === today.getTime();
         const isWknd = isWeekendDay(dayDate);
         const holName = holidayName(dayDate);
         const worked = isWorkedOverride(dayDate);
+        const timeOff = isTimeOff(dayDate);
         const nonWorking = isNonWorkingDay(dayDate);
-        if (nonWorking) nonWorkingCols.push(d);
+        if (nonWorking && !isOtherMonth) nonWorkingCols.push({ col: di, type: timeOff ? 'time-off' : 'default' });
         const cls = ['cal-day'];
         if (isOtherMonth) cls.push('other-month');
         if (isToday) cls.push('today');
         if (isWknd) cls.push('weekend');
         if (holName) cls.push('holiday');
         if (worked) cls.push('worked');
-        const toggleable = (isWknd || holName) ? 'toggle' : '';
-        const tooltip = (isWknd || holName)
-          ? (worked ? 'Marked as worked — click to revert' : 'Click to mark as worked (no strikethrough)')
-          : '';
+        if (timeOff) cls.push('time-off');
+        // Determine click behavior based on type
+        let tooltip;
+        if (timeOff) tooltip = 'Marked as time off — click to revert to working day';
+        else if (isWknd || holName) tooltip = (worked ? 'Marked as worked — click to revert' : 'Click to mark as worked (no strikethrough)');
+        else tooltip = 'Click to mark as time off (vacation, sick, etc.)';
+        const labelExtra = timeOff ? '<span class="holiday-name" title="Time off">OFF</span>' : (holName ? '<span class="holiday-name" title="' + escapeHtml(holName) + '">' + escapeHtml(holName) + '</span>' : '');
         html += '<div class="' + cls.join(' ') + '" data-date="' + dayKey + '">' +
-          '<span class="day-num ' + toggleable + '" ' + (toggleable ? 'data-toggle-date="' + dayKey + '" title="' + tooltip + '"' : '') + '>' + dayDate.getDate() + '</span>' +
-          (holName ? '<span class="holiday-name" title="' + escapeHtml(holName) + '">' + escapeHtml(holName) + '</span>' : '') +
+          '<span class="day-num toggle" data-toggle-date="' + dayKey + '" title="' + tooltip + '">' + dayDate.getDate() + '</span>' +
+          labelExtra +
         '</div>';
       }
       // Event overlay
       html += '<div class="cal-events-overlay">';
-      // Stripe overlay over non-working day columns (weekends + holidays minus worked overrides)
-      nonWorkingCols.forEach(c => {
-        const left = (c / 7) * 100;
-        html += '<div class="no-work-stripes" style="left:calc(' + left + '% + 1px); width:calc(' + (100/7) + '% - 2px)"></div>';
+      // Stripe overlay over non-working day columns
+      // Gray for weekends/holidays (default), red for time-off
+      nonWorkingCols.forEach(({col, type}) => {
+        const left = (col / nDays) * 100;
+        const cls = type === 'time-off' ? 'no-work-stripes time-off' : 'no-work-stripes';
+        html += '<div class="' + cls + '" style="left:calc(' + left + '% + 1px); width:calc(' + (100/nDays) + '% - 2px)"></div>';
       });
       segments.forEach(s => {
         if (s.lane >= maxLanesShown) return;
-        const left = (s.startCol / 7) * 100;
-        const width = (s.span / 7) * 100;
+        const left = (s.startCol / nDays) * 100;
+        const width = (s.span / nDays) * 100;
         const top = s.lane * 22;
         const color = statusColors[s.event.task.panelStatus] || '#1a1a1a';
         const cls = ['cal-event'];
@@ -2566,14 +2800,13 @@ function renderRoadmapCalendar(roadmapId) {
       // "X more" indicator if exceeds maxLanesShown
       const overflowCount = lanes.length - maxLanesShown;
       if (overflowCount > 0) {
-        for (let d = 0; d < 7; d++) {
-          // Count overflow events for this day
+        for (let d = 0; d < nDays; d++) {
           let cnt = 0;
           segments.forEach(s => {
             if (s.lane >= maxLanesShown && s.startCol <= d && d < s.startCol + s.span) cnt++;
           });
           if (cnt > 0) {
-            const left = (d / 7) * 100;
+            const left = (d / nDays) * 100;
             const top = maxLanesShown * 22;
             html += '<div class="cal-more-events" style="left:calc(' + left + '% + 4px); top:' + top + 'px">+' + cnt + ' more</div>';
           }
@@ -2584,6 +2817,8 @@ function renderRoadmapCalendar(roadmapId) {
     }
     html += '</div>'; // .cal-grid
   }
+  // Close cal-area, open side-area
+  html += '</div><div class="rm-side-area">';
 
   // Unscheduled section
   if (unscheduled.length > 0) {
@@ -2602,6 +2837,8 @@ function renderRoadmapCalendar(roadmapId) {
     html += '</div>';
   }
 
+  // Close side-area + row
+  html += '</div></div>';
   cont.innerHTML = html;
 
   // Wire up navigation
@@ -2626,19 +2863,44 @@ function renderRoadmapCalendar(roadmapId) {
   cont.querySelectorAll('.cal-event').forEach(node => {
     node.addEventListener('click', () => openModal(node.dataset.tid));
   });
-  // Toggle worked override on weekend/holiday day clicks
+  // Hide-weekends toggle
+  const hwCb = document.getElementById('calHideWeekends');
+  if (hwCb) {
+    hwCb.addEventListener('change', () => {
+      roadmapCalState.hideWeekends = hwCb.checked;
+      localStorage.setItem('bookline-rm-hide-weekends', hwCb.checked ? 'true' : 'false');
+      renderRoadmapCalendar(roadmapId);
+    });
+  }
+  // Toggle worked / time-off based on day type
   cont.querySelectorAll('.day-num.toggle').forEach(node => {
     node.addEventListener('click', e => {
       e.stopPropagation();
       const ds = node.dataset.toggleDate;
       if (!ds) return;
-      toggleWorkedOverride(ds);
+      const d = parseDate(ds);
+      if (!d) return;
+      const isWknd = isWeekendDay(d);
+      const holName = holidayName(d);
+      if (isTimeOff(d)) {
+        // Already time-off → revert to working
+        toggleTimeOff(ds);
+      } else if (isWknd || holName) {
+        // Weekend/holiday → toggle worked override
+        toggleWorkedOverride(ds);
+      } else {
+        // Regular working day → mark as time-off
+        toggleTimeOff(ds);
+      }
       renderRoadmapCalendar(roadmapId);
     });
   });
   // Summary buttons
   const editBtn = document.getElementById('rmEditBtn');
   if (editBtn) editBtn.addEventListener('click', () => openRoadmapEdit(roadmapId));
+  // Owner chip click → open the person modal (same UX as Team page)
+  const ownerChip = cont.querySelector('.rm-owner-chip');
+  if (ownerChip) ownerChip.addEventListener('click', () => openPersonModal(ownerChip.dataset.owner));
   const addTaskBtn = document.getElementById('rmAddTaskBtn');
   if (addTaskBtn) addTaskBtn.addEventListener('click', () => openRoadmapEdit(roadmapId));
   const delBtn = document.getElementById('rmDeleteBtn');
@@ -2854,7 +3116,10 @@ function renderMembersPage() {
     grid.innerHTML = '<div class="rm-empty">No members match.</div>';
     return;
   }
-  grid.innerHTML = arr.map(p => {
+  // Split active vs disabled
+  const active = arr.filter(p => !isDeactivated(p.id));
+  const disabled = arr.filter(p => isDeactivated(p.id));
+  function memberCardHtml(p) {
     const tags = getTagsFor(p.id);
     const tagsHtml = tags.length
       ? '<div class="person-tags-line">' + tags.map(t => tagBadgeHtml(t, false)).join("") + '</div>'
@@ -2874,7 +3139,7 @@ function renderMembersPage() {
         '<div class="meta">' +
           '<div class="name">' + escapeHtml(p.name) + '</div>' +
           '<div class="role">' + escapeHtml(p.role || "") + '</div>' +
-          '<div class="email"><a href="mailto:' + p.email + '">' + escapeHtml(p.email || "") + '</a></div>' +
+          '<div class="email">' + escapeHtml(p.email || "") + '</div>' +
           awt +
         '</div>' +
       '</div>' +
@@ -2885,8 +3150,18 @@ function renderMembersPage() {
         (inProgressCount > 0 ? '<span class="stat" title="In Progress"><span class="dot progress"></span>' + inProgressCount + '</span>' : '') +
       '</div>' +
     '</div>';
-  }).join("");
-  grid.querySelectorAll(".member-card").forEach(node => {
+  }
+  // Build HTML with two sections
+  let html = '';
+  if (active.length > 0) {
+    html += '<div class="members-grid">' + active.map(memberCardHtml).join("") + '</div>';
+  }
+  if (disabled.length > 0) {
+    html += '<h3 class="members-section-heading">Disabled <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + disabled.length + ')</span></h3>';
+    html += '<div class="members-grid members-grid-disabled">' + disabled.map(memberCardHtml).join("") + '</div>';
+  }
+  grid.innerHTML = html;
+  document.querySelectorAll("#membersGrid .member-card").forEach(node => {
     node.addEventListener("click", () => openPersonModal(node.dataset.uid));
   });
 }
@@ -2937,6 +3212,14 @@ function parseDate(s) {
 }
 const DAY_MS = 86400000;
 
+function addDays(date, n) {
+  const r = new Date(date);
+  r.setHours(0,0,0,0);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+
 function renderGantt(roadmapId) {
   const cont = document.getElementById("rmPageContent");
   const r = findRoadmap(roadmapId);
@@ -2981,7 +3264,7 @@ function renderGantt(roadmapId) {
           '<div class="rm-summary-meta">' + (owner ? escapeHtml(owner.name) : "<em>no owner</em>") + ' &middot; ' + dateRange + ' &middot; ' + tasks.length + ' tasks &middot; ' + pct + '% complete</div></div>';
   html += '<div class="rm-summary-actions">' +
           '<button class="btn" id="rmEditBtn">Edit</button>' +
-          '<button class="btn" id="rmAddTaskBtn">+ Assign task</button>' +
+          '<button class="btn" id="rmAddTaskBtn">+ Assign Tasks</button>' +
           '<button class="btn danger" id="rmDeleteBtn">Delete</button>' +
           '</div>';
   html += '</div>';
@@ -3123,7 +3406,6 @@ let currentView = localStorage.getItem("bookline-currentView") || "home";
 let selectedRoadmapPageId = null;
 
 function switchView(view) {
-  // Migration: old "team" view name → "tasks"
   if (view === "team") view = "tasks";
   if (!["home","tasks","members","roadmaps"].includes(view)) view = "home";
   currentView = view;
@@ -3133,6 +3415,9 @@ function switchView(view) {
   document.getElementById("view-members").style.display  = view === "members"  ? "" : "none";
   document.getElementById("view-tasks").style.display    = view === "tasks"    ? "" : "none";
   document.getElementById("view-roadmaps").style.display = view === "roadmaps" ? "" : "none";
+  // Hide global action buttons on Roadmaps page (it has its own controls)
+  const headerTop = document.querySelector("header.top");
+  if (headerTop) headerTop.style.display = (view === "roadmaps") ? "none" : "";
   render();
 }
 
@@ -3188,6 +3473,9 @@ function flatTaskHtml(t) {
   if (t.slackStatus) badges.push('<span class="badge slack-status">' + escapeHtml(t.slackStatus) + '</span>');
   if (t.dueDate) badges.push('<span class="badge due">' + escapeHtml(t.dueDate) + '</span>');
   if (t._pendingSync) badges.push('<span class="badge pending-sync">No sync</span>');
+  getTaskRoadmaps(t.id).forEach(rm => {
+    badges.push('<span class="badge roadmap-badge" title="In roadmap: ' + escapeHtml(rm.name||'') + '">📍 ' + escapeHtml((rm.name||'').slice(0,18)) + '</span>');
+  });
   const lib = getTaskTagLibrary();
   const orderedTags = lib.map(x => x.name).filter(n => Array.isArray(t.taskTags) && t.taskTags.includes(n));
   const extraTags = (t.taskTags || []).filter(n => !lib.some(x => x.name === n));
@@ -3325,7 +3613,7 @@ function renderRoadmapDetailInline(id) {
       searchResults.querySelectorAll(".rm-task-row").forEach(node => {
         node.addEventListener("click", () => {
           r.tasks = r.tasks || [];
-          r.tasks.push({ taskId: node.dataset.tid, startDate: r.startDate || "", endDate: r.endDate || "" });
+          r.tasks.push({ taskId: node.dataset.tid, startDate: "", endDate: "" });
           saveStore(STORE);
           searchInput.value = "";
           searchResults.innerHTML = "";
@@ -3384,6 +3672,11 @@ function updateTabCounts() {
   if (totalEl) totalEl.textContent = taskCount;
 }
 
+
+
+function getTaskRoadmaps(taskId) {
+  return getRoadmaps().filter(r => (r.tasks || []).some(e => e.taskId === taskId));
+}
 
 // ---- Roadmaps ----
 function getRoadmaps() {
@@ -3458,14 +3751,25 @@ function openRoadmapEdit(id) {
   document.getElementById("rmf_start").value = r.startDate || "";
   document.getElementById("rmf_end").value = r.endDate || "";
   renderRoadmapTasks();
-  document.getElementById("rmf_taskSearch").value = "";
-  document.getElementById("rmf_taskSearchResults").innerHTML = "";
+  // Reset multi-select state and populate person filter
+  rmAddSelectedIds = new Set();
+  const personSel = document.getElementById('rmf_addPerson');
+  personSel.innerHTML = '<option value="all">Responsible: All</option>' + TEAM.map(p => '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>').join('');
+  document.getElementById('rmf_addSearch').value = '';
+  document.getElementById('rmf_addStatus').value = 'all';
+  document.getElementById('rmf_addPrio').value = 'all';
+  document.getElementById('rmf_addPerson').value = 'all';
+  renderRmAddPanel();
   document.getElementById("roadmapEditBg").classList.add("show");
 }
 function closeRoadmapEdit() {
   document.getElementById("roadmapEditBg").classList.remove("show");
   editingRoadmapId = null;
-  renderRoadmapsList();
+  if (currentView === 'roadmaps') {
+    renderRoadmapsTimelinePage();
+  } else {
+    renderRoadmapsList();
+  }
 }
 function renderRoadmapTasks() {
   const r = findRoadmap(editingRoadmapId);
@@ -3501,34 +3805,59 @@ function renderRoadmapTasks() {
   });
 }
 
-function searchTasksForRoadmap(query) {
-  const cont = document.getElementById("rmf_taskSearchResults");
-  if (!query) { cont.innerHTML = ""; return; }
+let rmAddSelectedIds = new Set();
+
+function renderRmAddPanel() {
   const r = findRoadmap(editingRoadmapId);
+  if (!r) return;
   const assignedIds = new Set((r.tasks || []).map(x => x.taskId));
-  const ql = query.toLowerCase();
-  const matches = STORE.tasks
-    .filter(t => !assignedIds.has(t.id) && t.subject.toLowerCase().includes(ql))
-    .slice(0, 10);
+  const q = (document.getElementById('rmf_addSearch').value || '').trim().toLowerCase();
+  const statusF = document.getElementById('rmf_addStatus').value;
+  const prioF = document.getElementById('rmf_addPrio').value;
+  const personF = document.getElementById('rmf_addPerson').value;
+  const matches = STORE.tasks.filter(t => {
+    if (assignedIds.has(t.id)) return false;
+    if (statusF !== 'all' && t.panelStatus !== statusF) return false;
+    if (prioF !== 'all' && t.priority !== prioF) return false;
+    if (personF !== 'all' && t.responsibleId !== personF) return false;
+    if (q) {
+      const hay = (t.subject + ' ' + (t.extraComments||'') + ' ' + (t.slackStatus||'')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const list = document.getElementById('rmf_addList');
   if (matches.length === 0) {
-    cont.innerHTML = '<div style="color:#9a9a9a; font-size:12px; padding:6px">No matching tasks (or all already assigned)</div>';
-    return;
+    list.innerHTML = '<div style="color:#9a9a9a; font-size:12px; padding:14px; text-align:center">No matching tasks (or all already assigned).</div>';
+  } else {
+    const prioColors = { 'Critical':'#fee4e2;color:#b42318','Alta':'#fef0c7;color:#b54708','Media':'#d1fadf;color:#027a48','Baja':'#eaecf0;color:#475467','Muy Baja':'#f2f4f7;color:#98a2b3' };
+    list.innerHTML = matches.slice(0, 200).map(t => {
+      const p = findPerson(t.responsibleId);
+      const sel = rmAddSelectedIds.has(t.id);
+      const prioStyle = prioColors[t.priority] || '#f0efeb;color:#6b6b6b';
+      return '<div class="rm-add-task-row ' + (sel?'selected':'') + '" data-tid="' + t.id + '">' +
+        '<input type="checkbox" ' + (sel?'checked':'') + '>' +
+        '<div><div>' + escapeHtml(t.subject.slice(0,80)) + (t.subject.length>80?'…':'') + '</div>' +
+          '<div class="task-resp">' + escapeHtml(p ? p.displayName : (t.responsibleRaw||'?')) + ' · ' + escapeHtml(t.slackStatus||t.panelStatus) + '</div>' +
+        '</div>' +
+        (t.priority ? '<span class="task-prio" style="background:' + prioStyle + '">' + escapeHtml(t.priority) + '</span>' : '<span></span>') +
+        (t.dueDate ? '<span style="font-size:10.5px;color:#c2410c">' + escapeHtml(t.dueDate) + '</span>' : '<span></span>') +
+        '</div>';
+    }).join('');
+    if (matches.length > 200) {
+      list.innerHTML += '<div style="font-size:11px; color:#9a9a9a; padding:6px 10px; text-align:center">… and ' + (matches.length - 200) + ' more. Refine filters to narrow down.</div>';
+    }
   }
-  cont.innerHTML = matches.map(t => {
-    const p = findPerson(t.responsibleId);
-    return '<div class="rm-task-row" data-tid="' + t.id + '" style="cursor:pointer; border-color:#cbd5e1">' +
-      '<span><strong>' + escapeHtml(t.subject.slice(0, 60)) + (t.subject.length > 60 ? "…" : "") + '</strong> <span style="color:#6b6b6b">&middot; ' + escapeHtml(p ? p.name : "?") + ' &middot; ' + escapeHtml(t.priority||"") + '</span></span>' +
-      '<button class="btn primary" style="font-size:11px; padding:3px 10px">+ Add</button>' +
-      '</div>';
-  }).join("");
-  cont.querySelectorAll(".rm-task-row").forEach(node => {
-    const tid = node.dataset.tid;
-    node.addEventListener("click", () => {
-      r.tasks = r.tasks || [];
-      r.tasks.push({ taskId: tid, startDate: r.startDate || "", endDate: r.endDate || "" });
-      document.getElementById("rmf_taskSearch").value = "";
-      cont.innerHTML = "";
-      renderRoadmapTasks();
+  // Update count + button state
+  document.getElementById('rmf_addSelectedCount').textContent = rmAddSelectedIds.size + ' selected';
+  document.getElementById('rmf_addApplyBtn').disabled = rmAddSelectedIds.size === 0;
+  // Wire row clicks
+  list.querySelectorAll('.rm-add-task-row').forEach(row => {
+    row.addEventListener('click', e => {
+      const tid = row.dataset.tid;
+      if (rmAddSelectedIds.has(tid)) rmAddSelectedIds.delete(tid);
+      else rmAddSelectedIds.add(tid);
+      renderRmAddPanel();
     });
   });
 }
@@ -3583,11 +3912,39 @@ document.getElementById("rmf_deleteBtn").addEventListener("click", () => {
   closeRoadmapEdit();
 });
 
-let _rmSearchTimer = null;
-document.getElementById("rmf_taskSearch").addEventListener("input", e => {
-  clearTimeout(_rmSearchTimer);
-  const q = e.target.value.trim();
-  _rmSearchTimer = setTimeout(() => searchTasksForRoadmap(q), 150);
+let _rmAddSearchT = null;
+['rmf_addSearch'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    clearTimeout(_rmAddSearchT);
+    _rmAddSearchT = setTimeout(renderRmAddPanel, 150);
+  });
+});
+['rmf_addStatus','rmf_addPrio','rmf_addPerson'].forEach(id => {
+  document.getElementById(id).addEventListener('change', renderRmAddPanel);
+});
+document.getElementById('rmf_addSelectAll').addEventListener('click', () => {
+  document.querySelectorAll('#rmf_addList .rm-add-task-row').forEach(row => rmAddSelectedIds.add(row.dataset.tid));
+  renderRmAddPanel();
+});
+document.getElementById('rmf_addClearSel').addEventListener('click', () => {
+  rmAddSelectedIds.clear();
+  renderRmAddPanel();
+});
+document.getElementById('rmf_addApplyBtn').addEventListener('click', () => {
+  const r = findRoadmap(editingRoadmapId);
+  if (!r) return;
+  r.tasks = r.tasks || [];
+  rmAddSelectedIds.forEach(tid => {
+    if (!r.tasks.some(e => e.taskId === tid)) {
+      r.tasks.push({ taskId: tid, startDate: '', endDate: '' });
+    }
+  });
+  saveStore(STORE);
+  rmAddSelectedIds.clear();
+  renderRoadmapTasks();
+  renderRmAddPanel();
+  // Refresh the timeline page underneath if active so calendar shows new tasks immediately
+  if (currentView === 'roadmaps') renderRoadmapsTimelinePage();
 });
 
 
