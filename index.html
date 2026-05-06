@@ -145,7 +145,7 @@
   /* Roadmaps page */
   .rm-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
   .rm-selector { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; min-width: 0; }
-  .rm-tab { padding: 6px 12px; border: 1px solid #d8d6d1; background: #fff; border-radius: 999px; font-size: 12px; cursor: grab; font-weight: 600; font-family: inherit; position: relative; user-select: none; }
+  .rm-tab { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a; border-radius: 999px; font-size: 12px; cursor: grab; font-weight: 600; font-family: inherit; position: relative; user-select: none; line-height: 1.2; }
   .rm-tab:active { cursor: grabbing; }
   .rm-tab.dragging { opacity: .4; }
   .rm-tab.drop-before { box-shadow: -3px 0 0 0 #1a1a1a; }
@@ -884,10 +884,10 @@
         <div class="brand-name">Berni Navigator</div>
       </div>
       <button class="nav-item" data-view="home"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="nav-label">Home</span></button>
-      <button class="nav-item" data-view="tasks"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="nav-label">Tasks</span> <span class="nav-count" id="nav-tasks-count"></span></button>
-      <button class="nav-item" data-view="members"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">Team</span> <span class="nav-count" id="nav-members-count"></span></button>
-      <button class="nav-item" data-view="profile"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="nav-label">Profile</span></button>
       <button class="nav-item" data-view="roadmaps"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="nav-label">Roadmaps</span> <span class="nav-count" id="nav-roadmaps-count"></span></button>
+      <button class="nav-item" data-view="tasks"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="nav-label">Tasks</span> <span class="nav-count" id="nav-tasks-count"></span></button>
+      <button class="nav-item" data-view="profile"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="nav-label">Profile</span></button>
+      <button class="nav-item" data-view="members"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">Team</span> <span class="nav-count" id="nav-members-count"></span></button>
     </aside>
     <main class="main-content">
 
@@ -993,7 +993,6 @@
       <div class="page-header">
         <div>
           <h2 class="page-title">Team</h2>
-          <div class="page-subtitle">All team members. Click a card to edit tags, available time, or remove them.</div>
         </div>
         <input class="search-input" id="memberPageSearch" placeholder="Search members..." style="max-width:240px">
       </div>
@@ -3155,7 +3154,10 @@ function renderRoadmapCalendar(roadmapId) {
   if (editBtn) editBtn.addEventListener('click', () => openRoadmapEdit(roadmapId));
   // Owner chip click → open the person modal (same UX as Team page)
   const ownerChip = cont.querySelector('.rm-owner-chip');
-  if (ownerChip) ownerChip.addEventListener('click', () => openPersonModal(ownerChip.dataset.owner));
+  if (ownerChip) ownerChip.addEventListener('click', () => {
+    setProfilePerson(ownerChip.dataset.owner);
+    switchView("profile");
+  });
   const addTaskBtn = document.getElementById('rmAddTaskBtn');
   if (addTaskBtn) addTaskBtn.addEventListener('click', () => openRoadmapEdit(roadmapId));
   const delBtn = document.getElementById('rmDeleteBtn');
@@ -3199,15 +3201,47 @@ renderRoadmapsTimelinePage = function() {
   }
   sel.innerHTML = rms.map(r => {
     const cnt = (r.tasks || []).length;
-    return '<button class="rm-tab ' + (selectedRoadmapTimelineId === r.id ? "active" : "") + '" data-rm="' + r.id + '">' + escapeHtml(r.name||"(unnamed)") + ' <span style="opacity:.7">(' + cnt + ')</span></button>';
+    return '<div class="rm-tab ' + (selectedRoadmapTimelineId === r.id ? "active" : "") + '" data-rm="' + r.id + '" draggable="true" title="Drag to reorder · click to select" role="button" tabindex="0">' + escapeHtml(r.name||"(unnamed)") + ' <span style="opacity:.7">(' + cnt + ')</span></div>';
   }).join("");
   sel.querySelectorAll(".rm-tab").forEach(node => {
     node.addEventListener("click", () => {
+      if (node.dataset.justDragged === "1") { delete node.dataset.justDragged; return; }
       selectedRoadmapTimelineId = node.dataset.rm;
       localStorage.setItem("bookline-selectedRoadmap", selectedRoadmapTimelineId);
       // Reset month state when switching roadmap so it jumps to the new roadmap's start
       roadmapCalState.yearMonth = null;
       renderRoadmapsTimelinePage();
+    });
+    // Drag-to-reorder
+    node.addEventListener("dragstart", e => {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", node.dataset.rm);
+      node.classList.add("dragging");
+    });
+    node.addEventListener("dragend", () => {
+      node.classList.remove("dragging");
+      node.dataset.justDragged = "1";
+      setTimeout(() => { delete node.dataset.justDragged; }, 100);
+      sel.querySelectorAll(".rm-tab").forEach(n => n.classList.remove("drop-before","drop-after"));
+    });
+    node.addEventListener("dragover", e => {
+      e.preventDefault();
+      const rect = node.getBoundingClientRect();
+      const isAfter = (e.clientX - rect.left) > rect.width / 2;
+      sel.querySelectorAll(".rm-tab").forEach(n => n.classList.remove("drop-before","drop-after"));
+      node.classList.add(isAfter ? "drop-after" : "drop-before");
+    });
+    node.addEventListener("dragleave", () => {
+      node.classList.remove("drop-before","drop-after");
+    });
+    node.addEventListener("drop", e => {
+      e.preventDefault();
+      const draggedId = e.dataTransfer.getData("text/plain");
+      const targetId = node.dataset.rm;
+      if (!draggedId || draggedId === targetId) return;
+      const rect = node.getBoundingClientRect();
+      const isAfter = (e.clientX - rect.left) > rect.width / 2;
+      reorderRoadmap(draggedId, targetId, isAfter);
     });
   });
   renderRoadmapCalendar(selectedRoadmapTimelineId);
@@ -3417,7 +3451,11 @@ function renderMembersPage() {
   }
   grid.innerHTML = html;
   document.querySelectorAll("#membersGrid .member-card").forEach(node => {
-    node.addEventListener("click", () => openPersonModal(node.dataset.uid));
+    node.addEventListener("click", () => {
+      // Navigate to Profile page for this person
+      setProfilePerson(node.dataset.uid);
+      switchView("profile");
+    });
   });
 }
 const memberPageSearchEl = document.getElementById("memberPageSearch");
@@ -4007,7 +4045,7 @@ function renderRoadmapsTimelinePage() {
   }
   sel.innerHTML = rms.map(r => {
     const cnt = (r.tasks || []).length;
-    return '<button class="rm-tab ' + (selectedRoadmapTimelineId === r.id ? "active" : "") + '" data-rm="' + r.id + '" draggable="true" title="Drag to reorder">' + escapeHtml(r.name||"(unnamed)") + ' <span style="opacity:.7">(' + cnt + ')</span></button>';
+    return '<div class="rm-tab ' + (selectedRoadmapTimelineId === r.id ? "active" : "") + '" data-rm="' + r.id + '" draggable="true" title="Drag to reorder · click to select" role="button" tabindex="0">' + escapeHtml(r.name||"(unnamed)") + ' <span style="opacity:.7">(' + cnt + ')</span></div>';
   }).join("");
   sel.querySelectorAll(".rm-tab").forEach(node => {
     node.addEventListener("click", e => {
