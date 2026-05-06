@@ -403,16 +403,41 @@
   /* Compact unscheduled rows in side panel */
   .rm-side-area .rm-unscheduled { padding: 12px; max-width: 100%; }
   .rm-side-area .rm-task-row {
-    display: flex !important; flex-direction: column; gap: 4px; align-items: stretch;
+    display: grid !important;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "title  del"
+      "dates  dates";
+    gap: 6px 8px;
+    align-items: center;
     padding: 8px; font-size: 12px;
   }
   .rm-side-area .rm-task-row > span:first-child {
+    grid-area: title;
     font-weight: 500; line-height: 1.3; word-break: break-word;
   }
   .rm-side-area .rm-task-row .rmt-start,
   .rm-side-area .rm-task-row .rmt-end {
-    width: 100%; font-size: 10.5px; padding: 3px 6px; min-width: 0;
+    width: 100%; font-size: 11px; padding: 3px 22px 3px 6px; min-width: 0;
   }
+  .rm-side-area .rm-task-row .rm-task-dates {
+    grid-area: dates;
+    display: flex; gap: 6px; align-items: center;
+  }
+  .rm-side-area .rm-task-row .rm-task-dates input[type="date"] {
+    flex: 1; min-width: 0; max-width: none;
+  }
+  .rm-side-area .rm-task-row .rm-task-del {
+    grid-area: del;
+  }
+  .rm-side-area .rm-task-row.ready {
+    background: #ecfdf3; border: 1px solid #86efac; border-radius: 8px;
+  }
+  .rm-unscheduled-foot {
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid #fde68a;
+    display: flex; justify-content: flex-end;
+  }
+  .rm-unscheduled-foot .btn[disabled] { opacity: .4; cursor: not-allowed; }
   .rm-side-area .rm-task-row .rm-task-del {
     align-self: flex-end; padding: 0 6px;
   }
@@ -447,22 +472,27 @@
   #view-profile { padding-top: 18px; }
   #view-roadmaps { padding-top: 18px; }
   #view-members { padding-top: 18px; }
-  /* Compact date inputs — tight to content + custom popup */
+  /* Compact date inputs — tight to content + calendar icon + custom popup */
   input[type="date"] {
     border: 1px solid #d8d6d1; border-radius: 6px;
-    padding: 3px 6px; font-size: 12px; font-family: inherit;
+    padding: 3px 22px 3px 6px;  /* extra right padding for the calendar icon */
+    font-size: 11.5px; font-family: inherit;
     color: #1a1a1a; background: #fff;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b6b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2' ry='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    background-size: 12px 12px;
     appearance: none; -webkit-appearance: none;
     cursor: pointer; outline: none;
     transition: border-color .12s, box-shadow .12s;
-    width: 122px; /* tight: fits dd/mm/yyyy + tiny calendar icon */
+    width: 110px; /* tight: dd/mm/yyyy + icon */
     line-height: 1.2; box-sizing: border-box;
   }
   input[type="date"]:hover { border-color: #1a1a1a; }
   input[type="date"]:focus { border-color: #1a1a1a; box-shadow: 0 0 0 2px rgba(26,26,26,0.08); }
+  /* hide the native indicator: we render our own icon and own picker */
   input[type="date"]::-webkit-calendar-picker-indicator {
-    cursor: pointer; opacity: 0; /* hide native indicator — we open our own picker */
-    width: 0; padding: 0; margin: 0;
+    opacity: 0; width: 0; padding: 0; margin: 0;
   }
   input[type="date"]::-webkit-datetime-edit { color: #1a1a1a; padding: 0; }
   input[type="date"]:placeholder-shown::-webkit-datetime-edit { color: #9a9a9a; }
@@ -1809,10 +1839,10 @@ function renderTeamStrip() {
   });
   el.innerHTML = html.join("");
   el.querySelectorAll(".team-pill").forEach(node => {
-    node.addEventListener("click", (e) => {
+    node.addEventListener("click", () => {
       const id = node.dataset.uid;
-      const additive = e.shiftKey || e.ctrlKey || e.metaKey;
-      togglePersonSelection(id, additive);
+      // Always-additive: behaves like tag pills (click to toggle, multi-select free)
+      togglePersonSelection(id, true);
       render();
     });
   });
@@ -3009,11 +3039,16 @@ function renderRoadmapCalendar(roadmapId) {
     return { entry, task, start, end, openEnded: start && !parseDate(entry.endDate) };
   }).filter(e => e.task && e.start && e.end);
 
-  // Unscheduled = no start date at all (end-only tasks also live here)
+  // Unscheduled = no start date OR currently being edited and not yet applied
+  if (!window.__rmPendingApply) window.__rmPendingApply = new Set();
   const unscheduled = (r.tasks || []).filter(entry => {
     const t = STORE.tasks.find(x => x.id === entry.taskId);
-    return t && !parseDate(entry.startDate);
+    if (!t) return false;
+    if (window.__rmPendingApply.has(entry.taskId)) return true;  // user is editing dates here
+    return !parseDate(entry.startDate);
   });
+  // Also exclude these "pending apply" entries from the calendar events
+  const eventsScheduled = events.filter(e => !window.__rmPendingApply.has(e.entry.taskId));
 
   // Status color map
   const statusColors = {
@@ -3091,7 +3126,7 @@ function renderRoadmapCalendar(roadmapId) {
       const weekStart = addDays(gridStart, w * 7);
       const weekEnd = addDays(weekStart, 6);
       // Find events that intersect this week
-      const visibleEvents = events.filter(e => e.end >= weekStart && e.start <= weekEnd);
+      const visibleEvents = eventsScheduled.filter(e => e.end >= weekStart && e.start <= weekEnd);
       // Compute segments: clipped to this week, mapped to visible columns (skip weekends if toggled)
       function dayToCol(idx) {
         // idx 0..6 (Mon..Sun)
@@ -3218,18 +3253,25 @@ function renderRoadmapCalendar(roadmapId) {
   // Side-area only when there are unscheduled tasks
   if (hasSide) {
     html += '<div class="rm-side-area">';
+    const pendingCount = unscheduled.filter(e => parseDate(e.startDate) && parseDate(e.endDate)).length;
     html += '<div class="rm-unscheduled" style="margin-top:14px; padding:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px"><strong style="font-size:13px">Unscheduled (' + unscheduled.length + ')</strong>' +
-      '<div style="font-size:12px; color:#6b6b6b; margin:4px 0 8px">These tasks need both start and end dates set to appear on the calendar.</div>';
+      '<div style="font-size:12px; color:#6b6b6b; margin:4px 0 8px">Set both dates and click <strong>Apply</strong> to send the task to the calendar.</div>';
     unscheduled.forEach(entry => {
       const task = STORE.tasks.find(t => t.id === entry.taskId);
       if (!task) return;
-      html += '<div class="rm-task-row" data-tid="' + task.id + '">' +
+      const ready = !!(parseDate(entry.startDate) && parseDate(entry.endDate));
+      html += '<div class="rm-task-row ' + (ready ? "ready" : "") + '" data-tid="' + task.id + '">' +
         '<span title="' + escapeHtml(task.subject) + '">' + escapeHtml(task.subject.slice(0,80)) + (task.subject.length>80?'…':'') + '</span>' +
-        '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '" title="Start">' +
-        '<input type="date" class="rmt-end" value="' + escapeHtml(entry.endDate||'') + '" title="End">' +
         '<button class="rm-task-del" data-tid="' + task.id + '" title="Remove">×</button>' +
+        '<div class="rm-task-dates">' +
+          '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '" title="Start">' +
+          '<input type="date" class="rmt-end" value="' + escapeHtml(entry.endDate||'') + '" title="End">' +
+        '</div>' +
       '</div>';
     });
+    html += '<div class="rm-unscheduled-foot">' +
+      '<button class="btn primary" id="rmApplyDatesBtn"' + (pendingCount === 0 ? ' disabled' : '') + '>Apply ' + (pendingCount > 0 ? '(' + pendingCount + ')' : '') + '</button>' +
+      '</div>';
     html += '</div></div>';
   }
 
@@ -3310,20 +3352,48 @@ function renderRoadmapCalendar(roadmapId) {
     selectedRoadmapTimelineId = null;
     renderRoadmapsTimelinePage();
   });
-  // Unscheduled inline edits
+  // Unscheduled inline edits — pin task in unscheduled while editing, only apply on click
   cont.querySelectorAll('.rm-unscheduled .rm-task-row').forEach(node => {
-    const tid = node.querySelector('.rm-task-del').dataset.tid;
+    const tid = node.dataset.tid;
     const idx = (r.tasks||[]).findIndex(e => e.taskId === tid);
     node.querySelector('.rmt-start').addEventListener('change', e => {
-      if (idx >= 0) { r.tasks[idx].startDate = e.target.value; saveStore(STORE); renderRoadmapCalendar(roadmapId); }
+      if (idx >= 0) {
+        r.tasks[idx].startDate = e.target.value;
+        // If both dates are now set, mark as pending so it stays in unscheduled until Apply
+        if (parseDate(r.tasks[idx].startDate) && parseDate(r.tasks[idx].endDate)) {
+          window.__rmPendingApply.add(tid);
+        }
+        saveStore(STORE);
+        renderRoadmapCalendar(roadmapId);
+      }
     });
     node.querySelector('.rmt-end').addEventListener('change', e => {
-      if (idx >= 0) { r.tasks[idx].endDate = e.target.value; saveStore(STORE); renderRoadmapCalendar(roadmapId); }
+      if (idx >= 0) {
+        r.tasks[idx].endDate = e.target.value;
+        if (parseDate(r.tasks[idx].startDate) && parseDate(r.tasks[idx].endDate)) {
+          window.__rmPendingApply.add(tid);
+        }
+        saveStore(STORE);
+        renderRoadmapCalendar(roadmapId);
+      }
     });
     node.querySelector('.rm-task-del').addEventListener('click', () => {
-      if (idx >= 0) { r.tasks.splice(idx, 1); saveStore(STORE); renderRoadmapCalendar(roadmapId); }
+      if (idx >= 0) {
+        window.__rmPendingApply.delete(tid);
+        r.tasks.splice(idx, 1);
+        saveStore(STORE);
+        renderRoadmapCalendar(roadmapId);
+      }
     });
   });
+  // Apply button → flush pending tasks to the calendar
+  const applyBtn = document.getElementById('rmApplyDatesBtn');
+  if (applyBtn) {
+    applyBtn.addEventListener('click', () => {
+      window.__rmPendingApply.clear();
+      renderRoadmapCalendar(roadmapId);
+    });
+  }
 }
 
 // Replace the existing renderGantt usage with the new calendar
