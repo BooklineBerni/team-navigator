@@ -60,6 +60,27 @@
   .team-pill { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 999px; cursor: pointer; border: 1px solid #ececea; background: #faf9f7; font-size: 13px; }
   .team-pill:hover { border-color: #d8d6d1; }
   .team-pill.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .team-pill.excluded { opacity: 0.55; text-decoration: line-through; color: #6b6b6b; }
+  .team-pill.excluded::before { content: "− "; font-weight: 700; opacity: 0.7; }
+  /* Owner picker for roadmap modal */
+  .rmf-owner-picker { position: relative; }
+  .rmf-owner-trigger {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 8px 10px;
+    border: 1px solid #d8d6d1; border-radius: 8px;
+    background: #fff; cursor: pointer; font-family: inherit;
+    font-size: 13px; color: #1a1a1a; text-align: left;
+    justify-content: space-between;
+  }
+  .rmf-owner-trigger:hover { border-color: #1a1a1a; }
+  .rmf-owner-trigger:focus { outline: none; border-color: #1a1a1a; box-shadow: 0 0 0 2px rgba(26,26,26,0.08); }
+  .rmf-owner-label-with-av { display: flex; align-items: center; gap: 8px; }
+  .rmf-owner-label-with-av .av {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 10px; font-weight: 700; overflow: hidden;
+  }
+  .rmf-owner-label-with-av .av img { width: 22px; height: 22px; object-fit: cover; }
   .team-pill .av { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; position: relative; color: #fff; font-weight: 600; font-size: 11px; display: inline-flex; }
   .team-pill .av .ini { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 0; }
   .team-pill .av img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: cover; }
@@ -438,11 +459,14 @@
   .rm-side-area .rm-task-row.ready {
     background: #ecfdf3; border: 1px solid #86efac; border-radius: 8px;
   }
-  .rm-unscheduled-foot {
-    margin-top: 10px; padding-top: 10px; border-top: 1px solid #fde68a;
-    display: flex; justify-content: flex-end;
+  .rm-unscheduled-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px; gap: 8px;
   }
-  .rm-unscheduled-foot .btn[disabled] { opacity: .4; cursor: not-allowed; }
+  .rm-unscheduled-head .btn {
+    padding: 4px 12px; font-size: 11.5px;
+  }
+  .rm-unscheduled-head .btn[disabled] { opacity: .35; cursor: not-allowed; }
   .rm-side-area .rm-task-row .rm-task-del {
     align-self: flex-end; padding: 0 6px;
   }
@@ -1028,8 +1052,8 @@
       <input type="file" id="importFile" accept="application/json" style="display:none">
       <button class="btn" id="manageTagsBtn" title="Create, edit, recolor and reorder member tags">Member Tags</button>
       <button class="btn" id="manageTaskTagsBtn" title="Create, edit, recolor and reorder task tags">Task Tags</button>
-      <button class="btn" id="roadmapsBtn" title="Create and manage roadmaps">Roadmaps</button>
-      <button class="btn" id="addMemberBtn" title="Add someone from Slack who isn't in the team yet">+ Member</button>
+      <button class="btn" id="roadmapsBtn" title="Create and manage roadmaps" style="display:none">Roadmaps</button>
+      <button class="btn" id="addMemberBtn" title="Add someone from Slack who isn't in the team yet" style="display:none">+ Member</button>
       <button class="btn" id="restoreHiddenBtn" title="Re-show team members you previously removed" style="display:none">Restore hidden (<span id="restoreHiddenCount">0</span>)</button>
       <button class="btn primary" id="addBtn">+ New task</button>
     </div>
@@ -1226,17 +1250,23 @@
   <div class="modal" style="max-width:760px">
     <span class="close-x" onclick="closeRoadmapEdit()">&times;</span>
     <h2 id="roadmapEditTitle">Edit roadmap</h2>
-    <div class="field"><label>Name</label><input type="text" id="rmf_name"></div>
-    <div class="field"><label>Description</label><textarea id="rmf_desc" rows="2"></textarea></div>
+    <div class="field"><label>Name <span style="color:#dc2626">*</span></label><input type="text" id="rmf_name"></div>
     <div class="field-row-3">
-      <div class="field"><label>Responsible</label><select id="rmf_resp"></select></div>
-      <div class="field"><label>Start date</label><input type="date" id="rmf_start"></div>
+      <div class="field"><label>Owner <span style="color:#dc2626">*</span></label>
+        <div class="rmf-owner-picker" id="rmf_ownerPickerWrap">
+          <button type="button" class="rmf-owner-trigger" id="rmf_ownerTrigger">
+            <span id="rmf_ownerLabel" style="color:#9a9a9a">Select person…</span>
+            <span style="color:#6b6b6b">▾</span>
+          </button>
+        </div>
+      </div>
+      <div class="field"><label>Start date <span style="color:#dc2626">*</span></label><input type="date" id="rmf_start"></div>
       <div class="field"><label>End date</label><input type="date" id="rmf_end"></div>
     </div>
-    <h3 style="margin:14px 0 8px; font-size:14px; font-weight:600">Assigned tasks <span id="rmf_taskCount" style="color:#9a9a9a; font-weight:400; font-size:12px"></span></h3>
+    <h3 id="rmf_assignedHeader" style="margin:14px 0 8px; font-size:14px; font-weight:600">Assigned tasks <span id="rmf_taskCount" style="color:#9a9a9a; font-weight:400; font-size:12px"></span></h3>
     <div class="rm-task-list" id="rmf_tasks"></div>
-    <div class="rm-add-panel">
-      <h4>+ Assign tasks (filter and select multiple)</h4>
+    <div class="rm-add-panel" id="rmf_addPanel">
+      <h4>+ Assign tasks</h4>
       <div class="rm-add-filters">
         <input type="text" id="rmf_addSearch" class="search-input" placeholder="Search by title or comments...">
         <select id="rmf_addStatus">
@@ -1479,7 +1509,10 @@ function loadStore() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) 
 function saveStore(st) { localStorage.setItem(STORE_KEY, JSON.stringify(st)); }
 
 let STORE = loadStore();
-let statusInclude = new Set(), statusExclude = new Set(), prioInclude = new Set(), prioExclude = new Set(), currentPersonIds = new Set(), tagInclude = new Set(), tagExclude = new Set(), taskTagInclude = new Set(), taskTagExclude = new Set(), sortMembers = "default", sortTasks = "default", searchQuery = "", editingId = null;
+let statusInclude = new Set(), statusExclude = new Set(), prioInclude = new Set(), prioExclude = new Set(), personInclude = new Set(), personExclude = new Set(), tagInclude = new Set(), tagExclude = new Set(), taskTagInclude = new Set(), taskTagExclude = new Set(), sortMembers = "default", sortTasks = "default", searchQuery = "", editingId = null;
+// Backwards-compat shim — older code still references currentPersonIds.
+// Treat it as the include set so existing reads "just work".
+const currentPersonIds = personInclude;
 let showCounts = localStorage.getItem("bookline-showCounts") !== "false";  // default ON
 
 const FILTER_STATE_KEY = "bookline-filter-state-v1";
@@ -1543,14 +1576,17 @@ function isPersonSelected(id) {
   return currentPersonIds.size === 0 || currentPersonIds.has(id);
 }
 function togglePersonSelection(id /*, additive*/) {
-  // New semantics — like include/exclude tags:
-  // currentPersonIds is now a HIDDEN set. Empty = everyone visible.
-  // Click on a marked (visible) person → adds to hidden set, person disappears.
-  // Click on unmarked → removes from hidden set, person reappears.
-  // "All" pill resets (everyone visible).
-  if (id === "all") { currentPersonIds.clear(); return; }
-  if (currentPersonIds.has(id)) currentPersonIds.delete(id);
-  else currentPersonIds.add(id);
+  // Tristate cycle (matches status/priority/tags):
+  // neutral → include → exclude → neutral
+  if (id === "all") { personInclude.clear(); personExclude.clear(); return; }
+  if (!personInclude.has(id) && !personExclude.has(id)) {
+    personInclude.add(id);
+  } else if (personInclude.has(id)) {
+    personInclude.delete(id);
+    personExclude.add(id);
+  } else {
+    personExclude.delete(id);
+  }
 }
 
 // ---- Tag library (single source of truth for available tags + colors) ----
@@ -1751,8 +1787,9 @@ function mapPanelStatus(s) { const v = (s||'').toLowerCase(); if (v.includes('co
 function taskMatchesFilters(t) {
   // Tasks page hides tasks owned by disabled persons
   if (t.responsibleId && isDeactivated(t.responsibleId)) return false;
-  // currentPersonIds is the "hidden" set (people clicked off in the strip)
-  if (t.responsibleId && currentPersonIds.has(t.responsibleId)) return false;
+  // Person tristate: include & exclude
+  if (personInclude.size > 0 && !personInclude.has(t.responsibleId)) return false;
+  if (personExclude.has(t.responsibleId)) return false;
   // Status include/exclude
   if (statusInclude.size > 0 && !statusInclude.has(t.panelStatus)) return false;
   if (statusExclude.has(t.panelStatus)) return false;
@@ -1829,17 +1866,24 @@ function renderTeamStrip() {
   // On Tasks page we hide disabled persons entirely (strip, grid, and the tasks tied to them)
   const availableTeam = TEAM.filter(p => !isDeactivated(p.id));
   const availableCount = availableTeam.length;
-  // currentPersonIds now means HIDDEN set. visible = available - hidden
-  const visibleCount = availableCount - Array.from(currentPersonIds).filter(id => availableTeam.some(p => p.id === id)).length;
-  html.push('<div class="team-pill ' + (currentPersonIds.size===0?'active':'') + '" data-uid="all"><span class="av" style="background:#1a1a1a"><span class="ini">&Sigma;</span></span>All' + (showCounts ? '<span class="count">' + visibleCount + ' / ' + availableCount + '</span>' : '') + '</div>');
+  const anyPersonFilter = personInclude.size > 0 || personExclude.size > 0;
+  // visible person count: if include set is used, only those; else, all minus excluded
+  let visibleCount;
+  if (personInclude.size > 0) visibleCount = personInclude.size;
+  else visibleCount = availableCount - Array.from(personExclude).filter(id => availableTeam.some(p => p.id === id)).length;
+  html.push('<div class="team-pill ' + (!anyPersonFilter ? 'active' : '') + '" data-uid="all"><span class="av" style="background:#1a1a1a"><span class="ini">&Sigma;</span></span>All' + (showCounts ? '<span class="count">' + visibleCount + ' / ' + availableCount + '</span>' : '') + '</div>');
   const sortedTeamIds = sortPersons(availableTeam.map(p => p.id), all);
   sortedTeamIds.forEach(pid => {
     const p = findPerson(pid);
     if (!p) return;
     if (!personMatchesTagFilter(p.id)) return;
-    const isHidden = currentPersonIds.has(p.id);
+    const incl = personInclude.has(p.id);
+    const excl = personExclude.has(p.id);
     const cnt = countTasksForPersonContextual(p.id);
-    html.push('<div class="team-pill ' + (isHidden ? '' : 'active') + '" data-uid="' + p.id + '"><span class="av" style="background:' + p.color + '"><img src="' + p.photo + '" alt="" onerror="this.remove()"><span class="ini">' + initials(p.name) + '</span></span>' + escapeHtml(p.displayName) + (showCounts ? '<span class="count">' + cnt + '</span>' : '') + '</div>');
+    let cls = 'team-pill';
+    if (incl) cls += ' active';
+    else if (excl) cls += ' excluded';
+    html.push('<div class="' + cls + '" data-uid="' + p.id + '"><span class="av" style="background:' + p.color + '"><img src="' + p.photo + '" alt="" onerror="this.remove()"><span class="ini">' + initials(p.name) + '</span></span>' + escapeHtml(p.displayName) + (showCounts ? '<span class="count">' + cnt + '</span>' : '') + '</div>');
   });
   el.innerHTML = html.join("");
   el.querySelectorAll(".team-pill").forEach(node => {
@@ -1899,8 +1943,8 @@ function countTasksMatchingExcept(dim, optKey) {
     // Tasks page hides tasks of disabled persons
     if (t.responsibleId && isDeactivated(t.responsibleId)) return false;
     if (dim !== "person") {
-      // currentPersonIds = HIDDEN set in new semantics
-      if (currentPersonIds.has(t.responsibleId)) return false;
+      if (personInclude.size > 0 && !personInclude.has(t.responsibleId)) return false;
+      if (personExclude.has(t.responsibleId)) return false;
     }
     if (dim !== "tag") {
       if (!personMatchesTagFilter(t.responsibleId)) return false;
@@ -2193,9 +2237,11 @@ function render() {
   grid.innerHTML = "";
   const allTasks = STORE.tasks;
   // Disabled persons are hidden from the Tasks page entirely.
-  // currentPersonIds now = HIDDEN set (clicked-off persons).
+  // Tristate: include set narrows; exclude set hides.
   const allActivePersons = TEAM.filter(p => !isDeactivated(p.id)).map(p => p.id);
-  let personIds = allActivePersons.filter(id => !currentPersonIds.has(id));
+  let personIds = personInclude.size > 0
+    ? allActivePersons.filter(id => personInclude.has(id))
+    : allActivePersons.filter(id => !personExclude.has(id));
   personIds = personIds.filter(personMatchesTagFilter);
   personIds = sortPersons(personIds, allTasks);
 
@@ -3262,8 +3308,11 @@ function renderRoadmapCalendar(roadmapId) {
   if (hasSide) {
     html += '<div class="rm-side-area">';
     const pendingCount = unscheduled.filter(e => parseDate(e.startDate) && parseDate(e.endDate)).length;
-    html += '<div class="rm-unscheduled" style="margin-top:14px; padding:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px"><strong style="font-size:13px">Unscheduled (' + unscheduled.length + ')</strong>' +
-      '<div style="font-size:12px; color:#6b6b6b; margin:4px 0 8px">Set both dates and click <strong>Apply</strong> to send the task to the calendar.</div>';
+    html += '<div class="rm-unscheduled" style="margin-top:14px; padding:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px">' +
+      '<div class="rm-unscheduled-head">' +
+        '<strong style="font-size:13px">Unscheduled (' + unscheduled.length + ')</strong>' +
+        '<button class="btn primary" id="rmApplyDatesBtn"' + (pendingCount === 0 ? ' disabled' : '') + '>Apply' + (pendingCount > 0 ? ' (' + pendingCount + ')' : '') + '</button>' +
+      '</div>';
     const minDate = r.startDate ? r.startDate : '';
     unscheduled.forEach(entry => {
       const task = STORE.tasks.find(t => t.id === entry.taskId);
@@ -3278,9 +3327,6 @@ function renderRoadmapCalendar(roadmapId) {
         '</div>' +
       '</div>';
     });
-    html += '<div class="rm-unscheduled-foot">' +
-      '<button class="btn primary" id="rmApplyDatesBtn"' + (pendingCount === 0 ? ' disabled' : '') + '>Apply ' + (pendingCount > 0 ? '(' + pendingCount + ')' : '') + '</button>' +
-      '</div>';
     html += '</div></div>';
   }
 
@@ -4546,22 +4592,11 @@ function renderGantt(roadmapId) {
   });
 }
 
-// New roadmap from page button
+// New roadmap from page button — open modal in "new" mode (no creation until Save)
 const newRmPageBtnEl = document.getElementById("newRoadmapPageBtn");
 if (newRmPageBtnEl) {
   newRmPageBtnEl.addEventListener("click", () => {
-    const id = rmId();
-    getRoadmaps().push({
-      id, name: "New roadmap",
-      description: "", responsibleId: null,
-      startDate: null, endDate: null,
-      tasks: [], createdAt: Date.now()
-    });
-    saveStore(STORE);
-    selectedRoadmapTimelineId = id;
-    localStorage.setItem("bookline-selectedRoadmap", id);
-    renderRoadmapsTimelinePage();
-    openRoadmapEdit(id);
+    openRoadmapEdit(null);  // null id → new mode
   });
 }
 
@@ -4844,8 +4879,9 @@ let editingRoadmapId = null;
 
 function populateRoadmapPersonSelects() {
   const opts = '<option value="">(none)</option>' + TEAM.map(p => '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>').join("");
-  document.getElementById("newRmResp").innerHTML = opts;
-  document.getElementById("rmf_resp").innerHTML = opts;
+  const newRmResp = document.getElementById("newRmResp");
+  if (newRmResp) newRmResp.innerHTML = opts;
+  // rmf_resp was replaced by a custom owner picker; nothing to populate.
 }
 
 function openRoadmapsList() {
@@ -4893,31 +4929,91 @@ function renderRoadmapsList() {
   });
 }
 
+// Draft state for "New roadmap" mode
+let rmfDraft = null;  // { id, name, responsibleId, startDate, endDate, tasks, createdAt }
+let rmfMode = 'edit';  // 'edit' | 'new'
+
 function openRoadmapEdit(id) {
-  const r = findRoadmap(id);
-  if (!r) return;
-  editingRoadmapId = id;
-  populateRoadmapPersonSelects();
-  document.getElementById("roadmapEditTitle").textContent = "Edit: " + (r.name || "roadmap");
+  if (id === null) {
+    // New roadmap mode: build a draft locally, don't persist until Save
+    rmfMode = 'new';
+    rmfDraft = {
+      id: rmId(),
+      name: "",
+      responsibleId: null,
+      startDate: null,
+      endDate: null,
+      tasks: [],
+      createdAt: Date.now()
+    };
+    editingRoadmapId = rmfDraft.id;
+  } else {
+    rmfMode = 'edit';
+    rmfDraft = null;
+    const r = findRoadmap(id);
+    if (!r) return;
+    editingRoadmapId = id;
+  }
+  const r = rmfMode === 'new' ? rmfDraft : findRoadmap(id);
+  document.getElementById("roadmapEditTitle").textContent = rmfMode === 'new' ? "New roadmap" : ("Edit: " + (r.name || "roadmap"));
   document.getElementById("rmf_name").value = r.name || "";
-  document.getElementById("rmf_desc").value = r.description || "";
-  document.getElementById("rmf_resp").value = r.responsibleId || "";
   document.getElementById("rmf_start").value = r.startDate || "";
   document.getElementById("rmf_end").value = r.endDate || "";
-  renderRoadmapTasks();
-  // Reset multi-select state and populate person filter
-  rmAddSelectedIds = new Set();
-  const personSel = document.getElementById('rmf_addPerson');
-  personSel.innerHTML = '<option value="all">Responsible: All</option>' + TEAM.map(p => '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>').join('');
-  document.getElementById('rmf_addSearch').value = '';
-  document.getElementById('rmf_addStatus').value = 'all';
-  document.getElementById('rmf_addPrio').value = 'all';
-  document.getElementById('rmf_addPerson').value = 'all';
-  renderRmAddPanel();
+  // Owner picker
+  rmfRefreshOwnerLabel();
+  // Hide assigned-tasks + assign panel + delete in new mode (nothing to assign yet)
+  document.getElementById('rmf_assignedHeader').style.display = rmfMode === 'new' ? 'none' : '';
+  document.getElementById('rmf_tasks').style.display = rmfMode === 'new' ? 'none' : '';
+  document.getElementById('rmf_addPanel').style.display = rmfMode === 'new' ? 'none' : '';
+  document.getElementById('rmf_deleteBtn').style.display = rmfMode === 'new' ? 'none' : '';
+  if (rmfMode === 'edit') {
+    renderRoadmapTasks();
+    rmAddSelectedIds = new Set();
+    const personSel = document.getElementById('rmf_addPerson');
+    personSel.innerHTML = '<option value="all">Responsible: All</option>' + TEAM.map(p => '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>').join('');
+    document.getElementById('rmf_addSearch').value = '';
+    document.getElementById('rmf_addStatus').value = 'all';
+    document.getElementById('rmf_addPrio').value = 'all';
+    document.getElementById('rmf_addPerson').value = 'all';
+    renderRmAddPanel();
+  }
+  rmfRefreshSaveButton();
   document.getElementById("roadmapEditBg").classList.add("show");
+}
+function rmfCurrentRoadmap() {
+  return rmfMode === 'new' ? rmfDraft : findRoadmap(editingRoadmapId);
+}
+function rmfRefreshOwnerLabel() {
+  const r = rmfCurrentRoadmap();
+  const ownerId = r ? r.responsibleId : null;
+  const lbl = document.getElementById('rmf_ownerLabel');
+  if (!lbl) return;
+  if (!ownerId) {
+    lbl.innerHTML = '<span style="color:#9a9a9a">Select person…</span>';
+    return;
+  }
+  const p = findPerson(ownerId);
+  if (!p) { lbl.textContent = ownerId; return; }
+  const ini = initials(p.name);
+  lbl.outerHTML = '<span class="rmf-owner-label-with-av" id="rmf_ownerLabel">' +
+    '<span class="av" style="background:' + (p.color || '#9a9a9a') + '">' +
+    (p.photo ? ('<img src="' + escapeHtml(p.photo) + '" alt="" onerror="this.remove()">') : escapeHtml(ini)) +
+    '</span>' +
+    '<span>' + escapeHtml(p.displayName || p.name) + '</span>' +
+    '</span>';
+}
+function rmfRefreshSaveButton() {
+  const r = rmfCurrentRoadmap();
+  const btn = document.getElementById('rmf_saveBtn');
+  if (!btn || !r) return;
+  const ok = !!(r.name && r.name.trim() && r.responsibleId && r.startDate);
+  btn.disabled = !ok;
+  btn.title = ok ? "" : "Name, owner and start date are required";
 }
 function closeRoadmapEdit() {
   document.getElementById("roadmapEditBg").classList.remove("show");
+  // Discard any unsaved draft
+  if (rmfMode === 'new') { rmfDraft = null; rmfMode = 'edit'; }
   editingRoadmapId = null;
   if (currentView === 'roadmaps') {
     renderRoadmapsTimelinePage();
@@ -5046,15 +5142,107 @@ document.getElementById("newRmBtn").addEventListener("click", () => {
 });
 
 document.getElementById("rmf_saveBtn").addEventListener("click", () => {
-  const r = findRoadmap(editingRoadmapId);
-  if (!r) return;
-  r.name = document.getElementById("rmf_name").value.trim();
-  r.description = document.getElementById("rmf_desc").value;
-  r.responsibleId = document.getElementById("rmf_resp").value || null;
-  r.startDate = document.getElementById("rmf_start").value || null;
-  r.endDate = document.getElementById("rmf_end").value || null;
-  saveStore(STORE);
-  closeRoadmapEdit();
+  if (rmfMode === 'new') {
+    if (!rmfDraft) return;
+    rmfDraft.name = document.getElementById("rmf_name").value.trim();
+    rmfDraft.startDate = document.getElementById("rmf_start").value || null;
+    rmfDraft.endDate = document.getElementById("rmf_end").value || null;
+    if (!rmfDraft.name || !rmfDraft.responsibleId || !rmfDraft.startDate) return;
+    getRoadmaps().push(rmfDraft);
+    saveStore(STORE);
+    selectedRoadmapTimelineId = rmfDraft.id;
+    localStorage.setItem("bookline-selectedRoadmap", rmfDraft.id);
+    rmfDraft = null;
+    rmfMode = 'edit';
+    closeRoadmapEdit();
+  } else {
+    const r = findRoadmap(editingRoadmapId);
+    if (!r) return;
+    r.name = document.getElementById("rmf_name").value.trim();
+    r.startDate = document.getElementById("rmf_start").value || null;
+    r.endDate = document.getElementById("rmf_end").value || null;
+    saveStore(STORE);
+    closeRoadmapEdit();
+  }
+});
+
+// Live validation for save button
+['rmf_name', 'rmf_start', 'rmf_end'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('input', () => {
+      const r = rmfCurrentRoadmap();
+      if (!r) return;
+      if (id === 'rmf_name') r.name = el.value;
+      if (id === 'rmf_start') r.startDate = el.value;
+      if (id === 'rmf_end') r.endDate = el.value;
+      rmfRefreshSaveButton();
+    });
+  }
+});
+
+// Owner picker (popover similar to Profile)
+document.getElementById('rmf_ownerTrigger').addEventListener('click', e => {
+  e.stopPropagation();
+  const wrap = document.getElementById('rmf_ownerPickerWrap');
+  // Toggle popover
+  let pop = wrap.querySelector('.profile-picker-popover');
+  if (pop) { pop.remove(); return; }
+  pop = document.createElement('div');
+  pop.className = 'profile-picker-popover';
+  pop.style.position = 'absolute';
+  pop.style.top = '100%';
+  pop.style.left = '0';
+  pop.style.minWidth = '260px';
+  let q = '';
+  function renderList() {
+    const ql = q.toLowerCase().trim();
+    const list = TEAM.filter(p => !isDeactivated(p.id)).filter(p => !ql || (p.name||'').toLowerCase().includes(ql) || (p.displayName||'').toLowerCase().includes(ql) || (p.email||'').toLowerCase().includes(ql));
+    let html = '<div class="pp-search"><input id="rmf_ownerSearch" placeholder="Search people..." value="' + escapeHtml(q) + '" autocomplete="off"></div>';
+    html += '<div class="pp-list">';
+    if (list.length === 0) html += '<div class="pp-empty">No people match.</div>';
+    else list.forEach(p => {
+      const ini = initials(p.name);
+      const cur = rmfCurrentRoadmap();
+      const active = cur && cur.responsibleId === p.id ? ' active' : '';
+      html += '<div class="pp-row' + active + '" data-pid="' + p.id + '">' +
+        '<span class="av" style="background:' + (p.color || '#9a9a9a') + '">' +
+        (p.photo ? ('<img src="' + escapeHtml(p.photo) + '" alt="" onerror="this.remove()">') : escapeHtml(ini)) +
+        '</span>' +
+        '<span class="nm">' + escapeHtml(p.displayName || p.name) + '</span>' +
+      '</div>';
+    });
+    html += '</div>';
+    pop.innerHTML = html;
+    const inp = pop.querySelector('#rmf_ownerSearch');
+    if (inp) {
+      inp.addEventListener('input', e => { q = e.target.value; renderList(); pop.querySelector('#rmf_ownerSearch')?.focus(); pop.querySelector('#rmf_ownerSearch')?.setSelectionRange(q.length, q.length); });
+      inp.addEventListener('click', e => e.stopPropagation());
+      setTimeout(() => inp.focus(), 0);
+    }
+    pop.querySelectorAll('.pp-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const r = rmfCurrentRoadmap();
+        if (r) r.responsibleId = row.dataset.pid;
+        pop.remove();
+        rmfRefreshOwnerLabel();
+        // Re-bind trigger event since outerHTML replaces the label element
+        rmfRefreshSaveButton();
+      });
+    });
+  }
+  renderList();
+  wrap.appendChild(pop);
+  // Click outside closes
+  setTimeout(() => {
+    const handler = ev => {
+      if (!pop.contains(ev.target) && ev.target.id !== 'rmf_ownerTrigger') {
+        pop.remove();
+        document.removeEventListener('click', handler);
+      }
+    };
+    document.addEventListener('click', handler);
+  }, 0);
 });
 
 document.getElementById("rmf_deleteBtn").addEventListener("click", () => {
@@ -5230,7 +5418,14 @@ function bnRenderDatePicker() {
     // Previous month tail
     for (let i = startWd - 1; i >= 0; i--) {
       const d = daysInPrev - i;
-      html += '<div class="bn-dp-day other-month" data-d="' + (cur.month === 0 ? cur.year - 1 : cur.year) + '-' + String((cur.month === 0 ? 12 : cur.month)).padStart(2,'0') + '-' + String(d).padStart(2,'0') + '">' + d + '</div>';
+      const py = cur.month === 0 ? cur.year - 1 : cur.year;
+      const pm = cur.month === 0 ? 12 : cur.month;
+      const dt = new Date(py, pm - 1, d);
+      const beforeMin = BN_DP.minDate && dt < BN_DP.minDate;
+      const afterMax = BN_DP.maxDate && dt > BN_DP.maxDate;
+      const cls = ['bn-dp-day','other-month'];
+      if (beforeMin || afterMax) cls.push('disabled');
+      html += '<div class="' + cls.join(' ') + '" data-d="' + py + '-' + String(pm).padStart(2,'0') + '-' + String(d).padStart(2,'0') + '">' + d + '</div>';
     }
     // Current month
     for (let d = 1; d <= daysInMonth; d++) {
@@ -5252,7 +5447,12 @@ function bnRenderDatePicker() {
     for (let i = 1; i <= tail; i++) {
       const ny = cur.month === 11 ? cur.year + 1 : cur.year;
       const nm = cur.month === 11 ? 0 : cur.month + 1;
-      html += '<div class="bn-dp-day other-month" data-d="' + ny + '-' + String(nm + 1).padStart(2,'0') + '-' + String(i).padStart(2,'0') + '">' + i + '</div>';
+      const dt = new Date(ny, nm, i);
+      const beforeMin = BN_DP.minDate && dt < BN_DP.minDate;
+      const afterMax = BN_DP.maxDate && dt > BN_DP.maxDate;
+      const cls = ['bn-dp-day','other-month'];
+      if (beforeMin || afterMax) cls.push('disabled');
+      html += '<div class="' + cls.join(' ') + '" data-d="' + ny + '-' + String(nm + 1).padStart(2,'0') + '-' + String(i).padStart(2,'0') + '">' + i + '</div>';
     }
     html += '</div>';
     html += '<div class="bn-dp-foot">' +
@@ -5290,15 +5490,10 @@ function bnRenderDatePicker() {
   }
   BN_DP.popover.innerHTML = html;
   // Wire up
-  BN_DP.popover.querySelectorAll('.bn-dp-day:not(.other-month)').forEach(node => {
+  BN_DP.popover.querySelectorAll('.bn-dp-day').forEach(node => {
     node.addEventListener('click', e => {
       e.stopPropagation();
-      bnSelectDate(node.dataset.d);
-    });
-  });
-  BN_DP.popover.querySelectorAll('.bn-dp-day.other-month').forEach(node => {
-    node.addEventListener('click', e => {
-      e.stopPropagation();
+      if (node.classList.contains('disabled')) return;
       bnSelectDate(node.dataset.d);
     });
   });
