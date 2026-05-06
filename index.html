@@ -165,6 +165,80 @@
   .rm-task-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; margin-top: 6px; }
   .rm-task-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; align-items: center; padding: 6px 8px; background: #faf9f7; border: 1px solid #efeeea; border-radius: 6px; font-size: 12px; }
 
+
+  /* === Roadmap Calendar (Google Calendar-style) === */
+  .cal-toolbar {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .cal-toolbar .cal-nav-group { display: inline-flex; align-items: center; gap: 6px; }
+  .cal-nav-btn {
+    appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a;
+    width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 16px; font-family: inherit;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .cal-nav-btn:hover { background: #f0efeb; }
+  .cal-month-label { font-size: 18px; font-weight: 700; min-width: 180px; text-transform: capitalize; }
+  .cal-today-btn {
+    appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a;
+    padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit;
+  }
+  .cal-today-btn:hover { background: #f0efeb; }
+  .cal-grid {
+    display: flex; flex-direction: column;
+    background: #ececea;
+    border: 1px solid #ececea; border-radius: 12px; overflow: hidden;
+  }
+  .cal-headers {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ececea;
+  }
+  .cal-day-header {
+    background: #fff; padding: 10px 8px; font-weight: 700; font-size: 11px; color: #6b6b6b;
+    text-transform: uppercase; letter-spacing: 0.05em; text-align: center;
+  }
+  .cal-week {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ececea;
+    position: relative; min-height: 110px;
+  }
+  .cal-day {
+    background: #fff; padding: 6px 8px; font-size: 12px; position: relative;
+  }
+  .cal-day.other-month { background: #faf9f7; }
+  .cal-day.other-month .day-num { color: #c0c0c0; }
+  .cal-day .day-num { font-weight: 600; color: #1a1a1a; display: inline-block; }
+  .cal-day.weekend { background: #fbfaf7; }
+  .cal-day.today .day-num {
+    width: 24px; height: 24px; background: #1a1a1a; color: #fff;
+    border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px;
+  }
+  .cal-events-overlay {
+    position: absolute; left: 0; right: 0;
+    top: 30px; bottom: 4px;
+    pointer-events: none;
+  }
+  .cal-event {
+    position: absolute; height: 20px;
+    padding: 0 8px; font-size: 11px; font-weight: 600;
+    color: #fff; line-height: 20px;
+    border-radius: 5px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    cursor: pointer; pointer-events: auto;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .cal-event:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.18); z-index: 10; }
+  .cal-event.continues-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  .cal-event.continues-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .cal-more-events {
+    position: absolute; font-size: 10px; color: #6b6b6b; cursor: pointer;
+    padding: 2px 6px; pointer-events: auto;
+  }
+  .cal-more-events:hover { color: #1a1a1a; }
+  .cal-no-tasks {
+    background: #fff; border: 1px dashed #d8d6d1; border-radius: 12px;
+    padding: 40px; text-align: center; color: #9a9a9a; font-size: 13px; margin-top: 14px;
+  }
+
   /* Modals */
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
   .modal-bg.show { display: flex; }
@@ -2218,6 +2292,274 @@ render = function() {
 loadFilterState();
 // Restore search input value if any
 document.getElementById("searchInput").value = searchQuery || "";
+
+// ---- Roadmap Calendar (Google Calendar-style) ----
+let roadmapCalState = { yearMonth: null }; // {year, month} where month is 0-11
+
+function renderRoadmapCalendar(roadmapId) {
+  const cont = document.getElementById('rmPageContent');
+  const r = findRoadmap(roadmapId);
+  if (!r) { cont.innerHTML = ''; return; }
+  const owner = findPerson(r.responsibleId);
+
+  // Default month: roadmap start, or today
+  if (!roadmapCalState.yearMonth) {
+    const start = parseDate(r.startDate);
+    const base = start || new Date();
+    roadmapCalState.yearMonth = { year: base.getFullYear(), month: base.getMonth() };
+  }
+  const ym = roadmapCalState.yearMonth;
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Build event list (with both dates, real task)
+  const events = (r.tasks || []).map(entry => {
+    const task = STORE.tasks.find(t => t.id === entry.taskId);
+    return { entry, task, start: parseDate(entry.startDate), end: parseDate(entry.endDate) };
+  }).filter(e => e.task && e.start && e.end);
+
+  const unscheduled = (r.tasks || []).filter(entry => {
+    const t = STORE.tasks.find(x => x.id === entry.taskId);
+    return t && !(parseDate(entry.startDate) && parseDate(entry.endDate));
+  });
+
+  // Status color map
+  const statusColors = {
+    pending: '#fbbf24', in_progress: '#60a5fa', completed: '#34d399',
+    archived: '#a98c5a', discarded: '#94a3b8'
+  };
+
+  // Compute calendar range: first day of grid (Monday) to last day
+  const firstOfMonth = new Date(ym.year, ym.month, 1);
+  const lastOfMonth = new Date(ym.year, ym.month + 1, 0);
+  // Monday-first: getDay() returns 0=Sun..6=Sat. Convert to 0=Mon..6=Sun
+  const startWeekday = (firstOfMonth.getDay() + 6) % 7;
+  const gridStart = new Date(ym.year, ym.month, 1 - startWeekday);
+  const lastWeekday = (lastOfMonth.getDay() + 6) % 7;
+  const totalGridDays = startWeekday + lastOfMonth.getDate() + (6 - lastWeekday);
+  const totalWeeks = totalGridDays / 7;
+
+  // Build summary
+  const completedCount = events.filter(e => e.task.panelStatus === 'completed').length;
+  const dateRange = (r.startDate || r.endDate) ? (escapeHtml(r.startDate||'?') + ' → ' + escapeHtml(r.endDate||'?')) : 'no dates';
+  let html = '<div class="rm-summary-card">' +
+    '<div><div class="rm-summary-name">' + escapeHtml(r.name||'(unnamed)') + '</div>' +
+    '<div class="rm-summary-meta">' + (owner ? escapeHtml(owner.name) : '<em>no owner</em>') + ' · ' + dateRange + ' · ' + (r.tasks||[]).length + ' tasks</div></div>' +
+    '<div class="rm-summary-actions">' +
+      '<button class="btn" id="rmEditBtn">Edit</button>' +
+      '<button class="btn" id="rmAddTaskBtn">+ Assign task</button>' +
+      '<button class="btn danger" id="rmDeleteBtn">Delete</button>' +
+    '</div></div>';
+
+  // Toolbar with navigation
+  const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const monthLabel = monthNames[ym.month] + ' ' + ym.year;
+  html += '<div class="cal-toolbar">' +
+    '<div class="cal-nav-group">' +
+      '<button class="cal-nav-btn" id="calPrev" title="Previous month">‹</button>' +
+      '<button class="cal-today-btn" id="calToday">Today</button>' +
+      '<button class="cal-nav-btn" id="calNext" title="Next month">›</button>' +
+    '</div>' +
+    '<div class="cal-month-label">' + monthLabel + '</div>' +
+    '</div>';
+
+  if (events.length === 0 && unscheduled.length === 0) {
+    html += '<div class="cal-no-tasks">No tasks assigned to this roadmap yet. Click "+ Assign task" to add some.</div>';
+  } else {
+    // Day headers (Mon-first)
+    html += '<div class="cal-grid">';
+    html += '<div class="cal-headers">';
+    ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => {
+      html += '<div class="cal-day-header">' + d + '</div>';
+    });
+    html += '</div>';
+
+    // For each week, build day cells + event overlay
+    for (let w = 0; w < totalWeeks; w++) {
+      const weekStart = new Date(gridStart.getTime() + w * 7 * DAY_MS);
+      const weekEnd = new Date(weekStart.getTime() + 6 * DAY_MS);
+      // Find events that intersect this week
+      const visibleEvents = events.filter(e => e.end >= weekStart && e.start <= weekEnd);
+      // Compute segments: clipped to this week
+      const segments = visibleEvents.map(e => {
+        const segStart = e.start < weekStart ? new Date(weekStart) : new Date(e.start);
+        segStart.setHours(0,0,0,0);
+        const segEnd = e.end > weekEnd ? new Date(weekEnd) : new Date(e.end);
+        segEnd.setHours(0,0,0,0);
+        const startCol = Math.round((segStart - weekStart) / DAY_MS);
+        const endCol = Math.round((segEnd - weekStart) / DAY_MS);
+        const span = endCol - startCol + 1;
+        return {
+          event: e, startCol, span,
+          continuesLeft: e.start < weekStart,
+          continuesRight: e.end > weekEnd
+        };
+      });
+      // Lane assignment
+      segments.sort((a,b) => a.startCol - b.startCol || b.span - a.span);
+      const lanes = [];
+      segments.forEach(s => {
+        let lane = 0;
+        while (lanes[lane] && lanes[lane].some(o => s.startCol < o.startCol + o.span && o.startCol < s.startCol + s.span)) lane++;
+        if (!lanes[lane]) lanes[lane] = [];
+        lanes[lane].push(s);
+        s.lane = lane;
+      });
+      const maxLanesShown = 3;
+      const minHeight = 110;
+      const calculatedHeight = Math.max(minHeight, 36 + lanes.length * 22);
+
+      html += '<div class="cal-week" style="min-height:' + calculatedHeight + 'px">';
+      // 7 day cells
+      for (let d = 0; d < 7; d++) {
+        const dayDate = new Date(weekStart.getTime() + d * DAY_MS);
+        const isOtherMonth = dayDate.getMonth() !== ym.month;
+        const isToday = dayDate.getTime() === today.getTime();
+        const isWeekend = d >= 5;
+        const cls = ['cal-day'];
+        if (isOtherMonth) cls.push('other-month');
+        if (isToday) cls.push('today');
+        if (isWeekend) cls.push('weekend');
+        html += '<div class="' + cls.join(' ') + '"><span class="day-num">' + dayDate.getDate() + '</span></div>';
+      }
+      // Event overlay
+      html += '<div class="cal-events-overlay">';
+      segments.forEach(s => {
+        if (s.lane >= maxLanesShown) return;
+        const left = (s.startCol / 7) * 100;
+        const width = (s.span / 7) * 100;
+        const top = s.lane * 22;
+        const color = statusColors[s.event.task.panelStatus] || '#1a1a1a';
+        const cls = ['cal-event'];
+        if (s.continuesLeft) cls.push('continues-left');
+        if (s.continuesRight) cls.push('continues-right');
+        const tooltipText = s.event.task.subject + ' — ' + (s.event.entry.startDate||'?') + ' → ' + (s.event.entry.endDate||'?');
+        html += '<div class="' + cls.join(' ') + '" data-tid="' + s.event.task.id + '" title="' + escapeHtml(tooltipText) + '" style="left:calc(' + left + '% + 4px); width:calc(' + width + '% - 8px); top:' + top + 'px; background:' + color + '">' +
+          (s.continuesLeft ? '◂ ' : '') + escapeHtml(s.event.task.subject) + (s.continuesRight ? ' ▸' : '') +
+        '</div>';
+      });
+      // "X more" indicator if exceeds maxLanesShown
+      const overflowCount = lanes.length - maxLanesShown;
+      if (overflowCount > 0) {
+        for (let d = 0; d < 7; d++) {
+          // Count overflow events for this day
+          let cnt = 0;
+          segments.forEach(s => {
+            if (s.lane >= maxLanesShown && s.startCol <= d && d < s.startCol + s.span) cnt++;
+          });
+          if (cnt > 0) {
+            const left = (d / 7) * 100;
+            const top = maxLanesShown * 22;
+            html += '<div class="cal-more-events" style="left:calc(' + left + '% + 4px); top:' + top + 'px">+' + cnt + ' more</div>';
+          }
+        }
+      }
+      html += '</div>'; // .cal-events-overlay
+      html += '</div>'; // .cal-week
+    }
+    html += '</div>'; // .cal-grid
+  }
+
+  // Unscheduled section
+  if (unscheduled.length > 0) {
+    html += '<div class="rm-unscheduled" style="margin-top:14px; padding:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px"><strong style="font-size:13px">Unscheduled (' + unscheduled.length + ')</strong>' +
+      '<div style="font-size:12px; color:#6b6b6b; margin:4px 0 8px">These tasks need both start and end dates set to appear on the calendar.</div>';
+    unscheduled.forEach(entry => {
+      const task = STORE.tasks.find(t => t.id === entry.taskId);
+      if (!task) return;
+      html += '<div class="rm-task-row" data-tid="' + task.id + '">' +
+        '<span title="' + escapeHtml(task.subject) + '">' + escapeHtml(task.subject.slice(0,80)) + (task.subject.length>80?'…':'') + '</span>' +
+        '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '" title="Start">' +
+        '<input type="date" class="rmt-end" value="' + escapeHtml(entry.endDate||'') + '" title="End">' +
+        '<button class="rm-task-del" data-tid="' + task.id + '" title="Remove">×</button>' +
+      '</div>';
+    });
+    html += '</div>';
+  }
+
+  cont.innerHTML = html;
+
+  // Wire up navigation
+  document.getElementById('calPrev').addEventListener('click', () => {
+    let m = ym.month - 1, y = ym.year;
+    if (m < 0) { m = 11; y--; }
+    roadmapCalState.yearMonth = { year: y, month: m };
+    renderRoadmapCalendar(roadmapId);
+  });
+  document.getElementById('calNext').addEventListener('click', () => {
+    let m = ym.month + 1, y = ym.year;
+    if (m > 11) { m = 0; y++; }
+    roadmapCalState.yearMonth = { year: y, month: m };
+    renderRoadmapCalendar(roadmapId);
+  });
+  document.getElementById('calToday').addEventListener('click', () => {
+    const t = new Date();
+    roadmapCalState.yearMonth = { year: t.getFullYear(), month: t.getMonth() };
+    renderRoadmapCalendar(roadmapId);
+  });
+  // Event clicks
+  cont.querySelectorAll('.cal-event').forEach(node => {
+    node.addEventListener('click', () => openModal(node.dataset.tid));
+  });
+  // Summary buttons
+  const editBtn = document.getElementById('rmEditBtn');
+  if (editBtn) editBtn.addEventListener('click', () => openRoadmapEdit(roadmapId));
+  const addTaskBtn = document.getElementById('rmAddTaskBtn');
+  if (addTaskBtn) addTaskBtn.addEventListener('click', () => openRoadmapEdit(roadmapId));
+  const delBtn = document.getElementById('rmDeleteBtn');
+  if (delBtn) delBtn.addEventListener('click', () => {
+    if (!confirm("Delete '" + (r.name||'this roadmap') + "'?")) return;
+    STORE.roadmaps = getRoadmaps().filter(x => x.id !== roadmapId);
+    saveStore(STORE);
+    selectedRoadmapTimelineId = null;
+    renderRoadmapsTimelinePage();
+  });
+  // Unscheduled inline edits
+  cont.querySelectorAll('.rm-unscheduled .rm-task-row').forEach(node => {
+    const tid = node.querySelector('.rm-task-del').dataset.tid;
+    const idx = (r.tasks||[]).findIndex(e => e.taskId === tid);
+    node.querySelector('.rmt-start').addEventListener('change', e => {
+      if (idx >= 0) { r.tasks[idx].startDate = e.target.value; saveStore(STORE); renderRoadmapCalendar(roadmapId); }
+    });
+    node.querySelector('.rmt-end').addEventListener('change', e => {
+      if (idx >= 0) { r.tasks[idx].endDate = e.target.value; saveStore(STORE); renderRoadmapCalendar(roadmapId); }
+    });
+    node.querySelector('.rm-task-del').addEventListener('click', () => {
+      if (idx >= 0) { r.tasks.splice(idx, 1); saveStore(STORE); renderRoadmapCalendar(roadmapId); }
+    });
+  });
+}
+
+// Replace the existing renderGantt usage with the new calendar
+const _origRenderRoadmapsTimelinePage = renderRoadmapsTimelinePage;
+renderRoadmapsTimelinePage = function() {
+  const sel = document.getElementById("rmSelector");
+  const cont = document.getElementById("rmPageContent");
+  const rms = getRoadmaps();
+  if (rms.length === 0) {
+    sel.innerHTML = "";
+    cont.innerHTML = '<div class="rm-empty">No roadmaps yet. Click "+ New roadmap" to create one.</div>';
+    return;
+  }
+  if (!selectedRoadmapTimelineId || !rms.some(r => r.id === selectedRoadmapTimelineId)) {
+    selectedRoadmapTimelineId = rms[0].id;
+    localStorage.setItem("bookline-selectedRoadmap", selectedRoadmapTimelineId);
+  }
+  sel.innerHTML = rms.map(r => {
+    const cnt = (r.tasks || []).length;
+    return '<button class="rm-tab ' + (selectedRoadmapTimelineId === r.id ? "active" : "") + '" data-rm="' + r.id + '">' + escapeHtml(r.name||"(unnamed)") + ' <span style="opacity:.7">(' + cnt + ')</span></button>';
+  }).join("");
+  sel.querySelectorAll(".rm-tab").forEach(node => {
+    node.addEventListener("click", () => {
+      selectedRoadmapTimelineId = node.dataset.rm;
+      localStorage.setItem("bookline-selectedRoadmap", selectedRoadmapTimelineId);
+      // Reset month state when switching roadmap so it jumps to the new roadmap's start
+      roadmapCalState.yearMonth = null;
+      renderRoadmapsTimelinePage();
+    });
+  });
+  renderRoadmapCalendar(selectedRoadmapTimelineId);
+};
+
 document.getElementById("showCountsChk").checked = showCounts;
 
 // Reset filters button
