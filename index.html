@@ -419,6 +419,7 @@
   .members-grid-disabled .member-card .email a { color: #6b6b6b !important; text-decoration: none; }
 
   /* Profile page */
+  #view-profile { padding-top: 18px; }
   .profile-empty { padding: 40px 0; text-align: center; color: #6b6b6b; font-size: 14px; }
   .profile-picker {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
@@ -522,6 +523,14 @@
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
   }
   .profile-section-title .count { color: #9a9a9a; font-weight: 600; }
+  .profile-section-toggle {
+    cursor: pointer; user-select: none;
+    padding: 4px 0;
+  }
+  .profile-section-toggle:hover { color: #6b6b6b; }
+  .profile-section-toggle .caret {
+    display: inline-block; min-width: 14px; color: #9a9a9a; font-size: 11px;
+  }
 
   .profile-rm-list { display: flex; flex-direction: column; gap: 10px; }
   .profile-rm-card {
@@ -554,23 +563,44 @@
     display: flex; flex-direction: column; gap: 2px;
     position: relative; min-width: 0; overflow: hidden;
   }
-  .mini-7day .mini-day.weekend { background: #ebe8df; border-color: #d8d4c6; }
-  .mini-7day .mini-day.holiday { background: #ebe8df; border-color: #d8d4c6; }
+  .mini-7day .mini-day.weekend::before,
+  .mini-7day .mini-day.holiday::before {
+    content: ""; position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 5px,
+      rgba(100,116,139,0.30) 5px,
+      rgba(100,116,139,0.30) 7px
+    );
+    pointer-events: none; border-radius: 8px;
+  }
   .mini-7day .mini-day.timeoff::after {
     content: ""; position: absolute; inset: 0;
-    background: repeating-linear-gradient(45deg, transparent 0 4px, rgba(120,120,110,.32) 4px 7px);
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 5px,
+      rgba(220,38,38,0.32) 5px,
+      rgba(220,38,38,0.32) 7px
+    );
     pointer-events: none; border-radius: 8px;
   }
   .mini-7day .mini-day.today { box-shadow: 0 0 0 2px #1a1a1a inset; }
   .mini-7day .mini-day .mini-dnum {
     font-size: 12px; font-weight: 700; color: #1a1a1a;
+    position: relative; z-index: 2;
   }
-  .mini-7day .mini-day .mini-dwd { font-size: 9px; color: #9a9a9a; text-transform: uppercase; font-weight: 700; letter-spacing: .04em; }
+  .mini-7day .mini-day .mini-dwd {
+    font-size: 9px; color: #9a9a9a; text-transform: uppercase; font-weight: 700; letter-spacing: .04em;
+    position: relative; z-index: 2;
+  }
   .mini-7day .mini-day.weekend .mini-dwd,
   .mini-7day .mini-day.holiday .mini-dwd { color: #6b6b6b; }
   .mini-7day .mini-day .mini-hol {
     font-size: 9px; font-weight: 600; color: #6b6b6b;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    position: relative; z-index: 2;
   }
   .mini-7day .mini-day .mini-event {
     font-size: 9.5px; font-weight: 600; color: #fff;
@@ -3396,6 +3426,8 @@ let profileGroupBy = localStorage.getItem("bookline-profileGroupBy") || "status"
 let profileEditMode = false;
 let profilePickerOpen = false;
 let profilePickerSearch = "";
+let profileTasksCollapsed = (localStorage.getItem("bookline-profileTasksCollapsed") !== "0"); // collapsed by default
+let profileRoadmapsCollapsed = (localStorage.getItem("bookline-profileRoadmapsCollapsed") === "1");
 const profileCollapsedGroups = new Set(JSON.parse(localStorage.getItem("bookline-profileCollapsedGroups") || "[]"));
 
 function setProfilePerson(id) {
@@ -3530,30 +3562,40 @@ function renderProfilePage() {
   html += '<div class="profile-stat-card"><div class="num">' + personRoadmaps.length + '</div><div class="lbl">Roadmaps</div></div>';
   html += '</div>';
 
-  // Roadmaps section
-  html += '<div class="profile-section-title">Roadmaps <span class="count">' + personRoadmaps.length + '</span></div>';
-  if (personRoadmaps.length === 0) {
-    html += '<div class="profile-empty" style="padding:20px;background:#fff;border:1px dashed #ececea;border-radius:12px">Not in any roadmap yet.</div>';
-  } else {
-    html += '<div class="profile-rm-list">';
-    personRoadmaps.forEach(rm => {
-      html += renderProfileRoadmapCard(rm, person.id);
-    });
-    html += '</div>';
+  // Roadmaps section (collapsible)
+  html += '<div class="profile-section-title profile-section-toggle" id="profileRoadmapsToggle">' +
+    '<span><span class="caret">' + (profileRoadmapsCollapsed ? '▸' : '▾') + '</span> Roadmaps</span>' +
+    '<span class="count">' + personRoadmaps.length + '</span>' +
+    '</div>';
+  if (!profileRoadmapsCollapsed) {
+    if (personRoadmaps.length === 0) {
+      html += '<div class="profile-empty" style="padding:20px;background:#fff;border:1px dashed #ececea;border-radius:12px">Not in any roadmap yet.</div>';
+    } else {
+      html += '<div class="profile-rm-list">';
+      personRoadmaps.forEach(rm => {
+        html += renderProfileRoadmapCard(rm, person.id);
+      });
+      html += '</div>';
+    }
   }
 
-  // Tasks section
-  html += '<div class="profile-section-title">Tasks <span class="count">' + counts.total + '</span></div>';
-  html += '<div class="profile-tasks-toolbar">';
-  html += '<label>Group by</label>';
-  html += '<select id="profileGroupBySel">';
-  ['none','status','priority','type','roadmap','tag','dueMonth'].forEach(opt => {
-    const lblMap = {none:'None',status:'Status',priority:'Priority',type:'Type',roadmap:'Roadmap',tag:'Tag',dueMonth:'Due month'};
-    html += '<option value="' + opt + '"' + (profileGroupBy === opt ? ' selected' : '') + '>' + lblMap[opt] + '</option>';
-  });
-  html += '</select>';
-  html += '</div>';
-  html += renderProfileTasks(personTasks, profileGroupBy);
+  // Tasks section (collapsible)
+  html += '<div class="profile-section-title profile-section-toggle" id="profileTasksToggle">' +
+    '<span><span class="caret">' + (profileTasksCollapsed ? '▸' : '▾') + '</span> Tasks</span>' +
+    '<span class="count">' + counts.total + '</span>' +
+    '</div>';
+  if (!profileTasksCollapsed) {
+    html += '<div class="profile-tasks-toolbar">';
+    html += '<label>Group by</label>';
+    html += '<select id="profileGroupBySel">';
+    ['none','status','priority','type','roadmap','tag','dueMonth'].forEach(opt => {
+      const lblMap = {none:'None',status:'Status',priority:'Priority',type:'Type',roadmap:'Roadmap',tag:'Tag',dueMonth:'Due month'};
+      html += '<option value="' + opt + '"' + (profileGroupBy === opt ? ' selected' : '') + '>' + lblMap[opt] + '</option>';
+    });
+    html += '</select>';
+    html += '</div>';
+    html += renderProfileTasks(personTasks, profileGroupBy);
+  }
 
   cont.innerHTML = html;
   wireProfilePicker();
@@ -3881,6 +3923,22 @@ function renderProfileTasks(tasks, groupBy) {
 }
 
 function wireProfileTasks() {
+  const tasksToggle = document.getElementById("profileTasksToggle");
+  if (tasksToggle) {
+    tasksToggle.addEventListener("click", () => {
+      profileTasksCollapsed = !profileTasksCollapsed;
+      localStorage.setItem("bookline-profileTasksCollapsed", profileTasksCollapsed ? "1" : "0");
+      renderProfilePage();
+    });
+  }
+  const rmToggle = document.getElementById("profileRoadmapsToggle");
+  if (rmToggle) {
+    rmToggle.addEventListener("click", () => {
+      profileRoadmapsCollapsed = !profileRoadmapsCollapsed;
+      localStorage.setItem("bookline-profileRoadmapsCollapsed", profileRoadmapsCollapsed ? "1" : "0");
+      renderProfilePage();
+    });
+  }
   const sel = document.getElementById("profileGroupBySel");
   if (sel) sel.addEventListener("change", e => setProfileGroupBy(e.target.value));
 
