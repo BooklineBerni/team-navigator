@@ -65,7 +65,7 @@
   .team-pill .av img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: cover; }
   .team-pill .count { font-size: 11px; opacity: .7; margin-left: 2px; }
 
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; }
   .card { background: #fff; border: 1px solid #ececea; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 0 rgba(0,0,0,0.02); position: relative; }
   .person, .person-row { display: flex; align-items: center; gap: 12px; cursor: pointer; }
   .avatar { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; color: #fff; font-weight: 600; font-size: 14px; overflow: hidden; position: relative; }
@@ -156,12 +156,16 @@
   .rm-tab.drop-before { box-shadow: -3px 0 0 0 #1a1a1a; }
   .rm-tab.drop-after { box-shadow: 3px 0 0 0 #1a1a1a; }
   .rm-tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-  .rm-summary-card { padding: 14px 18px; background: #fff; border: 1px solid #ececea; border-radius: 12px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
-  .rm-summary-line { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
-  .rm-summary-name { font-size: 18px; font-weight: 700; flex-shrink: 0; }
-  .rm-summary-meta { font-size: 12px; color: #6b6b6b; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .rm-summary-card { padding: 14px 18px; background: #fff; border: 1px solid #ececea; border-radius: 12px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; }
+  .rm-summary-name { font-size: 18px; font-weight: 700; min-width: 0; }
+  .rm-summary-meta {
+    font-size: 12px; color: #6b6b6b;
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; flex-wrap: wrap;
+    grid-column: 2;
+  }
   .rm-summary-meta .sep { color: #d8d6d1; }
-  .rm-summary-actions { display: flex; gap: 6px; }
+  .rm-summary-actions { display: flex; gap: 6px; justify-content: flex-end; }
   .gantt-container { background: #fff; border: 1px solid #ececea; border-radius: 12px; overflow: auto; max-width: 100%; }
   .gantt-time-axis { display: grid; grid-template-columns: 220px 1fr; border-bottom: 1px solid #ececea; background: #faf9f7; position: sticky; top: 0; z-index: 5; }
   .gantt-corner { padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.04em; border-right: 1px solid #ececea; }
@@ -434,25 +438,27 @@
   #view-profile { padding-top: 18px; }
   #view-roadmaps { padding-top: 18px; }
   #view-members { padding-top: 18px; }
-  /* Cleaner date inputs everywhere — keep native picker, restyle the field */
+  /* Compact date inputs — auto-open picker on focus, stay typable */
   input[type="date"] {
-    border: 1px solid #d8d6d1; border-radius: 8px;
-    padding: 6px 10px; font-size: 12.5px; font-family: inherit;
+    border: 1px solid #d8d6d1; border-radius: 6px;
+    padding: 3px 6px; font-size: 12px; font-family: inherit;
     color: #1a1a1a; background: #fff;
     appearance: none; -webkit-appearance: none;
     cursor: pointer; outline: none;
     transition: border-color .12s, box-shadow .12s;
-    min-width: 0;
+    min-width: 0; width: auto; max-width: 130px;
+    line-height: 1.2;
   }
   input[type="date"]:hover { border-color: #1a1a1a; }
   input[type="date"]:focus { border-color: #1a1a1a; box-shadow: 0 0 0 2px rgba(26,26,26,0.08); }
   input[type="date"]::-webkit-calendar-picker-indicator {
-    cursor: pointer; opacity: 0.55;
+    cursor: pointer; opacity: 0.5;
     filter: grayscale(100%);
+    padding: 0; margin-left: 4px;
     transition: opacity .12s;
   }
   input[type="date"]:hover::-webkit-calendar-picker-indicator { opacity: 0.85; }
-  input[type="date"]::-webkit-datetime-edit { color: #1a1a1a; }
+  input[type="date"]::-webkit-datetime-edit { color: #1a1a1a; padding: 0; }
   input[type="date"]:placeholder-shown::-webkit-datetime-edit { color: #9a9a9a; }
   .profile-empty { padding: 40px 0; text-align: center; color: #6b6b6b; font-size: 14px; }
   .profile-picker {
@@ -998,20 +1004,22 @@
           <button data-mode="list">List</button>
         </div>
       </div>
+      <!-- Shared: visible in both byperson and list modes -->
+      <div class="team-strip" id="teamStrip"></div>
+
+      <div class="filters">
+        <label class="show-counts-toggle" title="Show task/member counts on each filter button"><input type="checkbox" id="showCountsChk"> <span>Counts</span></label>
+        <input class="search-input" id="searchInput" placeholder="Search titles and comments...">
+        <div id="statusFilterContainer" class="filter-group"></div>
+        <div id="prioFilterContainer" class="filter-group"></div>
+      </div>
+
+      <div class="filters" id="tagFilterBar" style="margin-bottom:8px"></div>
+      <div class="filters" id="taskTagFilterBar" style="margin-bottom:14px"></div>
+
+      <!-- Mode-specific bodies -->
       <div id="view-tasks-byperson">
-  <div class="team-strip" id="teamStrip"></div>
-
-  <div class="filters">
-    <label class="show-counts-toggle" title="Show task/member counts on each filter button"><input type="checkbox" id="showCountsChk"> <span>Counts</span></label>
-    <input class="search-input" id="searchInput" placeholder="Search titles and comments...">
-    <div id="statusFilterContainer" class="filter-group"></div>
-    <div id="prioFilterContainer" class="filter-group"></div>
-  </div>
-
-  <div class="filters" id="tagFilterBar" style="margin-bottom:8px"></div>
-  <div class="filters" id="taskTagFilterBar" style="margin-bottom:14px"></div>
-
-  <div class="grid" id="grid"></div>
+        <div class="grid" id="grid"></div>
       </div>
       <div id="view-tasks-list" style="display:none">
         <div class="flat-tasks" id="flatTasksList"></div>
@@ -2942,15 +2950,13 @@ function renderRoadmapCalendar(roadmapId) {
       '</div>'
     : '<em>no owner</em>';
   let html = '<div class="rm-summary-card">' +
-    '<div class="rm-summary-line">' +
-      '<div class="rm-summary-name">' + escapeHtml(r.name||'(unnamed)') + '</div>' +
-      '<div class="rm-summary-meta">' +
-        ownerHtml +
-        '<span class="sep">·</span>' +
-        '<span>' + dateRange + '</span>' +
-        '<span class="sep">·</span>' +
-        '<span>' + (r.tasks||[]).length + ' tasks</span>' +
-      '</div>' +
+    '<div class="rm-summary-name">' + escapeHtml(r.name||'(unnamed)') + '</div>' +
+    '<div class="rm-summary-meta">' +
+      ownerHtml +
+      '<span class="sep">·</span>' +
+      '<span>' + dateRange + '</span>' +
+      '<span class="sep">·</span>' +
+      '<span>' + (r.tasks||[]).length + ' tasks</span>' +
     '</div>' +
     '<div class="rm-summary-actions">' +
       '<button class="btn" id="rmEditBtn">Edit</button>' +
@@ -4959,6 +4965,26 @@ document.getElementById("showCountsChk").addEventListener("change", e => {
 // Apply saved tasks view mode visually before first switchView
 setTasksViewMode(tasksViewMode);
 switchView(currentView);
+
+// Auto-open native date picker when focusing any date input.
+// Uses event delegation so it works for inputs that are added later by re-renders.
+document.addEventListener("focusin", e => {
+  const el = e.target;
+  if (el && el.tagName === "INPUT" && el.type === "date") {
+    if (typeof el.showPicker === "function") {
+      try { el.showPicker(); } catch (_) { /* showPicker may throw if not user-activated */ }
+    }
+  }
+});
+// Also on click (some browsers need a user click to allow showPicker)
+document.addEventListener("click", e => {
+  const el = e.target;
+  if (el && el.tagName === "INPUT" && el.type === "date") {
+    if (typeof el.showPicker === "function") {
+      try { el.showPicker(); } catch (_) {}
+    }
+  }
+}, true);
 detectBlockedPhotos();
 </script>
 </body>
