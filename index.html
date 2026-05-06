@@ -3143,7 +3143,6 @@ function renderRoadmapCalendar(roadmapId) {
     '</div>' +
     '<div class="rm-summary-actions">' +
       '<button class="btn" id="rmEditBtn">Edit</button>' +
-      '<button class="btn" id="rmAddTaskBtn">+ Assign Tasks</button>' +
       '<button class="btn danger" id="rmDeleteBtn">Delete</button>' +
     '</div></div>';
 
@@ -3307,7 +3306,8 @@ function renderRoadmapCalendar(roadmapId) {
   // Side-area only when there are unscheduled tasks
   if (hasSide) {
     html += '<div class="rm-side-area">';
-    const pendingCount = unscheduled.filter(e => parseDate(e.startDate) && parseDate(e.endDate)).length;
+    // "Ready" = at least a start date (end date optional → open-ended task)
+    const pendingCount = unscheduled.filter(e => parseDate(e.startDate)).length;
     html += '<div class="rm-unscheduled" style="margin-top:14px; padding:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px">' +
       '<div class="rm-unscheduled-head">' +
         '<strong style="font-size:13px">Unscheduled (' + unscheduled.length + ')</strong>' +
@@ -3317,7 +3317,7 @@ function renderRoadmapCalendar(roadmapId) {
     unscheduled.forEach(entry => {
       const task = STORE.tasks.find(t => t.id === entry.taskId);
       if (!task) return;
-      const ready = !!(parseDate(entry.startDate) && parseDate(entry.endDate));
+      const ready = !!parseDate(entry.startDate);
       html += '<div class="rm-task-row ' + (ready ? "ready" : "") + '" data-tid="' + task.id + '">' +
         '<span title="' + escapeHtml(task.subject) + '">' + escapeHtml(task.subject.slice(0,80)) + (task.subject.length>80?'…':'') + '</span>' +
         '<div class="rm-task-dates">' +
@@ -3413,15 +3413,13 @@ function renderRoadmapCalendar(roadmapId) {
     const idx = (r.tasks||[]).findIndex(e => e.taskId === tid);
     function refreshRowReadyState() {
       const startInp = node.querySelector('.rmt-start');
-      const endInp = node.querySelector('.rmt-end');
-      const ready = !!(parseDate(startInp.value) && parseDate(endInp.value));
+      const ready = !!parseDate(startInp.value);  // start date is enough; end date optional
       node.classList.toggle('ready', ready);
       // Update Apply button count
       let pendingReady = 0;
       cont.querySelectorAll('.rm-unscheduled .rm-task-row').forEach(n => {
         const s = n.querySelector('.rmt-start')?.value;
-        const e = n.querySelector('.rmt-end')?.value;
-        if (parseDate(s) && parseDate(e)) pendingReady++;
+        if (parseDate(s)) pendingReady++;
       });
       const applyBtn = document.getElementById('rmApplyDatesBtn');
       if (applyBtn) {
@@ -5184,16 +5182,20 @@ document.getElementById("rmf_saveBtn").addEventListener("click", () => {
 // Owner picker (popover similar to Profile)
 document.getElementById('rmf_ownerTrigger').addEventListener('click', e => {
   e.stopPropagation();
-  const wrap = document.getElementById('rmf_ownerPickerWrap');
-  // Toggle popover
-  let pop = wrap.querySelector('.profile-picker-popover');
+  // Toggle popover (singleton, body-level so it isn't clipped by the modal)
+  let pop = document.getElementById('rmfOwnerPopover');
   if (pop) { pop.remove(); return; }
+  const trigger = document.getElementById('rmf_ownerTrigger');
   pop = document.createElement('div');
+  pop.id = 'rmfOwnerPopover';
   pop.className = 'profile-picker-popover';
   pop.style.position = 'absolute';
-  pop.style.top = '100%';
-  pop.style.left = '0';
-  pop.style.minWidth = '260px';
+  pop.style.zIndex = 200;  // above modal (z-index 100)
+  pop.style.minWidth = (trigger.offsetWidth || 260) + 'px';
+  // Position relative to the trigger
+  const rect = trigger.getBoundingClientRect();
+  pop.style.left = (rect.left + window.scrollX) + 'px';
+  pop.style.top = (rect.bottom + window.scrollY + 4) + 'px';
   let q = '';
   function renderList() {
     const ql = q.toLowerCase().trim();
@@ -5226,17 +5228,16 @@ document.getElementById('rmf_ownerTrigger').addEventListener('click', e => {
         if (r) r.responsibleId = row.dataset.pid;
         pop.remove();
         rmfRefreshOwnerLabel();
-        // Re-bind trigger event since outerHTML replaces the label element
         rmfRefreshSaveButton();
       });
     });
   }
   renderList();
-  wrap.appendChild(pop);
+  document.body.appendChild(pop);
   // Click outside closes
   setTimeout(() => {
     const handler = ev => {
-      if (!pop.contains(ev.target) && ev.target.id !== 'rmf_ownerTrigger') {
+      if (!pop.contains(ev.target) && ev.target.id !== 'rmf_ownerTrigger' && !document.getElementById('rmf_ownerTrigger').contains(ev.target)) {
         pop.remove();
         document.removeEventListener('click', handler);
       }
