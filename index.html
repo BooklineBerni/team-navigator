@@ -138,7 +138,12 @@
 
   /* Members page grid */
   .members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-  .member-card { padding: 16px; background: #fff; border: 1px solid #ececea; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: all .12s; }
+  .member-card { padding: 16px; background: #fff; border: 1px solid #ececea; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: all .12s; min-width: 0; overflow: hidden; }
+  .member-card .person-row { min-width: 0; }
+  .member-card .person-row .meta { min-width: 0; flex: 1; }
+  .member-card .name { font-weight: 700; font-size: 14px; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .member-card .role { font-size: 12px; color: #6b6b6b; }
+  .member-card .email { font-size: 12px; color: #6b6b6b; word-break: break-all; line-height: 1.3; }
   .member-card:hover { border-color: #1a1a1a; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
   .member-card.deactivated { opacity: 0.55; }
 
@@ -152,8 +157,10 @@
   .rm-tab.drop-after { box-shadow: 3px 0 0 0 #1a1a1a; }
   .rm-tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
   .rm-summary-card { padding: 14px 18px; background: #fff; border: 1px solid #ececea; border-radius: 12px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
-  .rm-summary-name { font-size: 18px; font-weight: 700; }
-  .rm-summary-meta { font-size: 12px; color: #6b6b6b; margin-top: 4px; }
+  .rm-summary-line { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
+  .rm-summary-name { font-size: 18px; font-weight: 700; flex-shrink: 0; }
+  .rm-summary-meta { font-size: 12px; color: #6b6b6b; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .rm-summary-meta .sep { color: #d8d6d1; }
   .rm-summary-actions { display: flex; gap: 6px; }
   .gantt-container { background: #fff; border: 1px solid #ececea; border-radius: 12px; overflow: auto; max-width: 100%; }
   .gantt-time-axis { display: grid; grid-template-columns: 220px 1fr; border-bottom: 1px solid #ececea; background: #faf9f7; position: sticky; top: 0; z-index: 5; }
@@ -425,6 +432,28 @@
 
   /* Profile page */
   #view-profile { padding-top: 18px; }
+  #view-roadmaps { padding-top: 18px; }
+  #view-members { padding-top: 18px; }
+  /* Cleaner date inputs everywhere — keep native picker, restyle the field */
+  input[type="date"] {
+    border: 1px solid #d8d6d1; border-radius: 8px;
+    padding: 6px 10px; font-size: 12.5px; font-family: inherit;
+    color: #1a1a1a; background: #fff;
+    appearance: none; -webkit-appearance: none;
+    cursor: pointer; outline: none;
+    transition: border-color .12s, box-shadow .12s;
+    min-width: 0;
+  }
+  input[type="date"]:hover { border-color: #1a1a1a; }
+  input[type="date"]:focus { border-color: #1a1a1a; box-shadow: 0 0 0 2px rgba(26,26,26,0.08); }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer; opacity: 0.55;
+    filter: grayscale(100%);
+    transition: opacity .12s;
+  }
+  input[type="date"]:hover::-webkit-calendar-picker-indicator { opacity: 0.85; }
+  input[type="date"]::-webkit-datetime-edit { color: #1a1a1a; }
+  input[type="date"]:placeholder-shown::-webkit-datetime-edit { color: #9a9a9a; }
   .profile-empty { padding: 40px 0; text-align: center; color: #6b6b6b; font-size: 14px; }
   .profile-picker {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
@@ -994,7 +1023,10 @@
         <div>
           <h2 class="page-title">Team</h2>
         </div>
-        <input class="search-input" id="memberPageSearch" placeholder="Search members..." style="max-width:240px">
+        <div style="display:flex; gap:8px; align-items:center">
+          <input class="search-input" id="memberPageSearch" placeholder="Search members..." style="max-width:240px">
+          <button class="btn primary" id="teamAddMemberBtn" title="Add someone from Slack who isn't in the team yet">+ Member</button>
+        </div>
       </div>
       <div id="membersGrid"></div>
     </section>
@@ -2496,6 +2528,8 @@ document.getElementById("memberSearchInput").addEventListener("input", e => {
 });
 
 document.getElementById("addMemberBtn").addEventListener("click", openAddMember);
+const teamAddMemberBtnEl = document.getElementById("teamAddMemberBtn");
+if (teamAddMemberBtnEl) teamAddMemberBtnEl.addEventListener("click", openAddMember);
 
 
 document.getElementById("addMemberBg").addEventListener("click", e => { if (e.target.id === "addMemberBg") closeAddMember(); });
@@ -2908,8 +2942,16 @@ function renderRoadmapCalendar(roadmapId) {
       '</div>'
     : '<em>no owner</em>';
   let html = '<div class="rm-summary-card">' +
-    '<div><div class="rm-summary-name">' + escapeHtml(r.name||'(unnamed)') + '</div>' +
-    '<div class="rm-summary-meta">' + ownerHtml + ' · ' + dateRange + ' · ' + (r.tasks||[]).length + ' tasks</div></div>' +
+    '<div class="rm-summary-line">' +
+      '<div class="rm-summary-name">' + escapeHtml(r.name||'(unnamed)') + '</div>' +
+      '<div class="rm-summary-meta">' +
+        ownerHtml +
+        '<span class="sep">·</span>' +
+        '<span>' + dateRange + '</span>' +
+        '<span class="sep">·</span>' +
+        '<span>' + (r.tasks||[]).length + ' tasks</span>' +
+      '</div>' +
+    '</div>' +
     '<div class="rm-summary-actions">' +
       '<button class="btn" id="rmEditBtn">Edit</button>' +
       '<button class="btn" id="rmAddTaskBtn">+ Assign Tasks</button>' +
@@ -4317,9 +4359,9 @@ function switchView(view) {
   document.getElementById("view-profile").style.display  = view === "profile"  ? "" : "none";
   document.getElementById("view-tasks").style.display    = view === "tasks"    ? "" : "none";
   document.getElementById("view-roadmaps").style.display = view === "roadmaps" ? "" : "none";
-  // Hide global action buttons on Roadmaps & Profile pages (they have their own controls)
+  // Hide global action buttons on Roadmaps, Profile and Members pages (they have their own controls)
   const headerTop = document.querySelector("header.top");
-  if (headerTop) headerTop.style.display = (view === "roadmaps" || view === "profile") ? "none" : "";
+  if (headerTop) headerTop.style.display = (view === "roadmaps" || view === "profile" || view === "members") ? "none" : "";
   render();
 }
 
