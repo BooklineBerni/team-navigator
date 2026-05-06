@@ -145,7 +145,11 @@
   /* Roadmaps page */
   .rm-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
   .rm-selector { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; min-width: 0; }
-  .rm-tab { padding: 6px 12px; border: 1px solid #d8d6d1; background: #fff; border-radius: 999px; font-size: 12px; cursor: pointer; font-weight: 600; font-family: inherit; }
+  .rm-tab { padding: 6px 12px; border: 1px solid #d8d6d1; background: #fff; border-radius: 999px; font-size: 12px; cursor: grab; font-weight: 600; font-family: inherit; position: relative; user-select: none; }
+  .rm-tab:active { cursor: grabbing; }
+  .rm-tab.dragging { opacity: .4; }
+  .rm-tab.drop-before { box-shadow: -3px 0 0 0 #1a1a1a; }
+  .rm-tab.drop-after { box-shadow: 3px 0 0 0 #1a1a1a; }
   .rm-tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
   .rm-summary-card { padding: 14px 18px; background: #fff; border: 1px solid #ececea; border-radius: 12px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
   .rm-summary-name { font-size: 18px; font-weight: 700; }
@@ -328,6 +332,7 @@
   .rm-content-row {
     display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start;
   }
+  .rm-content-row.no-side { grid-template-columns: 1fr; }
   @media (max-width: 1200px) { .rm-content-row { grid-template-columns: 1fr; } }
   .rm-cal-area { min-width: 0; }
   .rm-side-area .rm-unscheduled {
@@ -566,7 +571,7 @@
   .mini-7day .mini-day.weekend::before,
   .mini-7day .mini-day.holiday::before {
     content: ""; position: absolute;
-    left: 0; right: 0; bottom: 0; top: 30px;
+    left: 0; right: 0; bottom: 0; top: 38px;
     background-image: repeating-linear-gradient(
       135deg,
       transparent 0,
@@ -578,7 +583,7 @@
   }
   .mini-7day .mini-day.timeoff::after {
     content: ""; position: absolute;
-    left: 0; right: 0; bottom: 0; top: 30px;
+    left: 0; right: 0; bottom: 0; top: 38px;
     background-image: repeating-linear-gradient(
       135deg,
       transparent 0,
@@ -2912,8 +2917,9 @@ function renderRoadmapCalendar(roadmapId) {
       '<button class="btn danger" id="rmDeleteBtn">Delete</button>' +
     '</div></div>';
 
-  // Toolbar with navigation
-  html += '<div class="rm-content-row"><div class="rm-cal-area">';
+  // Toolbar with navigation. When there's nothing in the side panel, expand calendar to full width.
+  const hasSide = unscheduled.length > 0;
+  html += '<div class="rm-content-row' + (hasSide ? '' : ' no-side') + '"><div class="rm-cal-area">';
   const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const monthLabel = monthNames[ym.month] + ' ' + ym.year;
   html += '<div class="cal-toolbar">' +
@@ -3065,11 +3071,12 @@ function renderRoadmapCalendar(roadmapId) {
     }
     html += '</div>'; // .cal-grid
   }
-  // Close cal-area, open side-area
-  html += '</div><div class="rm-side-area">';
+  // Close cal-area
+  html += '</div>';
 
-  // Unscheduled section
-  if (unscheduled.length > 0) {
+  // Side-area only when there are unscheduled tasks
+  if (hasSide) {
+    html += '<div class="rm-side-area">';
     html += '<div class="rm-unscheduled" style="margin-top:14px; padding:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px"><strong style="font-size:13px">Unscheduled (' + unscheduled.length + ')</strong>' +
       '<div style="font-size:12px; color:#6b6b6b; margin:4px 0 8px">These tasks need both start and end dates set to appear on the calendar.</div>';
     unscheduled.forEach(entry => {
@@ -3082,11 +3089,11 @@ function renderRoadmapCalendar(roadmapId) {
         '<button class="rm-task-del" data-tid="' + task.id + '" title="Remove">×</button>' +
       '</div>';
     });
-    html += '</div>';
+    html += '</div></div>';
   }
 
-  // Close side-area + row
-  html += '</div></div>';
+  // Close row
+  html += '</div>';
   cont.innerHTML = html;
 
   // Wire up navigation
@@ -4000,16 +4007,65 @@ function renderRoadmapsTimelinePage() {
   }
   sel.innerHTML = rms.map(r => {
     const cnt = (r.tasks || []).length;
-    return '<button class="rm-tab ' + (selectedRoadmapTimelineId === r.id ? "active" : "") + '" data-rm="' + r.id + '">' + escapeHtml(r.name||"(unnamed)") + ' <span style="opacity:.7">(' + cnt + ')</span></button>';
+    return '<button class="rm-tab ' + (selectedRoadmapTimelineId === r.id ? "active" : "") + '" data-rm="' + r.id + '" draggable="true" title="Drag to reorder">' + escapeHtml(r.name||"(unnamed)") + ' <span style="opacity:.7">(' + cnt + ')</span></button>';
   }).join("");
   sel.querySelectorAll(".rm-tab").forEach(node => {
-    node.addEventListener("click", () => {
+    node.addEventListener("click", e => {
+      // Avoid select-on-drop confusion: ignore if a drag just ended
+      if (node.dataset.justDragged === "1") { delete node.dataset.justDragged; return; }
       selectedRoadmapTimelineId = node.dataset.rm;
       localStorage.setItem("bookline-selectedRoadmap", selectedRoadmapTimelineId);
       renderRoadmapsTimelinePage();
     });
+    // Drag-to-reorder
+    node.addEventListener("dragstart", e => {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", node.dataset.rm);
+      node.classList.add("dragging");
+    });
+    node.addEventListener("dragend", () => {
+      node.classList.remove("dragging");
+      // Mark as just dragged so the click handler doesn't fire selection
+      node.dataset.justDragged = "1";
+      setTimeout(() => { delete node.dataset.justDragged; }, 100);
+      sel.querySelectorAll(".rm-tab").forEach(n => n.classList.remove("drop-before","drop-after"));
+    });
+    node.addEventListener("dragover", e => {
+      e.preventDefault();
+      const rect = node.getBoundingClientRect();
+      const isAfter = (e.clientX - rect.left) > rect.width / 2;
+      sel.querySelectorAll(".rm-tab").forEach(n => n.classList.remove("drop-before","drop-after"));
+      node.classList.add(isAfter ? "drop-after" : "drop-before");
+    });
+    node.addEventListener("dragleave", () => {
+      node.classList.remove("drop-before","drop-after");
+    });
+    node.addEventListener("drop", e => {
+      e.preventDefault();
+      const draggedId = e.dataTransfer.getData("text/plain");
+      const targetId = node.dataset.rm;
+      if (!draggedId || draggedId === targetId) return;
+      const rect = node.getBoundingClientRect();
+      const isAfter = (e.clientX - rect.left) > rect.width / 2;
+      reorderRoadmap(draggedId, targetId, isAfter);
+    });
   });
   renderGantt(selectedRoadmapTimelineId);
+}
+
+function reorderRoadmap(draggedId, targetId, dropAfter) {
+  const arr = getRoadmaps();
+  const fromIdx = arr.findIndex(r => r.id === draggedId);
+  if (fromIdx < 0) return;
+  const [moved] = arr.splice(fromIdx, 1);
+  let toIdx = arr.findIndex(r => r.id === targetId);
+  if (toIdx < 0) { arr.push(moved); }
+  else {
+    if (dropAfter) toIdx += 1;
+    arr.splice(toIdx, 0, moved);
+  }
+  saveStore(STORE);
+  renderRoadmapsTimelinePage();
 }
 
 function parseDate(s) {
@@ -4452,21 +4508,9 @@ function renderRoadmapDetailInline(id) {
   });
 }
 
-document.getElementById("newRoadmapPageBtn").addEventListener("click", () => {
-  const id = rmId();
-  getRoadmaps().push({
-    id, name: "New roadmap",
-    description: "",
-    responsibleId: null,
-    startDate: null,
-    endDate: null,
-    tasks: [],
-    createdAt: Date.now()
-  });
-  saveStore(STORE);
-  selectedRoadmapPageId = id;
-  renderRoadmapsPage();
-});
+// (Note: there used to be a second listener here that was firing alongside the
+// one declared earlier in this script — that was creating two roadmaps per click.
+// Removed.)
 
 // Update tab counts
 function updateTabCounts() {
