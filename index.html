@@ -403,17 +403,12 @@
   /* Compact unscheduled rows in side panel */
   .rm-side-area .rm-unscheduled { padding: 12px; max-width: 100%; }
   .rm-side-area .rm-task-row {
-    display: grid !important;
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "title  del"
-      "dates  dates";
-    gap: 6px 8px;
-    align-items: center;
+    display: flex !important; flex-direction: column;
+    gap: 6px;
     padding: 8px; font-size: 12px;
+    border-radius: 8px;
   }
   .rm-side-area .rm-task-row > span:first-child {
-    grid-area: title;
     font-weight: 500; line-height: 1.3; word-break: break-word;
   }
   .rm-side-area .rm-task-row .rmt-start,
@@ -421,14 +416,24 @@
     width: 100%; font-size: 11px; padding: 3px 22px 3px 6px; min-width: 0;
   }
   .rm-side-area .rm-task-row .rm-task-dates {
-    grid-area: dates;
     display: flex; gap: 6px; align-items: center;
   }
   .rm-side-area .rm-task-row .rm-task-dates input[type="date"] {
     flex: 1; min-width: 0; max-width: none;
   }
   .rm-side-area .rm-task-row .rm-task-del {
-    grid-area: del;
+    background: transparent; color: #dc2626;
+    border: 1px solid #fecaca;
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    cursor: pointer; font-size: 16px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; padding: 0;
+    font-family: inherit; font-weight: 600;
+    transition: background .12s, border-color .12s;
+  }
+  .rm-side-area .rm-task-row .rm-task-del:hover {
+    background: #fee2e2; border-color: #fca5a5;
   }
   .rm-side-area .rm-task-row.ready {
     background: #ecfdf3; border: 1px solid #86efac; border-radius: 8px;
@@ -546,6 +551,7 @@
   .bn-dp-day.other-month { color: #c4c2bd; }
   .bn-dp-day.today { font-weight: 700; color: #1a1a1a; box-shadow: 0 0 0 1px #d8d6d1 inset; }
   .bn-dp-day.selected { background: #1a1a1a !important; color: #fff !important; font-weight: 700; }
+  .bn-dp-day.disabled { color: #d8d6d1; cursor: not-allowed; pointer-events: none; }
   .bn-dp-foot {
     display: flex; justify-content: space-between; align-items: center;
     margin-top: 10px; padding-top: 10px; border-top: 1px solid #ececea;
@@ -1536,20 +1542,15 @@ function findPerson(id) { return TEAM.find(p => p.id === id) || null; }
 function isPersonSelected(id) {
   return currentPersonIds.size === 0 || currentPersonIds.has(id);
 }
-function togglePersonSelection(id, additive) {
+function togglePersonSelection(id /*, additive*/) {
+  // New semantics — like include/exclude tags:
+  // currentPersonIds is now a HIDDEN set. Empty = everyone visible.
+  // Click on a marked (visible) person → adds to hidden set, person disappears.
+  // Click on unmarked → removes from hidden set, person reappears.
+  // "All" pill resets (everyone visible).
   if (id === "all") { currentPersonIds.clear(); return; }
-  if (additive) {
-    if (currentPersonIds.has(id)) currentPersonIds.delete(id);
-    else currentPersonIds.add(id);
-  } else {
-    if (currentPersonIds.size === 1 && currentPersonIds.has(id)) {
-      // Click again same single → deselect
-      currentPersonIds.clear();
-    } else {
-      currentPersonIds.clear();
-      currentPersonIds.add(id);
-    }
-  }
+  if (currentPersonIds.has(id)) currentPersonIds.delete(id);
+  else currentPersonIds.add(id);
 }
 
 // ---- Tag library (single source of truth for available tags + colors) ----
@@ -1750,6 +1751,8 @@ function mapPanelStatus(s) { const v = (s||'').toLowerCase(); if (v.includes('co
 function taskMatchesFilters(t) {
   // Tasks page hides tasks owned by disabled persons
   if (t.responsibleId && isDeactivated(t.responsibleId)) return false;
+  // currentPersonIds is the "hidden" set (people clicked off in the strip)
+  if (t.responsibleId && currentPersonIds.has(t.responsibleId)) return false;
   // Status include/exclude
   if (statusInclude.size > 0 && !statusInclude.has(t.panelStatus)) return false;
   if (statusExclude.has(t.panelStatus)) return false;
@@ -1757,8 +1760,7 @@ function taskMatchesFilters(t) {
   const prioKey = t.priority || "__none";
   if (prioInclude.size > 0 && !prioInclude.has(prioKey)) return false;
   if (prioExclude.has(prioKey)) return false;
-  // Person filter
-  if (currentPersonIds.size > 0 && !currentPersonIds.has(t.responsibleId)) return false;
+  // (Person filter is applied at top with HIDDEN-set semantics)
   // Search
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
@@ -1827,15 +1829,17 @@ function renderTeamStrip() {
   // On Tasks page we hide disabled persons entirely (strip, grid, and the tasks tied to them)
   const availableTeam = TEAM.filter(p => !isDeactivated(p.id));
   const availableCount = availableTeam.length;
-  const selectedCount = currentPersonIds.size === 0 ? availableCount : Array.from(currentPersonIds).filter(id => availableTeam.some(p => p.id === id)).length;
-  html.push('<div class="team-pill ' + (currentPersonIds.size===0?'active':'') + '" data-uid="all"><span class="av" style="background:#1a1a1a"><span class="ini">&Sigma;</span></span>All' + (showCounts ? '<span class="count">' + selectedCount + ' / ' + availableCount + '</span>' : '') + '</div>');
+  // currentPersonIds now means HIDDEN set. visible = available - hidden
+  const visibleCount = availableCount - Array.from(currentPersonIds).filter(id => availableTeam.some(p => p.id === id)).length;
+  html.push('<div class="team-pill ' + (currentPersonIds.size===0?'active':'') + '" data-uid="all"><span class="av" style="background:#1a1a1a"><span class="ini">&Sigma;</span></span>All' + (showCounts ? '<span class="count">' + visibleCount + ' / ' + availableCount + '</span>' : '') + '</div>');
   const sortedTeamIds = sortPersons(availableTeam.map(p => p.id), all);
   sortedTeamIds.forEach(pid => {
     const p = findPerson(pid);
     if (!p) return;
     if (!personMatchesTagFilter(p.id)) return;
+    const isHidden = currentPersonIds.has(p.id);
     const cnt = countTasksForPersonContextual(p.id);
-    html.push('<div class="team-pill ' + (currentPersonIds.has(p.id)?'active':'') + '" data-uid="' + p.id + '"><span class="av" style="background:' + p.color + '"><img src="' + p.photo + '" alt="" onerror="this.remove()"><span class="ini">' + initials(p.name) + '</span></span>' + escapeHtml(p.displayName) + (showCounts ? '<span class="count">' + cnt + '</span>' : '') + '</div>');
+    html.push('<div class="team-pill ' + (isHidden ? '' : 'active') + '" data-uid="' + p.id + '"><span class="av" style="background:' + p.color + '"><img src="' + p.photo + '" alt="" onerror="this.remove()"><span class="ini">' + initials(p.name) + '</span></span>' + escapeHtml(p.displayName) + (showCounts ? '<span class="count">' + cnt + '</span>' : '') + '</div>');
   });
   el.innerHTML = html.join("");
   el.querySelectorAll(".team-pill").forEach(node => {
@@ -1892,8 +1896,11 @@ function countTasksForPersonContextual(personId) {
 
 function countTasksMatchingExcept(dim, optKey) {
   return STORE.tasks.filter(t => {
+    // Tasks page hides tasks of disabled persons
+    if (t.responsibleId && isDeactivated(t.responsibleId)) return false;
     if (dim !== "person") {
-      if (currentPersonIds.size > 0 && !currentPersonIds.has(t.responsibleId)) return false;
+      // currentPersonIds = HIDDEN set in new semantics
+      if (currentPersonIds.has(t.responsibleId)) return false;
     }
     if (dim !== "tag") {
       if (!personMatchesTagFilter(t.responsibleId)) return false;
@@ -2185,9 +2192,10 @@ function render() {
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
   const allTasks = STORE.tasks;
-  // Disabled persons are hidden from the Tasks page entirely
+  // Disabled persons are hidden from the Tasks page entirely.
+  // currentPersonIds now = HIDDEN set (clicked-off persons).
   const allActivePersons = TEAM.filter(p => !isDeactivated(p.id)).map(p => p.id);
-  let personIds = currentPersonIds.size === 0 ? allActivePersons : allActivePersons.filter(id => currentPersonIds.has(id));
+  let personIds = allActivePersons.filter(id => !currentPersonIds.has(id));
   personIds = personIds.filter(personMatchesTagFilter);
   personIds = sortPersons(personIds, allTasks);
 
@@ -3256,16 +3264,17 @@ function renderRoadmapCalendar(roadmapId) {
     const pendingCount = unscheduled.filter(e => parseDate(e.startDate) && parseDate(e.endDate)).length;
     html += '<div class="rm-unscheduled" style="margin-top:14px; padding:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px"><strong style="font-size:13px">Unscheduled (' + unscheduled.length + ')</strong>' +
       '<div style="font-size:12px; color:#6b6b6b; margin:4px 0 8px">Set both dates and click <strong>Apply</strong> to send the task to the calendar.</div>';
+    const minDate = r.startDate ? r.startDate : '';
     unscheduled.forEach(entry => {
       const task = STORE.tasks.find(t => t.id === entry.taskId);
       if (!task) return;
       const ready = !!(parseDate(entry.startDate) && parseDate(entry.endDate));
       html += '<div class="rm-task-row ' + (ready ? "ready" : "") + '" data-tid="' + task.id + '">' +
         '<span title="' + escapeHtml(task.subject) + '">' + escapeHtml(task.subject.slice(0,80)) + (task.subject.length>80?'…':'') + '</span>' +
-        '<button class="rm-task-del" data-tid="' + task.id + '" title="Remove">×</button>' +
         '<div class="rm-task-dates">' +
-          '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '" title="Start">' +
-          '<input type="date" class="rmt-end" value="' + escapeHtml(entry.endDate||'') + '" title="End">' +
+          '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '" title="Start">' +
+          '<input type="date" class="rmt-end" value="' + escapeHtml(entry.endDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '" title="End">' +
+          '<button class="rm-task-del danger" data-tid="' + task.id + '" title="Remove from roadmap">×</button>' +
         '</div>' +
       '</div>';
     });
@@ -3352,32 +3361,49 @@ function renderRoadmapCalendar(roadmapId) {
     selectedRoadmapTimelineId = null;
     renderRoadmapsTimelinePage();
   });
-  // Unscheduled inline edits — pin task in unscheduled while editing, only apply on click
+  // Unscheduled inline edits — save dates without re-rendering until Apply is clicked
   cont.querySelectorAll('.rm-unscheduled .rm-task-row').forEach(node => {
     const tid = node.dataset.tid;
     const idx = (r.tasks||[]).findIndex(e => e.taskId === tid);
+    function refreshRowReadyState() {
+      const startInp = node.querySelector('.rmt-start');
+      const endInp = node.querySelector('.rmt-end');
+      const ready = !!(parseDate(startInp.value) && parseDate(endInp.value));
+      node.classList.toggle('ready', ready);
+      // Update Apply button count
+      let pendingReady = 0;
+      cont.querySelectorAll('.rm-unscheduled .rm-task-row').forEach(n => {
+        const s = n.querySelector('.rmt-start')?.value;
+        const e = n.querySelector('.rmt-end')?.value;
+        if (parseDate(s) && parseDate(e)) pendingReady++;
+      });
+      const applyBtn = document.getElementById('rmApplyDatesBtn');
+      if (applyBtn) {
+        applyBtn.disabled = pendingReady === 0;
+        applyBtn.textContent = pendingReady > 0 ? ('Apply (' + pendingReady + ')') : 'Apply';
+      }
+    }
     node.querySelector('.rmt-start').addEventListener('change', e => {
       if (idx >= 0) {
         r.tasks[idx].startDate = e.target.value;
-        // If both dates are now set, mark as pending so it stays in unscheduled until Apply
-        if (parseDate(r.tasks[idx].startDate) && parseDate(r.tasks[idx].endDate)) {
-          window.__rmPendingApply.add(tid);
-        }
+        // Pin in unscheduled (no full re-render until Apply)
+        if (parseDate(r.tasks[idx].startDate)) window.__rmPendingApply.add(tid);
         saveStore(STORE);
-        renderRoadmapCalendar(roadmapId);
+        refreshRowReadyState();
       }
     });
     node.querySelector('.rmt-end').addEventListener('change', e => {
       if (idx >= 0) {
         r.tasks[idx].endDate = e.target.value;
-        if (parseDate(r.tasks[idx].startDate) && parseDate(r.tasks[idx].endDate)) {
-          window.__rmPendingApply.add(tid);
-        }
+        if (parseDate(r.tasks[idx].endDate)) window.__rmPendingApply.add(tid);
         saveStore(STORE);
-        renderRoadmapCalendar(roadmapId);
+        refreshRowReadyState();
       }
     });
     node.querySelector('.rm-task-del').addEventListener('click', () => {
+      const task = STORE.tasks.find(x => x.id === tid);
+      const name = task ? task.subject : 'this task';
+      if (!confirm("Remove '" + name + "' from this roadmap?\n\nThe task itself stays in your task list.")) return;
       if (idx >= 0) {
         window.__rmPendingApply.delete(tid);
         r.tasks.splice(idx, 1);
@@ -5211,10 +5237,14 @@ function bnRenderDatePicker() {
       const dt = new Date(cur.year, cur.month, d);
       const isToday = dt.getTime() === today.getTime();
       const isSelected = selected && dt.getTime() === selected.getTime();
+      const beforeMin = BN_DP.minDate && dt < BN_DP.minDate;
+      const afterMax = BN_DP.maxDate && dt > BN_DP.maxDate;
+      const disabled = beforeMin || afterMax;
       const cls = ['bn-dp-day'];
       if (isToday) cls.push('today');
       if (isSelected) cls.push('selected');
-      html += '<div class="' + cls.join(' ') + '" data-d="' + bnFormatDate(dt) + '">' + d + '</div>';
+      if (disabled) cls.push('disabled');
+      html += '<div class="' + cls.join(' ') + '" data-d="' + bnFormatDate(dt) + '"' + (disabled ? ' data-disabled="1"' : '') + '>' + d + '</div>';
     }
     // Next month head
     const totalCells = startWd + daysInMonth;
@@ -5318,11 +5348,16 @@ function bnOpenDatePicker(input) {
   bnCloseDatePicker();
   BN_DP.input = input;
   BN_DP.view = 'days';
+  BN_DP.minDate = bnParseDate(input.getAttribute('min'));
+  BN_DP.maxDate = bnParseDate(input.getAttribute('max'));
   const sel = bnParseDate(input.value);
   const today = new Date();
-  BN_DP.cursor = sel
-    ? { year: sel.getFullYear(), month: sel.getMonth() }
-    : { year: today.getFullYear(), month: today.getMonth() };
+  // If no value yet, prefer data-default-month, then min, then today
+  const defaultBase = sel
+    || bnParseDate(input.getAttribute('data-default-month'))
+    || BN_DP.minDate
+    || today;
+  BN_DP.cursor = { year: defaultBase.getFullYear(), month: defaultBase.getMonth() };
   const popover = document.createElement('div');
   popover.className = 'bn-datepicker';
   document.body.appendChild(popover);
