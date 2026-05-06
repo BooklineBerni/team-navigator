@@ -565,7 +565,8 @@
   }
   .mini-7day .mini-day.weekend::before,
   .mini-7day .mini-day.holiday::before {
-    content: ""; position: absolute; inset: 0;
+    content: ""; position: absolute;
+    left: 0; right: 0; bottom: 0; top: 30px;
     background-image: repeating-linear-gradient(
       135deg,
       transparent 0,
@@ -573,10 +574,11 @@
       rgba(100,116,139,0.30) 5px,
       rgba(100,116,139,0.30) 7px
     );
-    pointer-events: none; border-radius: 8px;
+    pointer-events: none; z-index: 3;
   }
   .mini-7day .mini-day.timeoff::after {
-    content: ""; position: absolute; inset: 0;
+    content: ""; position: absolute;
+    left: 0; right: 0; bottom: 0; top: 30px;
     background-image: repeating-linear-gradient(
       135deg,
       transparent 0,
@@ -584,7 +586,7 @@
       rgba(220,38,38,0.32) 5px,
       rgba(220,38,38,0.32) 7px
     );
-    pointer-events: none; border-radius: 8px;
+    pointer-events: none; z-index: 3;
   }
   .mini-7day .mini-day.today { box-shadow: 0 0 0 2px #1a1a1a inset; }
   .mini-7day .mini-day .mini-dnum {
