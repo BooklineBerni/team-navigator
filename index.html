@@ -442,6 +442,49 @@
     padding: 20px; display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: start;
     margin-bottom: 16px;
   }
+  .profile-name-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    cursor: pointer; user-select: none;
+    border-radius: 8px; padding: 2px 8px; margin-left: -8px;
+    transition: background .12s;
+  }
+  .profile-name-trigger:hover { background: #f7f6f2; }
+  .profile-name-trigger .arrow {
+    font-size: 14px; color: #6b6b6b; transition: transform .12s;
+  }
+  .profile-name-trigger.open .arrow { transform: rotate(180deg); }
+  .profile-picker-popover {
+    position: absolute; z-index: 50;
+    top: 100%; left: -8px;
+    margin-top: 4px; min-width: 280px;
+    background: #fff; border: 1px solid #ececea; border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.12);
+    overflow: hidden;
+  }
+  .profile-picker-popover .pp-search {
+    padding: 8px;
+    border-bottom: 1px solid #ececea;
+  }
+  .profile-picker-popover .pp-search input {
+    width: 100%; border: 1px solid #d8d6d1; border-radius: 8px;
+    padding: 7px 10px; font-size: 13px; font-family: inherit; outline: none;
+  }
+  .profile-picker-popover .pp-list { max-height: 280px; overflow-y: auto; padding: 4px 0; }
+  .profile-picker-popover .pp-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; cursor: pointer; font-size: 13px;
+  }
+  .profile-picker-popover .pp-row:hover { background: #f7f6f2; }
+  .profile-picker-popover .pp-row.active { background: #1a1a1a; color: #fff; }
+  .profile-picker-popover .pp-row .av {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 10px; font-weight: 700;
+    overflow: hidden;
+  }
+  .profile-picker-popover .pp-row .av img { width: 26px; height: 26px; object-fit: cover; }
+  .profile-picker-popover .pp-row .nm { flex: 1; font-weight: 600; }
+  .profile-picker-popover .pp-empty { padding: 16px 12px; text-align: center; color: #9a9a9a; font-size: 12px; }
   .profile-header .av-big { width: 72px; height: 72px; border-radius: 50%; background: #ececea; overflow: hidden; }
   .profile-header .av-big img { width: 72px; height: 72px; object-fit: cover; }
   .profile-header h3 { margin: 0 0 4px; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
@@ -3346,6 +3389,8 @@ if (memberPageSearchEl) {
 let profilePersonId = localStorage.getItem("bookline-profilePersonId") || null;
 let profileGroupBy = localStorage.getItem("bookline-profileGroupBy") || "status";
 let profileEditMode = false;
+let profilePickerOpen = false;
+let profilePickerSearch = "";
 const profileCollapsedGroups = new Set(JSON.parse(localStorage.getItem("bookline-profileCollapsedGroups") || "[]"));
 
 function setProfilePerson(id) {
@@ -3383,27 +3428,16 @@ function renderProfilePage() {
   // Validate selection still exists
   if (profilePersonId && !findPerson(profilePersonId)) profilePersonId = null;
 
-  // Build picker (chips only)
-  const personListShown = TEAM.slice();
-
   let html = '';
-  html += '<div class="profile-picker">';
-  html += '<div class="picker-strip">';
-  personListShown.forEach(p => {
-    const ini = initials(p.name);
-    const photo = p.photo || "";
-    const active = (p.id === profilePersonId) ? ' active' : '';
-    html += '<span class="profile-chip' + active + '" data-pid="' + p.id + '">' +
-      '<span class="av" style="background:' + (p.color || '#9a9a9a') + ';display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">' +
-      (photo ? '<img src="' + escapeHtml(photo) + '" alt="" onerror="this.remove()">' : escapeHtml(ini)) +
-      '</span>' +
-      escapeHtml(p.displayName || p.name) +
-      '</span>';
-  });
-  html += '</div></div>';
 
   if (!profilePersonId) {
-    html += '<div class="profile-empty">Pick a person above to see their profile.</div>';
+    // Empty state — render dropdown standalone
+    html += '<div class="profile-empty" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:12px">' +
+      '<span>Pick a person to see their profile.</span>' +
+      '<div style="position:relative">' +
+      buildProfilePickerTrigger(null) +
+      (profilePickerOpen ? buildProfilePickerPopover() : '') +
+      '</div></div>';
     cont.innerHTML = html;
     wireProfilePicker();
     return;
@@ -3438,11 +3472,14 @@ function renderProfilePage() {
   html += person.photo ? ('<img src="' + escapeHtml(person.photo) + '" alt="" onerror="this.remove()">') : escapeHtml(ini);
   html += '</div>';
   html += '<div>';
-  html += '<h3>' + escapeHtml(person.name || person.displayName || '?') + '</h3>';
+  // Name + arrow trigger that opens person picker
+  html += '<div style="position:relative;display:inline-block">';
+  html += buildProfilePickerTrigger(person);
+  if (profilePickerOpen) html += buildProfilePickerPopover();
+  html += '</div>';
   html += '<div class="meta-line">';
   if (person.role) html += '<span>' + escapeHtml(person.role) + '</span>';
   if (person.email) html += '<span>' + escapeHtml(person.email) + '</span>';
-  html += '<span>Slack: <code style="font-size:11px">' + escapeHtml(person.id) + '</code></span>';
   html += '</div>';
   // Tags row
   html += '<div class="tags-row">';
@@ -3519,10 +3556,132 @@ function renderProfilePage() {
   wireProfileTasks();
 }
 
-function wireProfilePicker() {
-  document.querySelectorAll(".profile-chip").forEach(node => {
-    node.addEventListener("click", () => setProfilePerson(node.dataset.pid));
+function buildProfilePickerTrigger(person) {
+  if (person) {
+    return '<div class="profile-name-trigger' + (profilePickerOpen ? ' open' : '') + '" id="profilePickerTrigger">' +
+      '<h3 style="margin:0">' + escapeHtml(person.name || person.displayName || '?') + '</h3>' +
+      '<span class="arrow">▾</span>' +
+      '</div>';
+  }
+  return '<button class="btn primary" id="profilePickerTrigger">Choose person ▾</button>';
+}
+
+function buildProfilePickerPopover() {
+  const q = (profilePickerSearch || "").toLowerCase().trim();
+  const list = TEAM.filter(p => {
+    if (!q) return true;
+    return (p.name||"").toLowerCase().includes(q) || (p.displayName||"").toLowerCase().includes(q) || (p.email||"").toLowerCase().includes(q);
   });
+  let html = '<div class="profile-picker-popover" id="profilePickerPopover">';
+  html += '<div class="pp-search"><input id="profilePickerSearchInput" placeholder="Search people..." value="' + escapeHtml(profilePickerSearch || "") + '" autocomplete="off"></div>';
+  html += '<div class="pp-list">';
+  if (list.length === 0) {
+    html += '<div class="pp-empty">No people match.</div>';
+  } else {
+    list.forEach(p => {
+      const ini = initials(p.name);
+      const active = (p.id === profilePersonId) ? ' active' : '';
+      html += '<div class="pp-row' + active + '" data-pid="' + p.id + '">';
+      html += '<span class="av" style="background:' + (p.color || '#9a9a9a') + '">';
+      html += p.photo ? ('<img src="' + escapeHtml(p.photo) + '" alt="" onerror="this.remove()">') : escapeHtml(ini);
+      html += '</span>';
+      html += '<span class="nm">' + escapeHtml(p.displayName || p.name) + '</span>';
+      html += '</div>';
+    });
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function wireProfilePicker() {
+  const trigger = document.getElementById("profilePickerTrigger");
+  if (trigger) {
+    trigger.addEventListener("click", e => {
+      e.stopPropagation();
+      profilePickerOpen = !profilePickerOpen;
+      profilePickerSearch = "";
+      renderProfilePage();
+      // Auto-focus the search input when opening
+      if (profilePickerOpen) {
+        setTimeout(() => {
+          const inp = document.getElementById("profilePickerSearchInput");
+          if (inp) inp.focus();
+        }, 0);
+      }
+    });
+  }
+
+  const searchInp = document.getElementById("profilePickerSearchInput");
+  if (searchInp) {
+    searchInp.addEventListener("input", e => {
+      profilePickerSearch = e.target.value;
+      // Re-render only the popover list to preserve focus
+      const popover = document.getElementById("profilePickerPopover");
+      if (popover) {
+        const oldList = popover.querySelector(".pp-list");
+        const q = (profilePickerSearch || "").toLowerCase().trim();
+        const list = TEAM.filter(p => {
+          if (!q) return true;
+          return (p.name||"").toLowerCase().includes(q) || (p.displayName||"").toLowerCase().includes(q) || (p.email||"").toLowerCase().includes(q);
+        });
+        let listHtml = '';
+        if (list.length === 0) {
+          listHtml += '<div class="pp-empty">No people match.</div>';
+        } else {
+          list.forEach(p => {
+            const ini = initials(p.name);
+            const active = (p.id === profilePersonId) ? ' active' : '';
+            listHtml += '<div class="pp-row' + active + '" data-pid="' + p.id + '">';
+            listHtml += '<span class="av" style="background:' + (p.color || '#9a9a9a') + '">';
+            listHtml += p.photo ? ('<img src="' + escapeHtml(p.photo) + '" alt="" onerror="this.remove()">') : escapeHtml(ini);
+            listHtml += '</span>';
+            listHtml += '<span class="nm">' + escapeHtml(p.displayName || p.name) + '</span>';
+            listHtml += '</div>';
+          });
+        }
+        oldList.innerHTML = listHtml;
+        // Re-wire row clicks
+        oldList.querySelectorAll(".pp-row").forEach(row => {
+          row.addEventListener("click", () => {
+            profilePickerOpen = false;
+            setProfilePerson(row.dataset.pid);
+          });
+        });
+      }
+    });
+    searchInp.addEventListener("click", e => e.stopPropagation());
+    searchInp.addEventListener("keydown", e => {
+      if (e.key === "Escape") {
+        profilePickerOpen = false;
+        renderProfilePage();
+      }
+    });
+  }
+
+  document.querySelectorAll(".profile-picker-popover .pp-row").forEach(row => {
+    row.addEventListener("click", () => {
+      profilePickerOpen = false;
+      setProfilePerson(row.dataset.pid);
+    });
+  });
+
+  // Click outside closes
+  if (profilePickerOpen && !window.__profilePickerOutsideHandler) {
+    window.__profilePickerOutsideHandler = function(e) {
+      const pop = document.getElementById("profilePickerPopover");
+      const trig = document.getElementById("profilePickerTrigger");
+      if (pop && !pop.contains(e.target) && trig && !trig.contains(e.target)) {
+        profilePickerOpen = false;
+        document.removeEventListener("click", window.__profilePickerOutsideHandler);
+        delete window.__profilePickerOutsideHandler;
+        renderProfilePage();
+      }
+    };
+    setTimeout(() => document.addEventListener("click", window.__profilePickerOutsideHandler), 0);
+  } else if (!profilePickerOpen && window.__profilePickerOutsideHandler) {
+    document.removeEventListener("click", window.__profilePickerOutsideHandler);
+    delete window.__profilePickerOutsideHandler;
+  }
 }
 
 function wireProfileHeader(person) {
