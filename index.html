@@ -77,7 +77,7 @@
   .stats .stat { display: inline-flex; gap: 4px; align-items: center; }
   .stats .dot { width: 6px; height: 6px; border-radius: 50%; }
   .dot.pending { background: #d1a300; } .dot.progress { background: #2563eb; } .dot.done { background: #16a34a; }
-  .dot.archived { background: #92400e; } .dot.discarded { background: #64748b; }
+  .dot.archived { background: #92400e; } .dot.discarded { background: #9a9a9a; }
 
   .tasks { display: flex; flex-direction: column; gap: 4px; max-height: 540px; overflow-y: auto; padding-right: 2px; }
   .tasks:empty::before { content: "No tasks match these filters"; display: block; font-size: 12px; color: #9a9a9a; padding: 6px 2px; }
@@ -88,7 +88,7 @@
   .task[data-pstatus="completed"] .text { text-decoration: line-through; color: #047857; opacity: 0.85; }
   .task[data-pstatus="archived"]    { background: #f5efe6; border-color: #d6c5a8; opacity: 0.85; }
   .task[data-pstatus="archived"] .text { color: #78350f; }
-  .task[data-pstatus="discarded"]   { background: #f1f5f9; border-color: #cbd5e1; opacity: 0.75; }
+  .task[data-pstatus="discarded"]   { background: #f5f5f4; border-color: #d8d6d1; opacity: 0.75; }
   .task[data-pstatus="discarded"] .text { text-decoration: line-through; color: #64748b; }
   .task[data-selected="true"] { outline: 2px solid #1a1a1a; outline-offset: -1px; }
   .task .text { font-size: 13px; word-break: break-word; line-height: 1.3; font-weight: 500; cursor: pointer; }
@@ -126,7 +126,7 @@
   .flat-task[data-pstatus="in_progress"] { background: #eff6ff; border-color: #bfdbfe; }
   .flat-task[data-pstatus="completed"]   { background: #ecfdf3; border-color: #a7f3d0; }
   .flat-task[data-pstatus="archived"]    { background: #f5efe6; border-color: #d6c5a8; opacity: 0.85; }
-  .flat-task[data-pstatus="discarded"]   { background: #f1f5f9; border-color: #cbd5e1; opacity: 0.75; }
+  .flat-task[data-pstatus="discarded"]   { background: #f5f5f4; border-color: #d8d6d1; opacity: 0.75; }
   .flat-task .text { font-size: 13px; cursor: pointer; }
   .flat-task .av-mini { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; position: relative; color: #fff; font-weight: 600; font-size: 11px; display: inline-flex; }
   .flat-task .av-mini .ini { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 0; }
@@ -144,6 +144,15 @@
   .member-card .name { font-weight: 700; font-size: 14px; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .member-card .role { font-size: 12px; color: #6b6b6b; }
   .member-card .email { font-size: 12px; color: #6b6b6b; word-break: break-all; line-height: 1.3; }
+  .person-roadmaps-line { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .rm-mini-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #f0efeb; color: #1a1a1a; border: 1px solid #ececea;
+    border-radius: 6px; padding: 2px 6px; font-size: 10.5px; font-weight: 600;
+    cursor: pointer; transition: background .12s, border-color .12s;
+  }
+  .rm-mini-badge:hover { background: #e7e5e0; border-color: #d8d6d1; }
+  .rm-mini-owner { color: #1a1a1a; font-size: 8px; }
   .member-card:hover { border-color: #1a1a1a; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
   .member-card.deactivated { opacity: 0.55; }
 
@@ -156,16 +165,16 @@
   .rm-tab.drop-before { box-shadow: -3px 0 0 0 #1a1a1a; }
   .rm-tab.drop-after { box-shadow: 3px 0 0 0 #1a1a1a; }
   .rm-tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-  .rm-summary-card { padding: 14px 18px; background: #fff; border: 1px solid #ececea; border-radius: 12px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; }
-  .rm-summary-name { font-size: 18px; font-weight: 700; min-width: 0; }
+  .rm-summary-card { padding: 14px 18px; background: #fff; border: 1px solid #ececea; border-radius: 12px; margin-bottom: 14px; display: flex; align-items: center; gap: 16px; }
+  .rm-summary-name { font-size: 18px; font-weight: 700; flex-shrink: 0; }
   .rm-summary-meta {
     font-size: 12px; color: #6b6b6b;
     display: flex; align-items: center; justify-content: center;
     gap: 10px; flex-wrap: wrap;
-    grid-column: 2;
+    flex: 1; /* center within the space remaining between title and actions */
   }
   .rm-summary-meta .sep { color: #d8d6d1; }
-  .rm-summary-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .rm-summary-actions { display: flex; gap: 6px; flex-shrink: 0; }
   .gantt-container { background: #fff; border: 1px solid #ececea; border-radius: 12px; overflow: auto; max-width: 100%; }
   .gantt-time-axis { display: grid; grid-template-columns: 220px 1fr; border-bottom: 1px solid #ececea; background: #faf9f7; position: sticky; top: 0; z-index: 5; }
   .gantt-corner { padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.04em; border-right: 1px solid #ececea; }
@@ -438,7 +447,7 @@
   #view-profile { padding-top: 18px; }
   #view-roadmaps { padding-top: 18px; }
   #view-members { padding-top: 18px; }
-  /* Compact date inputs — auto-open picker on focus, stay typable */
+  /* Compact date inputs — tight to content + custom popup */
   input[type="date"] {
     border: 1px solid #d8d6d1; border-radius: 6px;
     padding: 3px 6px; font-size: 12px; font-family: inherit;
@@ -446,20 +455,98 @@
     appearance: none; -webkit-appearance: none;
     cursor: pointer; outline: none;
     transition: border-color .12s, box-shadow .12s;
-    min-width: 0; width: auto; max-width: 130px;
-    line-height: 1.2;
+    width: 122px; /* tight: fits dd/mm/yyyy + tiny calendar icon */
+    line-height: 1.2; box-sizing: border-box;
   }
   input[type="date"]:hover { border-color: #1a1a1a; }
   input[type="date"]:focus { border-color: #1a1a1a; box-shadow: 0 0 0 2px rgba(26,26,26,0.08); }
   input[type="date"]::-webkit-calendar-picker-indicator {
-    cursor: pointer; opacity: 0.5;
-    filter: grayscale(100%);
-    padding: 0; margin-left: 4px;
-    transition: opacity .12s;
+    cursor: pointer; opacity: 0; /* hide native indicator — we open our own picker */
+    width: 0; padding: 0; margin: 0;
   }
-  input[type="date"]:hover::-webkit-calendar-picker-indicator { opacity: 0.85; }
   input[type="date"]::-webkit-datetime-edit { color: #1a1a1a; padding: 0; }
   input[type="date"]:placeholder-shown::-webkit-datetime-edit { color: #9a9a9a; }
+
+  /* Custom date picker popover */
+  .bn-datepicker {
+    position: absolute; z-index: 1000;
+    background: #fff; border: 1px solid #ececea; border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+    padding: 12px; width: 252px;
+    font-family: inherit; user-select: none;
+  }
+  .bn-dp-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px; gap: 6px;
+  }
+  .bn-dp-nav {
+    width: 24px; height: 24px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #6b6b6b; font-size: 14px; font-weight: 700;
+    border: 1px solid transparent;
+  }
+  .bn-dp-nav:hover { background: #f7f6f2; color: #1a1a1a; }
+  .bn-dp-month {
+    flex: 1; text-align: center; font-size: 13px; font-weight: 700;
+    color: #1a1a1a; cursor: pointer;
+    padding: 4px 8px; border-radius: 6px;
+    text-transform: capitalize;
+  }
+  .bn-dp-month:hover { background: #f7f6f2; }
+  .bn-dp-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+    margin-bottom: 4px;
+  }
+  .bn-dp-wd {
+    text-align: center; font-size: 10px; color: #9a9a9a;
+    font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding: 4px 0;
+  }
+  .bn-dp-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+  }
+  .bn-dp-day {
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; cursor: pointer; border-radius: 6px;
+    color: #1a1a1a; font-weight: 500;
+    transition: background .1s;
+  }
+  .bn-dp-day:hover { background: #f0efeb; }
+  .bn-dp-day.other-month { color: #c4c2bd; }
+  .bn-dp-day.today { font-weight: 700; color: #1a1a1a; box-shadow: 0 0 0 1px #d8d6d1 inset; }
+  .bn-dp-day.selected { background: #1a1a1a !important; color: #fff !important; font-weight: 700; }
+  .bn-dp-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid #ececea;
+  }
+  .bn-dp-clear, .bn-dp-today {
+    font-size: 11px; font-weight: 600; color: #6b6b6b;
+    cursor: pointer; padding: 4px 8px; border-radius: 6px;
+    background: none; border: none; font-family: inherit;
+  }
+  .bn-dp-clear:hover, .bn-dp-today:hover { background: #f7f6f2; color: #1a1a1a; }
+  .bn-dp-yearpicker {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    padding: 8px 0;
+  }
+  .bn-dp-year {
+    text-align: center; padding: 8px; border-radius: 6px;
+    cursor: pointer; font-size: 12px; font-weight: 600; color: #1a1a1a;
+  }
+  .bn-dp-year:hover { background: #f0efeb; }
+  .bn-dp-year.selected { background: #1a1a1a; color: #fff; }
+  .bn-dp-monthpicker {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    padding: 8px 0;
+  }
+  .bn-dp-mo {
+    text-align: center; padding: 8px; border-radius: 6px;
+    cursor: pointer; font-size: 12px; font-weight: 600; color: #1a1a1a;
+    text-transform: capitalize;
+  }
+  .bn-dp-mo:hover { background: #f0efeb; }
+  .bn-dp-mo.selected { background: #1a1a1a; color: #fff; }
   .profile-empty { padding: 40px 0; text-align: center; color: #6b6b6b; font-size: 14px; }
   .profile-picker {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
@@ -812,7 +899,7 @@
   .flat-task[data-pstatus="completed"] .text { text-decoration: line-through; color: #047857; opacity: 0.85; }
   .flat-task[data-pstatus="archived"]    { background: #f5efe6; border-color: #d6c5a8; opacity: 0.85; }
   .flat-task[data-pstatus="archived"] .text { color: #78350f; }
-  .flat-task[data-pstatus="discarded"]   { background: #f1f5f9; border-color: #cbd5e1; opacity: 0.75; }
+  .flat-task[data-pstatus="discarded"]   { background: #f5f5f4; border-color: #d8d6d1; opacity: 0.75; }
   .flat-task[data-pstatus="discarded"] .text { text-decoration: line-through; color: #64748b; }
   .flat-task[data-selected="true"] { outline: 2px solid #1a1a1a; outline-offset: -1px; }
   .flat-task .av-mini { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; position: relative; color: #fff; font-weight: 600; font-size: 11px; display: inline-flex; }
@@ -1631,6 +1718,8 @@ function tagMiniHtml(tag) {
 function mapPanelStatus(s) { const v = (s||'').toLowerCase(); if (v.includes('complete')) return 'completed'; if (v.includes('progress') || v.includes('review')) return 'in_progress'; if (v.includes('discard')) return 'discarded'; if (v.includes('archived')) return 'archived'; return 'pending'; }
 
 function taskMatchesFilters(t) {
+  // Tasks page hides tasks owned by disabled persons
+  if (t.responsibleId && isDeactivated(t.responsibleId)) return false;
   // Status include/exclude
   if (statusInclude.size > 0 && !statusInclude.has(t.panelStatus)) return false;
   if (statusExclude.has(t.panelStatus)) return false;
@@ -1705,14 +1794,18 @@ function renderTeamStrip() {
     }
     return true;
   }).length;
-  html.push('<div class="team-pill ' + (currentPersonIds.size===0?'active':'') + '" data-uid="all"><span class="av" style="background:#1a1a1a"><span class="ini">&Sigma;</span></span>All' + (showCounts ? '<span class="count">' + totalContextual + ' / ' + STORE.tasks.length + '</span>' : '') + '</div>');
-  const sortedTeamIds = sortPersons(TEAM.map(p => p.id), all);
+  // On Tasks page we hide disabled persons entirely (strip, grid, and the tasks tied to them)
+  const availableTeam = TEAM.filter(p => !isDeactivated(p.id));
+  const availableCount = availableTeam.length;
+  const selectedCount = currentPersonIds.size === 0 ? availableCount : Array.from(currentPersonIds).filter(id => availableTeam.some(p => p.id === id)).length;
+  html.push('<div class="team-pill ' + (currentPersonIds.size===0?'active':'') + '" data-uid="all"><span class="av" style="background:#1a1a1a"><span class="ini">&Sigma;</span></span>All' + (showCounts ? '<span class="count">' + selectedCount + ' / ' + availableCount + '</span>' : '') + '</div>');
+  const sortedTeamIds = sortPersons(availableTeam.map(p => p.id), all);
   sortedTeamIds.forEach(pid => {
     const p = findPerson(pid);
     if (!p) return;
     if (!personMatchesTagFilter(p.id)) return;
     const cnt = countTasksForPersonContextual(p.id);
-    html.push('<div class="team-pill ' + (currentPersonIds.has(p.id)?'active':'') + (isDeactivated(p.id) ? ' is-deact' : '') + '" data-uid="' + p.id + '"><span class="av" style="background:' + p.color + '"><img src="' + p.photo + '" alt="" onerror="this.remove()"><span class="ini">' + initials(p.name) + '</span></span>' + escapeHtml(p.displayName) + (showCounts ? '<span class="count">' + cnt + '</span>' : '') + '</div>');
+    html.push('<div class="team-pill ' + (currentPersonIds.has(p.id)?'active':'') + '" data-uid="' + p.id + '"><span class="av" style="background:' + p.color + '"><img src="' + p.photo + '" alt="" onerror="this.remove()"><span class="ini">' + initials(p.name) + '</span></span>' + escapeHtml(p.displayName) + (showCounts ? '<span class="count">' + cnt + '</span>' : '') + '</div>');
   });
   el.innerHTML = html.join("");
   el.querySelectorAll(".team-pill").forEach(node => {
@@ -2062,7 +2155,8 @@ function render() {
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
   const allTasks = STORE.tasks;
-  const allActivePersons = TEAM.map(p => p.id);
+  // Disabled persons are hidden from the Tasks page entirely
+  const allActivePersons = TEAM.filter(p => !isDeactivated(p.id)).map(p => p.id);
   let personIds = currentPersonIds.size === 0 ? allActivePersons : allActivePersons.filter(id => currentPersonIds.has(id));
   personIds = personIds.filter(personMatchesTagFilter);
   personIds = sortPersons(personIds, allTasks);
@@ -2924,7 +3018,7 @@ function renderRoadmapCalendar(roadmapId) {
   // Status color map
   const statusColors = {
     pending: '#fbbf24', in_progress: '#60a5fa', completed: '#34d399',
-    archived: '#a98c5a', discarded: '#94a3b8'
+    archived: '#a98c5a', discarded: '#9a9a9a'
   };
 
   // Compute calendar range: first day of grid (Monday) to last day
@@ -3379,7 +3473,7 @@ function renderHomePage() {
     { key: "in_progress", label: "In Progress", color: "#60a5fa", count: tasks.filter(t => t.panelStatus === "in_progress").length },
     { key: "completed", label: "Completed", color: "#34d399", count: completed },
     { key: "archived", label: "Archived", color: "#a98c5a", count: archived },
-    { key: "discarded", label: "Discarded", color: "#94a3b8", count: discarded }
+    { key: "discarded", label: "Discarded", color: "#9a9a9a", count: discarded }
   ];
   const maxCount = Math.max(1, ...buckets.map(b => b.count));
   const barsCont = document.getElementById("dashPipelineBars");
@@ -3467,6 +3561,19 @@ function renderMembersPage() {
     const taskCount = STORE.tasks.filter(t => t.responsibleId === p.id).length;
     const pendingCount = STORE.tasks.filter(t => t.responsibleId === p.id && t.panelStatus === "pending").length;
     const inProgressCount = STORE.tasks.filter(t => t.responsibleId === p.id && t.panelStatus === "in_progress").length;
+    // Roadmaps where person is owner OR has tasks assigned
+    const personRoadmaps = getRoadmaps().filter(r => {
+      if (r.responsibleId === p.id) return true;
+      return (r.tasks || []).some(entry => {
+        const t = STORE.tasks.find(x => x.id === entry.taskId);
+        return t && t.responsibleId === p.id;
+      });
+    });
+    const roadmapsHtml = personRoadmaps.length
+      ? '<div class="person-roadmaps-line" data-uid="' + p.id + '">' +
+          personRoadmaps.map(r => '<span class="rm-mini-badge" data-rm="' + r.id + '" title="Open ' + escapeHtml(r.name||'') + '">' + escapeHtml((r.name||'').slice(0,22)) + (r.responsibleId === p.id ? ' <span class="rm-mini-owner" title="Owner">●</span>' : '') + '</span>').join('') +
+        '</div>'
+      : '';
     return '<div class="member-card ' + (isDeactivated(p.id) ? "deactivated" : "") + '" data-uid="' + p.id + '">' +
       '<div class="person-row">' +
         '<span class="avatar" style="background:' + p.color + '">' +
@@ -3481,6 +3588,7 @@ function renderMembersPage() {
         '</div>' +
       '</div>' +
       tagsHtml +
+      roadmapsHtml +
       '<div class="stats" style="margin-top:auto; padding-top:6px; border-top:1px solid #f0efeb">' +
         '<span class="stat" title="Total tasks">' + taskCount + ' tasks</span>' +
         (pendingCount > 0 ? '<span class="stat" title="Pending"><span class="dot pending"></span>' + pendingCount + '</span>' : '') +
@@ -3499,8 +3607,20 @@ function renderMembersPage() {
   }
   grid.innerHTML = html;
   document.querySelectorAll("#membersGrid .member-card").forEach(node => {
-    node.addEventListener("click", () => {
-      // Navigate to Profile page for this person
+    node.addEventListener("click", e => {
+      // Roadmap badge clicks should jump to that roadmap, not the profile
+      const badge = e.target.closest('.rm-mini-badge');
+      if (badge) {
+        e.stopPropagation();
+        const rmId = badge.dataset.rm;
+        if (rmId) {
+          selectedRoadmapTimelineId = rmId;
+          localStorage.setItem("bookline-selectedRoadmap", rmId);
+          switchView("roadmaps");
+        }
+        return;
+      }
+      // Otherwise navigate to Profile page for this person
       setProfilePerson(node.dataset.uid);
       switchView("profile");
     });
@@ -3881,7 +4001,7 @@ function renderProfileRoadmapCard(rm, personId) {
 
   const statusColors = {
     pending: '#fbbf24', in_progress: '#60a5fa', completed: '#34d399',
-    archived: '#a98c5a', discarded: '#94a3b8'
+    archived: '#a98c5a', discarded: '#9a9a9a'
   };
   const wdLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
@@ -4004,7 +4124,7 @@ function renderProfileTasks(tasks, groupBy) {
       if (t.priority) badges.push('<span class="badge ' + prioCls + '">' + escapeHtml(t.priority) + '</span>');
       if (t.type) badges.push('<span class="badge ' + typeCls + '">' + escapeHtml(t.type) + '</span>');
       if (t.dueDate) badges.push('<span class="badge due">' + escapeHtml(t.dueDate) + '</span>');
-      const statusColors = { pending: '#fbbf24', in_progress: '#60a5fa', completed: '#34d399', archived: '#a98c5a', discarded: '#94a3b8' };
+      const statusColors = { pending: '#fbbf24', in_progress: '#60a5fa', completed: '#34d399', archived: '#a98c5a', discarded: '#9a9a9a' };
       const dotColor = statusColors[t.panelStatus] || '#94a3b8';
       html += '<div class="profile-task-row" data-tid="' + t.id + '">';
       html += '<span style="width:8px;height:8px;border-radius:50%;background:' + dotColor + '"></span>';
@@ -4966,25 +5086,214 @@ document.getElementById("showCountsChk").addEventListener("change", e => {
 setTasksViewMode(tasksViewMode);
 switchView(currentView);
 
-// Auto-open native date picker when focusing any date input.
-// Uses event delegation so it works for inputs that are added later by re-renders.
-document.addEventListener("focusin", e => {
-  const el = e.target;
-  if (el && el.tagName === "INPUT" && el.type === "date") {
-    if (typeof el.showPicker === "function") {
-      try { el.showPicker(); } catch (_) { /* showPicker may throw if not user-activated */ }
+// ===== Custom date picker =====
+// Replaces the browser's native date popup with a styled one matching the app's aesthetics.
+const BN_DP = {
+  popover: null,
+  input: null,
+  view: 'days',  // 'days' | 'months' | 'years'
+  cursor: null,  // {year, month}
+  monthNames: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
+  weekdayNames: ['L','M','X','J','V','S','D'],
+};
+
+function bnParseDate(str) {
+  if (!str) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str);
+  if (!m) return null;
+  return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+}
+function bnFormatDate(d) {
+  if (!d) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + "-" + m + "-" + day;
+}
+
+function bnRenderDatePicker() {
+  if (!BN_DP.popover || !BN_DP.input) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const selected = bnParseDate(BN_DP.input.value);
+  const cur = BN_DP.cursor;
+  let html = '';
+  if (BN_DP.view === 'days') {
+    html += '<div class="bn-dp-head">' +
+      '<div class="bn-dp-nav" data-act="prev">‹</div>' +
+      '<div class="bn-dp-month" data-act="months">' + BN_DP.monthNames[cur.month] + ' ' + cur.year + '</div>' +
+      '<div class="bn-dp-nav" data-act="next">›</div>' +
+      '</div>';
+    html += '<div class="bn-dp-weekdays">';
+    BN_DP.weekdayNames.forEach(w => { html += '<div class="bn-dp-wd">' + w + '</div>'; });
+    html += '</div>';
+    html += '<div class="bn-dp-grid">';
+    const firstOfMonth = new Date(cur.year, cur.month, 1);
+    const startWd = (firstOfMonth.getDay() + 6) % 7;  // 0=Mon
+    const daysInMonth = new Date(cur.year, cur.month + 1, 0).getDate();
+    const daysInPrev = new Date(cur.year, cur.month, 0).getDate();
+    // Previous month tail
+    for (let i = startWd - 1; i >= 0; i--) {
+      const d = daysInPrev - i;
+      html += '<div class="bn-dp-day other-month" data-d="' + (cur.month === 0 ? cur.year - 1 : cur.year) + '-' + String((cur.month === 0 ? 12 : cur.month)).padStart(2,'0') + '-' + String(d).padStart(2,'0') + '">' + d + '</div>';
     }
+    // Current month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dt = new Date(cur.year, cur.month, d);
+      const isToday = dt.getTime() === today.getTime();
+      const isSelected = selected && dt.getTime() === selected.getTime();
+      const cls = ['bn-dp-day'];
+      if (isToday) cls.push('today');
+      if (isSelected) cls.push('selected');
+      html += '<div class="' + cls.join(' ') + '" data-d="' + bnFormatDate(dt) + '">' + d + '</div>';
+    }
+    // Next month head
+    const totalCells = startWd + daysInMonth;
+    const tail = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for (let i = 1; i <= tail; i++) {
+      const ny = cur.month === 11 ? cur.year + 1 : cur.year;
+      const nm = cur.month === 11 ? 0 : cur.month + 1;
+      html += '<div class="bn-dp-day other-month" data-d="' + ny + '-' + String(nm + 1).padStart(2,'0') + '-' + String(i).padStart(2,'0') + '">' + i + '</div>';
+    }
+    html += '</div>';
+    html += '<div class="bn-dp-foot">' +
+      '<button class="bn-dp-clear" data-act="clear">Clear</button>' +
+      '<button class="bn-dp-today" data-act="today">Today</button>' +
+      '</div>';
+  } else if (BN_DP.view === 'months') {
+    html += '<div class="bn-dp-head">' +
+      '<div class="bn-dp-nav" data-act="yprev">‹</div>' +
+      '<div class="bn-dp-month" data-act="years">' + cur.year + '</div>' +
+      '<div class="bn-dp-nav" data-act="ynext">›</div>' +
+      '</div>';
+    html += '<div class="bn-dp-monthpicker">';
+    for (let i = 0; i < 12; i++) {
+      const cls = ['bn-dp-mo'];
+      if (i === cur.month) cls.push('selected');
+      html += '<div class="' + cls.join(' ') + '" data-mo="' + i + '">' + BN_DP.monthNames[i].slice(0,3) + '</div>';
+    }
+    html += '</div>';
+  } else if (BN_DP.view === 'years') {
+    const startYear = Math.floor(cur.year / 12) * 12;
+    html += '<div class="bn-dp-head">' +
+      '<div class="bn-dp-nav" data-act="yrange-prev">‹</div>' +
+      '<div class="bn-dp-month">' + startYear + ' – ' + (startYear + 11) + '</div>' +
+      '<div class="bn-dp-nav" data-act="yrange-next">›</div>' +
+      '</div>';
+    html += '<div class="bn-dp-yearpicker">';
+    for (let i = 0; i < 12; i++) {
+      const y = startYear + i;
+      const cls = ['bn-dp-year'];
+      if (y === cur.year) cls.push('selected');
+      html += '<div class="' + cls.join(' ') + '" data-y="' + y + '">' + y + '</div>';
+    }
+    html += '</div>';
+  }
+  BN_DP.popover.innerHTML = html;
+  // Wire up
+  BN_DP.popover.querySelectorAll('.bn-dp-day:not(.other-month)').forEach(node => {
+    node.addEventListener('click', e => {
+      e.stopPropagation();
+      bnSelectDate(node.dataset.d);
+    });
+  });
+  BN_DP.popover.querySelectorAll('.bn-dp-day.other-month').forEach(node => {
+    node.addEventListener('click', e => {
+      e.stopPropagation();
+      bnSelectDate(node.dataset.d);
+    });
+  });
+  BN_DP.popover.querySelectorAll('[data-act]').forEach(node => {
+    node.addEventListener('click', e => {
+      e.stopPropagation();
+      const act = node.dataset.act;
+      if (act === 'prev') { if (cur.month === 0) { cur.month = 11; cur.year--; } else cur.month--; bnRenderDatePicker(); }
+      else if (act === 'next') { if (cur.month === 11) { cur.month = 0; cur.year++; } else cur.month++; bnRenderDatePicker(); }
+      else if (act === 'months') { BN_DP.view = 'months'; bnRenderDatePicker(); }
+      else if (act === 'years') { BN_DP.view = 'years'; bnRenderDatePicker(); }
+      else if (act === 'yprev') { cur.year--; bnRenderDatePicker(); }
+      else if (act === 'ynext') { cur.year++; bnRenderDatePicker(); }
+      else if (act === 'yrange-prev') { cur.year -= 12; bnRenderDatePicker(); }
+      else if (act === 'yrange-next') { cur.year += 12; bnRenderDatePicker(); }
+      else if (act === 'clear') { bnSelectDate(""); }
+      else if (act === 'today') { bnSelectDate(bnFormatDate(today)); }
+    });
+  });
+  BN_DP.popover.querySelectorAll('.bn-dp-mo').forEach(node => {
+    node.addEventListener('click', e => {
+      e.stopPropagation();
+      cur.month = parseInt(node.dataset.mo);
+      BN_DP.view = 'days';
+      bnRenderDatePicker();
+    });
+  });
+  BN_DP.popover.querySelectorAll('.bn-dp-year').forEach(node => {
+    node.addEventListener('click', e => {
+      e.stopPropagation();
+      cur.year = parseInt(node.dataset.y);
+      BN_DP.view = 'months';
+      bnRenderDatePicker();
+    });
+  });
+}
+
+function bnSelectDate(value) {
+  if (!BN_DP.input) return;
+  BN_DP.input.value = value;
+  BN_DP.input.dispatchEvent(new Event('change', { bubbles: true }));
+  BN_DP.input.dispatchEvent(new Event('input', { bubbles: true }));
+  bnCloseDatePicker();
+}
+
+function bnOpenDatePicker(input) {
+  bnCloseDatePicker();
+  BN_DP.input = input;
+  BN_DP.view = 'days';
+  const sel = bnParseDate(input.value);
+  const today = new Date();
+  BN_DP.cursor = sel
+    ? { year: sel.getFullYear(), month: sel.getMonth() }
+    : { year: today.getFullYear(), month: today.getMonth() };
+  const popover = document.createElement('div');
+  popover.className = 'bn-datepicker';
+  document.body.appendChild(popover);
+  BN_DP.popover = popover;
+  // Position relative to input
+  const rect = input.getBoundingClientRect();
+  popover.style.left = (rect.left + window.scrollX) + 'px';
+  popover.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+  bnRenderDatePicker();
+  // Fix overflow off-right
+  setTimeout(() => {
+    const pr = popover.getBoundingClientRect();
+    if (pr.right > window.innerWidth - 8) {
+      popover.style.left = (window.innerWidth - pr.width - 8 + window.scrollX) + 'px';
+    }
+  }, 0);
+}
+function bnCloseDatePicker() {
+  if (BN_DP.popover) {
+    BN_DP.popover.remove();
+    BN_DP.popover = null;
+    BN_DP.input = null;
+  }
+}
+
+document.addEventListener('focusin', e => {
+  const el = e.target;
+  if (el && el.tagName === 'INPUT' && el.type === 'date') {
+    bnOpenDatePicker(el);
   }
 });
-// Also on click (some browsers need a user click to allow showPicker)
-document.addEventListener("click", e => {
-  const el = e.target;
-  if (el && el.tagName === "INPUT" && el.type === "date") {
-    if (typeof el.showPicker === "function") {
-      try { el.showPicker(); } catch (_) {}
-    }
+document.addEventListener('mousedown', e => {
+  if (BN_DP.popover && !BN_DP.popover.contains(e.target) && e.target !== BN_DP.input) {
+    bnCloseDatePicker();
   }
-}, true);
+});
+window.addEventListener('scroll', bnCloseDatePicker, true);
+window.addEventListener('resize', bnCloseDatePicker);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') bnCloseDatePicker();
+});
 detectBlockedPhotos();
 </script>
 </body>
