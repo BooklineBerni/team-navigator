@@ -501,6 +501,70 @@
   #view-profile { padding-top: 18px; }
   #view-roadmaps { padding-top: 18px; }
   #view-members { padding-top: 18px; }
+  #view-requests { padding-top: 18px; }
+  /* Requests page */
+  .rq-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .rq-toolbar .rq-sync-info { font-size: 11.5px; color: #6b6b6b; }
+  .rq-section-title {
+    font-size: 13px; font-weight: 700; color: #1a1a1a;
+    text-transform: uppercase; letter-spacing: .04em; margin: 20px 0 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .rq-section-title .count { color: #9a9a9a; font-weight: 600; }
+  .rq-section-toggle { cursor: pointer; user-select: none; padding: 4px 0; }
+  .rq-section-toggle .caret { display: inline-block; min-width: 14px; color: #9a9a9a; font-size: 11px; }
+  .rq-empty { padding: 28px; text-align: center; color: #9a9a9a; font-size: 13px; background: #fff; border: 1px dashed #ececea; border-radius: 12px; }
+  .rq-list { display: flex; flex-direction: column; gap: 12px; }
+  .rq-card {
+    background: #fff; border: 1px solid #ececea; border-radius: 14px;
+    padding: 16px 18px; transition: box-shadow .12s;
+  }
+  .rq-card.handled { background: #f7f6f2; opacity: 0.8; }
+  .rq-card .rq-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .rq-card h4 { margin: 0; font-size: 16px; font-weight: 700; color: #1a1a1a; }
+  .rq-card .rq-meta { font-size: 11.5px; color: #6b6b6b; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .rq-card .rq-meta .sep { color: #d8d6d1; }
+  .rq-card .rq-meta .av { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 9px; font-weight: 700; overflow: hidden; }
+  .rq-card .rq-meta .av img { width: 18px; height: 18px; object-fit: cover; }
+  .rq-card .rq-section { margin-top: 8px; }
+  .rq-card .rq-label { font-size: 10.5px; color: #9a9a9a; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+  .rq-card .rq-comments { font-size: 13px; color: #1a1a1a; line-height: 1.45; white-space: pre-wrap; }
+  .rq-card .rq-proposed { display: flex; gap: 6px; flex-wrap: wrap; }
+  .rq-card .rq-proposed .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #f0efeb; padding: 3px 9px 3px 3px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600; cursor: pointer;
+  }
+  .rq-card .rq-proposed .chip:hover { background: #e7e5e0; }
+  .rq-card .rq-proposed .chip .av { width: 18px; height: 18px; }
+  .rq-card .rq-privacy {
+    display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; padding: 2px 8px; border-radius: 999px;
+    background: #f0efeb; color: #6b6b6b;
+  }
+  .rq-card .rq-actions { display: flex; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0efeb; }
+  .rq-card .rq-actions .btn.approve { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .rq-card .rq-actions .btn.reject { background: #fff; color: #dc2626; border-color: #fecaca; }
+  .rq-card .rq-actions .btn.dismiss { background: #fff; color: #6b6b6b; border-color: #d8d6d1; }
+  .rq-card .rq-actions .rq-link { margin-left: auto; font-size: 11.5px; color: #6b6b6b; text-decoration: none; align-self: center; }
+  .rq-card .rq-actions .rq-link:hover { color: #1a1a1a; }
+  .rq-card .rq-handled-badge {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px; letter-spacing: .04em;
+  }
+  .rq-card .rq-handled-badge.approved { background: #dcfce7; color: #15803d; }
+  .rq-card .rq-handled-badge.rejected { background: #fee2e2; color: #b91c1c; }
+  .rq-card .rq-handled-badge.dismissed { background: #f0efeb; color: #6b6b6b; }
+  .rq-card .rq-undo { font-size: 11.5px; color: #6b6b6b; cursor: pointer; background: none; border: none; padding: 0; font-family: inherit; text-decoration: underline; }
+  .rq-card .rq-undo:hover { color: #1a1a1a; }
+  .rq-locked-card {
+    max-width: 480px; margin: 48px auto;
+    background: #fff; border: 1px solid #ececea; border-radius: 14px; padding: 24px;
+  }
+  .rq-locked-card h3 { margin: 0 0 8px; font-size: 18px; font-weight: 700; }
+  .rq-locked-card p { font-size: 13px; color: #6b6b6b; margin: 0 0 16px; line-height: 1.45; }
+  .rq-locked-card input { width: 100%; margin-bottom: 8px; }
+  .rq-locked-card .rq-pp-err { color: #dc2626; font-size: 12px; margin-top: 8px; display: none; }
   /* Compact date inputs — tight to content + calendar icon + custom popup */
   input[type="date"] {
     border: 1px solid #d8d6d1; border-radius: 6px;
@@ -1068,6 +1132,7 @@
       <button class="nav-item" data-view="home"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="nav-label">Home</span></button>
       <button class="nav-item" data-view="roadmaps"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="nav-label">Roadmaps</span> <span class="nav-count" id="nav-roadmaps-count"></span></button>
       <button class="nav-item" data-view="tasks"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="nav-label">Tasks</span> <span class="nav-count" id="nav-tasks-count"></span></button>
+      <button class="nav-item" data-view="requests"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span class="nav-label">Requests</span> <span class="nav-count" id="nav-requests-count"></span></button>
       <button class="nav-item" data-view="profile"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="nav-label">Profile</span></button>
       <button class="nav-item" data-view="members"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">Team</span> <span class="nav-count" id="nav-members-count"></span></button>
     </aside>
@@ -1188,6 +1253,10 @@
 
     <section id="view-profile" class="view-section" style="display:none">
       <div id="profilePageContent"></div>
+    </section>
+
+    <section id="view-requests" class="view-section" style="display:none">
+      <div id="requestsPageContent"></div>
     </section>
 
     <section id="view-roadmaps" class="view-section" style="display:none">
@@ -2218,6 +2287,10 @@ function render() {
   }
   if (currentView === "roadmaps") {
     renderRoadmapsTimelinePage();
+    return;
+  }
+  if (currentView === "requests") {
+    renderRequestsPage();
     return;
   }
   // currentView === "tasks"
@@ -4605,7 +4678,7 @@ let selectedRoadmapPageId = null;
 
 function switchView(view) {
   if (view === "team") view = "tasks";
-  if (!["home","tasks","members","profile","roadmaps"].includes(view)) view = "home";
+  if (!["home","tasks","members","profile","roadmaps","requests"].includes(view)) view = "home";
   currentView = view;
   localStorage.setItem("bookline-currentView", view);
   document.querySelectorAll(".nav-item").forEach(t => t.classList.toggle("active", t.dataset.view === view));
@@ -4614,9 +4687,10 @@ function switchView(view) {
   document.getElementById("view-profile").style.display  = view === "profile"  ? "" : "none";
   document.getElementById("view-tasks").style.display    = view === "tasks"    ? "" : "none";
   document.getElementById("view-roadmaps").style.display = view === "roadmaps" ? "" : "none";
-  // Hide global action buttons on Roadmaps, Profile and Members pages (they have their own controls)
+  document.getElementById("view-requests").style.display = view === "requests" ? "" : "none";
+  // Hide global action buttons on pages that have their own controls
   const headerTop = document.querySelector("header.top");
-  if (headerTop) headerTop.style.display = (view === "roadmaps" || view === "profile" || view === "members") ? "none" : "";
+  if (headerTop) headerTop.style.display = (view === "roadmaps" || view === "profile" || view === "members" || view === "requests") ? "none" : "";
   render();
 }
 
@@ -5369,6 +5443,277 @@ document.getElementById("showCountsChk").addEventListener("change", e => {
 
 // Apply saved tasks view mode visually before first switchView
 setTasksViewMode(tasksViewMode);
+
+// =================== REQUESTS FEATURE ===================
+let incomingRequestsCache = [];
+let requestsLastSyncedAt = null;
+const requestsCollapsedHistory = (localStorage.getItem('bn-requests-history-collapsed') !== '0');
+if (!STORE.requestActions) STORE.requestActions = {};
+
+function bnGetPassphrase() { return localStorage.getItem('bn-requests-passphrase') || ''; }
+function bnSavePassphrase(p) {
+  if (p) localStorage.setItem('bn-requests-passphrase', p);
+  else localStorage.removeItem('bn-requests-passphrase');
+}
+
+async function bnDecryptRequests(blob, passphrase) {
+  const enc = new TextEncoder();
+  const fromB64 = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const salt = fromB64(blob.salt);
+  const iv = fromB64(blob.iv);
+  const tag = fromB64(blob.tag);
+  const ct = fromB64(blob.ct);
+  const keyMat = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMat,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt']
+  );
+  const combined = new Uint8Array(ct.length + tag.length);
+  combined.set(ct);
+  combined.set(tag, ct.length);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, combined);
+  return new TextDecoder().decode(pt);
+}
+
+async function bnLoadRequests(opts) {
+  opts = opts || {};
+  try {
+    const res = await fetch('requests.json?ts=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) { incomingRequestsCache = []; bnUpdateRequestsBadge(); return { ok: true, empty: true }; }
+    const blob = await res.json();
+    if (Array.isArray(blob)) { incomingRequestsCache = []; bnUpdateRequestsBadge(); return { ok: true, empty: true }; }
+    if (!blob || !blob.encrypted) { bnUpdateRequestsBadge(); return { ok: false, reason: 'unknown-format' }; }
+    const passphrase = bnGetPassphrase();
+    if (!passphrase) { bnUpdateRequestsBadge(); return { ok: false, reason: 'no-passphrase' }; }
+    const decrypted = await bnDecryptRequests(blob, passphrase);
+    const store = JSON.parse(decrypted);
+    incomingRequestsCache = store.items || [];
+    requestsLastSyncedAt = (store._meta && store._meta.syncedAt) || null;
+    bnUpdateRequestsBadge();
+    if (!opts.skipNotify) bnMaybeNotifyNew();
+    return { ok: true };
+  } catch (e) {
+    console.error('bnLoadRequests:', e);
+    incomingRequestsCache = [];
+    bnUpdateRequestsBadge();
+    return { ok: false, reason: 'decrypt-failed' };
+  }
+}
+
+function bnPendingRequests() {
+  const actions = STORE.requestActions || {};
+  return incomingRequestsCache.filter(r => !actions[r.ts]);
+}
+function bnHandledRequests() {
+  const actions = STORE.requestActions || {};
+  return incomingRequestsCache.filter(r => actions[r.ts]).sort((a, b) => (actions[b.ts].at || 0) - (actions[a.ts].at || 0));
+}
+
+function bnUpdateRequestsBadge() {
+  const el = document.getElementById('nav-requests-count');
+  if (!el) return;
+  if (!bnGetPassphrase()) { el.textContent = '🔒'; el.title = 'Enter passphrase to unlock'; return; }
+  const n = bnPendingRequests().length;
+  el.textContent = n > 0 ? n : '';
+  el.title = '';
+}
+
+let bnLastSeenTs = parseFloat(localStorage.getItem('bn-requests-last-seen-ts') || '0');
+function bnMaybeNotifyNew() {
+  const newest = incomingRequestsCache.reduce((max, r) => Math.max(max, parseFloat(r.ts)), 0);
+  if (newest > bnLastSeenTs) {
+    const newOnes = incomingRequestsCache.filter(r => parseFloat(r.ts) > bnLastSeenTs && !(STORE.requestActions || {})[r.ts]);
+    if (newOnes.length > 0 && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try {
+        new Notification('Berni Navigator — nuevos requests', {
+          body: newOnes.length === 1 ? newOnes[0].subject : (newOnes.length + ' nuevos requests pendientes'),
+          tag: 'bn-requests'
+        });
+      } catch (_) {}
+    }
+    bnLastSeenTs = newest;
+    localStorage.setItem('bn-requests-last-seen-ts', String(newest));
+  }
+}
+
+function rqCardHtml(r, handled) {
+  const submittedBy = findPerson(r.submittedById);
+  const subAv = submittedBy
+    ? '<span class="av" style="background:' + (submittedBy.color || '#9a9a9a') + '">' +
+        (submittedBy.photo ? '<img src="' + escapeHtml(submittedBy.photo) + '" alt="" onerror="this.remove()">' : escapeHtml(initials(submittedBy.name))) +
+      '</span>'
+    : '';
+  const subName = submittedBy ? (submittedBy.displayName || submittedBy.name) : (r.submittedById || '?');
+  const dateStr = r.submittedAt ? new Date(r.submittedAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }) : '';
+  const proposedHtml = (r.proposedByIds || []).map(pid => {
+    const p = findPerson(pid);
+    if (!p) return '<span class="chip"><span class="av" style="background:#9a9a9a;color:#fff">?</span>' + escapeHtml(pid) + '</span>';
+    const ini = initials(p.name);
+    return '<span class="chip" data-pid="' + p.id + '"><span class="av" style="background:' + (p.color || '#9a9a9a') + '">' +
+      (p.photo ? '<img src="' + escapeHtml(p.photo) + '" alt="" onerror="this.remove()">' : escapeHtml(ini)) +
+      '</span>' + escapeHtml(p.displayName || p.name) + '</span>';
+  }).join('');
+  const action = handled ? handled.action : null;
+  let html = '<div class="rq-card' + (handled ? ' handled' : '') + '" data-ts="' + escapeHtml(r.ts) + '">';
+  html += '<div class="rq-head">';
+  html += '<h4>' + escapeHtml(r.subject) + '</h4>';
+  if (action) html += '<span class="rq-handled-badge ' + action + '">' + action + '</span>';
+  html += '</div>';
+  html += '<div class="rq-meta">';
+  if (subAv) html += subAv;
+  html += '<span>' + escapeHtml(subName) + '</span>';
+  if (dateStr) { html += '<span class="sep">·</span><span>' + escapeHtml(dateStr) + '</span>'; }
+  if (r.privacyLevel) { html += '<span class="sep">·</span><span class="rq-privacy">' + escapeHtml(r.privacyLevel) + '</span>'; }
+  html += '</div>';
+  if (proposedHtml) html += '<div class="rq-section"><div class="rq-label">Proposed by</div><div class="rq-proposed">' + proposedHtml + '</div></div>';
+  if (r.extraComments) html += '<div class="rq-section"><div class="rq-label">Comments</div><div class="rq-comments">' + escapeHtml(r.extraComments) + '</div></div>';
+  html += '<div class="rq-actions">';
+  if (handled) {
+    html += '<button class="rq-undo" data-act="undo">Undo</button>';
+    if (handled.action === 'approved' && handled.taskId) html += '<a class="rq-link" href="#" data-open-task="' + escapeHtml(handled.taskId) + '">View created task →</a>';
+  } else {
+    html += '<button class="btn approve" data-act="approve">Approve → Task</button>';
+    html += '<button class="btn reject" data-act="reject">Reject</button>';
+    html += '<button class="btn dismiss" data-act="dismiss">Dismiss</button>';
+  }
+  if (r.permalink) html += '<a class="rq-link" href="' + escapeHtml(r.permalink) + '" target="_blank" rel="noopener">View in Slack ↗</a>';
+  html += '</div></div>';
+  return html;
+}
+
+function renderRequestsPage() {
+  const cont = document.getElementById('requestsPageContent');
+  if (!cont) return;
+  if (!bnGetPassphrase()) {
+    cont.innerHTML =
+      '<div class="rq-locked-card">' +
+        '<h3>🔒 Unlock requests</h3>' +
+        '<p>Enter the passphrase to decrypt the request feed. Stored locally on this device — only asked once.</p>' +
+        '<input type="password" id="bnPpInput" class="search-input" placeholder="Passphrase">' +
+        '<button class="btn primary" id="bnPpBtn" style="margin-top:8px">Unlock</button>' +
+        '<div class="rq-pp-err" id="bnPpErr">Wrong passphrase. Try again.</div>' +
+      '</div>';
+    document.getElementById('bnPpBtn').addEventListener('click', async () => {
+      const v = document.getElementById('bnPpInput').value.trim();
+      if (!v) return;
+      bnSavePassphrase(v);
+      const result = await bnLoadRequests();
+      if (result.ok) {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+          try { Notification.requestPermission(); } catch (_) {}
+        }
+        renderRequestsPage();
+      } else {
+        bnSavePassphrase('');
+        document.getElementById('bnPpErr').style.display = '';
+      }
+    });
+    document.getElementById('bnPpInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('bnPpBtn').click();
+    });
+    setTimeout(() => document.getElementById('bnPpInput')?.focus(), 0);
+    return;
+  }
+
+  const pending = bnPendingRequests();
+  const handled = bnHandledRequests();
+  let html = '';
+  const lastSync = requestsLastSyncedAt ? new Date(requestsLastSyncedAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  html += '<div class="rq-toolbar">' +
+    '<div class="rq-sync-info">Last synced: <strong>' + escapeHtml(lastSync) + '</strong></div>' +
+    '<button class="btn" id="bnSyncNowBtn">⟳ Sync now</button>' +
+    '</div>';
+  html += '<div class="rq-section-title"><span>Pending</span><span class="count">' + pending.length + '</span></div>';
+  if (pending.length === 0) html += '<div class="rq-empty">No pending requests. New requests posted to #berni will appear here.</div>';
+  else html += '<div class="rq-list">' + pending.map(r => rqCardHtml(r, null)).join('') + '</div>';
+  html += '<div class="rq-section-title rq-section-toggle" id="rqHistoryToggle">' +
+    '<span><span class="caret">' + (requestsCollapsedHistory ? '▸' : '▾') + '</span> History</span>' +
+    '<span class="count">' + handled.length + '</span>' +
+    '</div>';
+  if (!requestsCollapsedHistory && handled.length > 0) {
+    html += '<div class="rq-list">' + handled.map(r => rqCardHtml(r, STORE.requestActions[r.ts])).join('') + '</div>';
+  } else if (!requestsCollapsedHistory) {
+    html += '<div class="rq-empty">No handled requests yet.</div>';
+  }
+  cont.innerHTML = html;
+  const syncBtn = document.getElementById('bnSyncNowBtn');
+  if (syncBtn) syncBtn.addEventListener('click', async () => {
+    syncBtn.disabled = true; syncBtn.textContent = '… loading';
+    await bnLoadRequests();
+    renderRequestsPage();
+  });
+  const histToggle = document.getElementById('rqHistoryToggle');
+  if (histToggle) histToggle.addEventListener('click', () => {
+    const v = !requestsCollapsedHistory;
+    localStorage.setItem('bn-requests-history-collapsed', v ? '1' : '0');
+    location.reload();
+  });
+  cont.querySelectorAll('.rq-card').forEach(card => {
+    const ts = card.dataset.ts;
+    card.querySelectorAll('button[data-act]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const act = btn.dataset.act;
+        const r = incomingRequestsCache.find(x => x.ts === ts);
+        if (!r) return;
+        if (act === 'approve') {
+          if (!confirm("Create a task from '" + r.subject + "'?")) return;
+          const newTaskId = "rq" + Math.random().toString(36).slice(2, 10);
+          STORE.tasks.unshift({
+            id: newTaskId,
+            subject: r.subject,
+            extraComments: r.extraComments || '',
+            responsibleId: null,
+            responsibleRaw: '',
+            panelStatus: 'pending',
+            priority: '',
+            type: '',
+            slackStatus: '',
+            dueDate: '',
+            taskTags: r.privacyLevel ? [r.privacyLevel] : [],
+            fromRequestTs: ts
+          });
+          STORE.requestActions[ts] = { action: 'approved', at: Date.now(), taskId: newTaskId };
+          saveStore(STORE);
+          renderRequestsPage();
+        } else if (act === 'reject' || act === 'dismiss') {
+          if (!confirm((act === 'reject' ? 'Reject' : 'Dismiss') + " '" + r.subject + "'?")) return;
+          STORE.requestActions[ts] = { action: (act === 'reject' ? 'rejected' : 'dismissed'), at: Date.now() };
+          saveStore(STORE);
+          renderRequestsPage();
+        } else if (act === 'undo') {
+          if (!confirm('Undo this action?')) return;
+          delete STORE.requestActions[ts];
+          saveStore(STORE);
+          renderRequestsPage();
+        }
+      });
+    });
+    card.querySelectorAll('.chip[data-pid]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        if (typeof setProfilePerson === 'function') setProfilePerson(chip.dataset.pid);
+        switchView('profile');
+      });
+    });
+    card.querySelectorAll('a[data-open-task]').forEach(a => {
+      a.addEventListener('click', e => { e.preventDefault(); if (typeof openModal === 'function') openModal(a.dataset.openTask); });
+    });
+  });
+}
+
+// Boot: load requests on page start and every 90s
+bnLoadRequests({ skipNotify: true });
+setInterval(() => bnLoadRequests(), 90 * 1000);
+if (typeof Notification !== 'undefined' && Notification.permission === 'default' && bnGetPassphrase()) {
+  document.addEventListener('click', function once() {
+    document.removeEventListener('click', once);
+    try { Notification.requestPermission(); } catch (_) {}
+  });
+}
+
 switchView(currentView);
 
 // ===== Custom date picker =====
