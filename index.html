@@ -557,8 +557,15 @@
   .rq-card .rq-handled-badge.approved { background: #dcfce7; color: #15803d; }
   .rq-card .rq-handled-badge.rejected { background: #fee2e2; color: #b91c1c; }
   .rq-card .rq-handled-badge.dismissed { background: #f0efeb; color: #6b6b6b; }
-  .rq-card .rq-undo { font-size: 11.5px; color: #6b6b6b; cursor: pointer; background: none; border: none; padding: 0; font-family: inherit; text-decoration: underline; }
-  .rq-card .rq-undo:hover { color: #1a1a1a; }
+  .rq-card .rq-undo-btn {
+    background: #fff; color: #1a1a1a; border: 1px solid #d8d6d1;
+    padding: 6px 14px; font-size: 12.5px; font-weight: 600;
+    border-radius: 8px; cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: background .12s, border-color .12s;
+  }
+  .rq-card .rq-undo-btn:hover { background: #f7f6f2; border-color: #1a1a1a; }
+  .rq-card .rq-meta .chip { cursor: pointer; }
   .rq-locked-card {
     max-width: 480px; margin: 48px auto;
     background: #fff; border: 1px solid #ececea; border-radius: 14px; padding: 24px;
@@ -1516,7 +1523,14 @@
     <div class="field-row-3">
       <div class="field"><label>Dedicated hours</label><input type="number" id="f_dedicatedHours" step="0.5" min="0"></div>
       <div class="field"><label>Estimated hours</label><input type="number" id="f_estimatedHours" step="0.5" min="0"></div>
-      <div class="field"><label>Share with</label><input type="text" id="f_shareWith" placeholder=":berni: Berni / Everyone / Team..."></div>
+      <div class="field"><label>Share with</label>
+        <select id="f_shareWith">
+          <option value="">(empty)</option>
+          <option value="Team">Team</option>
+          <option value="Everyone">Everyone</option>
+          <option value="Private">Private</option>
+        </select>
+      </div>
     </div>
     <div class="field-row">
       <div class="checkbox-field"><input type="checkbox" id="f_completed"><label for="f_completed" style="margin:0">Completed (boolean)</label></div>
@@ -5454,7 +5468,7 @@ document.getElementById("showCountsChk").addEventListener("change", e => {
 // temporal-dead-zone errors when render() runs early on the requests view.
 var incomingRequestsCache = [];
 var requestsLastSyncedAt = null;
-var requestsCollapsedHistory = (localStorage.getItem('bn-requests-history-collapsed') !== '0');
+var requestsCollapsedHistory = (localStorage.getItem('bn-requests-history-collapsed') === '1');  // default: expanded
 if (!STORE.requestActions) STORE.requestActions = {};
 
 // Apply saved tasks view mode visually before first switchView
@@ -5551,12 +5565,12 @@ function bnMaybeNotifyNew() {
 
 function rqCardHtml(r, handled) {
   const submittedBy = findPerson(r.submittedById);
-  const subAv = submittedBy
-    ? '<span class="av" style="background:' + (submittedBy.color || '#9a9a9a') + '">' +
+  // Submitter is rendered as the same chip used for proposed-by (clickable → profile)
+  const subChip = submittedBy
+    ? '<span class="chip" data-pid="' + submittedBy.id + '"><span class="av" style="background:' + (submittedBy.color || '#9a9a9a') + '">' +
         (submittedBy.photo ? '<img src="' + escapeHtml(submittedBy.photo) + '" alt="" onerror="this.remove()">' : escapeHtml(initials(submittedBy.name))) +
-      '</span>'
-    : '';
-  const subName = submittedBy ? (submittedBy.displayName || submittedBy.name) : (r.submittedById || '?');
+      '</span>' + escapeHtml(submittedBy.displayName || submittedBy.name) + '</span>'
+    : '<span>' + escapeHtml(r.submittedById || '?') + '</span>';
   const dateStr = r.submittedAt ? new Date(r.submittedAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }) : '';
   const proposedHtml = (r.proposedByIds || []).map(pid => {
     const p = findPerson(pid);
@@ -5573,8 +5587,7 @@ function rqCardHtml(r, handled) {
   if (action) html += '<span class="rq-handled-badge ' + action + '">' + action + '</span>';
   html += '</div>';
   html += '<div class="rq-meta">';
-  if (subAv) html += subAv;
-  html += '<span>' + escapeHtml(subName) + '</span>';
+  html += subChip;
   if (dateStr) { html += '<span class="sep">·</span><span>' + escapeHtml(dateStr) + '</span>'; }
   if (r.privacyLevel) { html += '<span class="sep">·</span><span class="rq-privacy">' + escapeHtml(r.privacyLevel) + '</span>'; }
   html += '</div>';
@@ -5582,10 +5595,10 @@ function rqCardHtml(r, handled) {
   if (r.extraComments) html += '<div class="rq-section"><div class="rq-label">Comments</div><div class="rq-comments">' + escapeHtml(r.extraComments) + '</div></div>';
   html += '<div class="rq-actions">';
   if (handled) {
-    html += '<button class="rq-undo" data-act="undo">Undo</button>';
+    html += '<button class="btn rq-undo-btn" data-act="undo" title="Move back to pending">↶ Undo</button>';
     if (handled.action === 'approved' && handled.taskId) html += '<a class="rq-link" href="#" data-open-task="' + escapeHtml(handled.taskId) + '">View created task →</a>';
   } else {
-    html += '<button class="btn approve" data-act="approve">Approve → Task</button>';
+    html += '<button class="btn approve" data-act="approve">Approve</button>';
     html += '<button class="btn reject" data-act="reject">Reject</button>';
     html += '<button class="btn dismiss" data-act="dismiss">Dismiss</button>';
   }
@@ -5675,14 +5688,15 @@ function renderRequestsPage() {
           openModal('new', {
             subject: r.subject || '',
             extraComments: r.extraComments || '',
-            responsibleId: null,           // user pediste sin responsable por defecto
+            responsibleId: null,           // sin responsable por defecto
             responsibleRaw: '',
             priority: '',
             type: '',
             slackStatus: 'Proposed',
             panelStatus: 'pending',
-            taskTags: r.privacyLevel ? [r.privacyLevel] : [],
-            _fromRequestTs: ts             // backlink — saveBtn looks for this to mark request approved
+            shareWith: r.privacyLevel || '',
+            taskTags: [],
+            _fromRequestTs: ts             // backlink — saveBtn marks request approved
           });
         } else if (act === 'reject' || act === 'dismiss') {
           STORE.requestActions[ts] = { action: (act === 'reject' ? 'rejected' : 'dismissed'), at: Date.now() };
@@ -5695,8 +5709,10 @@ function renderRequestsPage() {
         }
       });
     });
+    // Both proposed-by chips and the submitter chip (in .rq-meta) navigate to Profile
     card.querySelectorAll('.chip[data-pid]').forEach(chip => {
-      chip.addEventListener('click', () => {
+      chip.addEventListener('click', e => {
+        e.stopPropagation();
         if (typeof setProfilePerson === 'function') setProfilePerson(chip.dataset.pid);
         switchView('profile');
       });
