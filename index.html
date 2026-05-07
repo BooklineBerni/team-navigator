@@ -1123,7 +1123,7 @@
       <button class="btn" id="exportBtn">Export JSON</button>
       <button class="btn" id="importBtn">Import JSON</button>
       <input type="file" id="importFile" accept="application/json" style="display:none">
-      <button class="btn" id="manageTagsBtn" title="Create, edit, recolor and reorder member tags">Member Tags</button>
+      <button class="btn" id="manageTagsBtn" title="Create, edit, recolor and reorder member tags" style="display:none">Member Tags</button>
       <button class="btn" id="manageTaskTagsBtn" title="Create, edit, recolor and reorder task tags">Task Tags</button>
       <button class="btn" id="roadmapsBtn" title="Create and manage roadmaps" style="display:none">Roadmaps</button>
       <button class="btn" id="addMemberBtn" title="Add someone from Slack who isn't in the team yet" style="display:none">+ Member</button>
@@ -1147,10 +1147,6 @@
     </aside>
     <main class="main-content">
 
-  <div class="info-banner blue">
-    <span class="close" onclick="this.parentElement.style.display='none'">&times;</span>
-    <strong>Sync with the Slack list:</strong> the Slack connector doesn't expose write access to Lists. Tasks you create or edit are marked as <em>pending sync</em>. When you want to push them, go back to Claude and say <code>"sync Berni Navigator"</code>; I'll add them to your list via the browser.
-  </div>
 
   <div class="info-banner" id="photoBanner" style="display:none">
     <span class="close" onclick="this.parentElement.style.display='none'">&times;</span>
@@ -1254,6 +1250,7 @@
         </div>
         <div style="display:flex; gap:8px; align-items:center">
           <input class="search-input" id="memberPageSearch" placeholder="Search members..." style="max-width:240px">
+          <button class="btn" id="teamManageTagsBtn" title="Create, edit, recolor and reorder member tags">Member Tags</button>
           <button class="btn primary" id="teamAddMemberBtn" title="Add someone from Slack who isn't in the team yet">+ Member</button>
         </div>
       </div>
@@ -1489,13 +1486,13 @@
   <div class="modal" id="modal">
     <span class="close-x" onclick="closeModal()">&times;</span>
     <h2 id="modalTitle">Edit task</h2>
-    <div class="field"><label>Title</label><input type="text" id="f_subject"></div>
+    <div class="field"><label>Title <span style="color:#dc2626">*</span></label><input type="text" id="f_subject"></div>
     <div class="field-row">
-      <div class="field"><label>Panel status</label><select id="f_panelStatus">
+      <div class="field"><label>Panel status <span style="color:#dc2626">*</span></label><select id="f_panelStatus">
         <option value="pending">Pending</option><option value="in_progress">In Progress</option>
         <option value="completed">Completed</option><option value="archived">Archived</option><option value="discarded">Discarded</option>
       </select></div>
-      <div class="field"><label>Slack status</label><select id="f_slackStatus">
+      <div class="field"><label>Slack status <span style="color:#dc2626">*</span></label><select id="f_slackStatus">
         <option value="">(empty)</option><option value="Empty">Empty</option>
         <option value="Proposed">Proposed</option><option value="Under Review">Under Review</option>
         <option value="In Progress">In Progress</option><option value="Waiting">Waiting</option>
@@ -1504,12 +1501,12 @@
       </select></div>
     </div>
     <div class="field-row-3">
-      <div class="field"><label>Priority</label><select id="f_priority">
+      <div class="field"><label>Priority <span style="color:#dc2626">*</span></label><select id="f_priority">
         <option value="">(empty)</option><option value="Critical">Critical</option>
         <option value="Alta">Alta</option><option value="Media">Media</option>
         <option value="Baja">Baja</option><option value="Muy Baja">Muy Baja</option>
       </select></div>
-      <div class="field"><label>Type</label><select id="f_type">
+      <div class="field"><label>Type <span style="color:#dc2626">*</span></label><select id="f_type">
         <option value="">(empty)</option><option value="Project">Project</option>
         <option value="Responsability">Responsability</option><option value="Request">Request</option>
         <option value="ERROR">ERROR</option><option value="Infinite">Infinite</option>
@@ -1523,12 +1520,12 @@
     <div class="field-row-3">
       <div class="field"><label>Dedicated hours</label><input type="number" id="f_dedicatedHours" step="0.5" min="0"></div>
       <div class="field"><label>Estimated hours</label><input type="number" id="f_estimatedHours" step="0.5" min="0"></div>
-      <div class="field"><label>Share with</label>
+      <div class="field"><label>Share with <span style="color:#dc2626">*</span></label>
         <select id="f_shareWith">
           <option value="">(empty)</option>
+          <option value="Private">Private</option>
           <option value="Team">Team</option>
           <option value="Everyone">Everyone</option>
-          <option value="Private">Private</option>
         </select>
       </div>
     </div>
@@ -2307,6 +2304,8 @@ function render() {
   }
   if (currentView === "requests") {
     renderRequestsPage();
+    // Trigger a background refresh so the user sees fresh data without clicking Sync now
+    if (typeof bnLoadRequests === 'function') bnLoadRequests({ skipNotify: true });
     return;
   }
   // currentView === "tasks"
@@ -2482,7 +2481,7 @@ populateUserSelects();
 function openModal(tid, overrides) {
   let t;
   if (tid === "new") {
-    t = { id: uid(), subject: "", completed: false, responsibleId: currentPersonIds.size === 1 ? Array.from(currentPersonIds)[0] : "U07E6NHMLBV", responsibleRaw: "", proposedById: "U07E6NHMLBV", proposedByRaw: "bernat@bookline.ai", priority: "Media", type: "", dueDate: "", slackStatus: "Proposed", slackStatusRaw: "Proposed", panelStatus: "pending", dedicatedHours: 0, estimatedHours: 0, shareWith: "", extraComments: "", sharing: false, _pendingSync: true, _createdLocal: Date.now(), _isNew: true };
+    t = { id: uid(), subject: "", completed: false, responsibleId: currentPersonIds.size === 1 ? Array.from(currentPersonIds)[0] : "U07E6NHMLBV", responsibleRaw: "", proposedById: "U07E6NHMLBV", proposedByRaw: "bernat@bookline.ai", priority: "", type: "", dueDate: "", slackStatus: "Proposed", slackStatusRaw: "Proposed", panelStatus: "pending", dedicatedHours: "", estimatedHours: "", shareWith: "", extraComments: "", sharing: false, _pendingSync: true, _createdLocal: Date.now(), _isNew: true };
     if (overrides && typeof overrides === 'object') Object.assign(t, overrides);
   } else {
     t = STORE.tasks.find(x => x.id === tid);
@@ -2498,8 +2497,8 @@ function openModal(tid, overrides) {
   document.getElementById("f_dueDate").value = t.dueDate || "";
   document.getElementById("f_responsibleId").value = t.responsibleId || "";
   document.getElementById("f_proposedById").value = t.proposedById || "";
-  document.getElementById("f_dedicatedHours").value = t.dedicatedHours || 0;
-  document.getElementById("f_estimatedHours").value = t.estimatedHours || 0;
+  document.getElementById("f_dedicatedHours").value = (t.dedicatedHours === 0 || t.dedicatedHours) ? t.dedicatedHours : "";
+  document.getElementById("f_estimatedHours").value = (t.estimatedHours === 0 || t.estimatedHours) ? t.estimatedHours : "";
   document.getElementById("f_shareWith").value = t.shareWith || "";
   document.getElementById("f_completed").checked = !!t.completed;
   document.getElementById("f_sharing").checked = !!t.sharing;
@@ -2514,21 +2513,41 @@ document.getElementById("modalBg").addEventListener("click", e => { if (e.target
 
 document.getElementById("saveBtn").addEventListener("click", () => {
   if (!editingId) return;
+  // Validate required fields before persisting
+  const subject = document.getElementById("f_subject").value.trim();
+  const panelStatus = document.getElementById("f_panelStatus").value;
+  const slackStatus = document.getElementById("f_slackStatus").value;
+  const priority = document.getElementById("f_priority").value;
+  const type = document.getElementById("f_type").value;
+  const shareWith = document.getElementById("f_shareWith").value;
+  const missing = [];
+  if (!subject) missing.push("Title");
+  if (!panelStatus) missing.push("Panel status");
+  if (!slackStatus) missing.push("Slack status");
+  if (!priority) missing.push("Priority");
+  if (!type) missing.push("Type");
+  if (!shareWith) missing.push("Share with");
+  if (missing.length > 0) {
+    alert("Please fill in: " + missing.join(", "));
+    return;
+  }
   const newCarry = document.getElementById("modal").__newTask;
   let t = STORE.tasks.find(x => x.id === editingId);
   if (!t && newCarry) { t = newCarry; delete t._isNew; STORE.tasks.push(t); }
   if (!t) return;
-  t.subject = document.getElementById("f_subject").value.trim();
-  t.panelStatus = document.getElementById("f_panelStatus").value;
-  t.slackStatus = document.getElementById("f_slackStatus").value;
-  t.priority = document.getElementById("f_priority").value;
-  t.type = document.getElementById("f_type").value;
+  t.subject = subject;
+  t.panelStatus = panelStatus;
+  t.slackStatus = slackStatus;
+  t.priority = priority;
+  t.type = type;
   t.dueDate = document.getElementById("f_dueDate").value;
   t.responsibleId = document.getElementById("f_responsibleId").value;
   t.proposedById = document.getElementById("f_proposedById").value;
-  t.dedicatedHours = parseFloat(document.getElementById("f_dedicatedHours").value) || 0;
-  t.estimatedHours = parseFloat(document.getElementById("f_estimatedHours").value) || 0;
-  t.shareWith = document.getElementById("f_shareWith").value;
+  const ded = document.getElementById("f_dedicatedHours").value;
+  const est = document.getElementById("f_estimatedHours").value;
+  t.dedicatedHours = ded === "" ? "" : (parseFloat(ded) || 0);
+  t.estimatedHours = est === "" ? "" : (parseFloat(est) || 0);
+  t.shareWith = shareWith;
   t.completed = document.getElementById("f_completed").checked;
   t.sharing = document.getElementById("f_sharing").checked;
   t.extraComments = document.getElementById("f_extraComments").value;
@@ -2542,6 +2561,7 @@ document.getElementById("saveBtn").addEventListener("click", () => {
   if (t._fromRequestTs) {
     if (!STORE.requestActions) STORE.requestActions = {};
     STORE.requestActions[t._fromRequestTs] = { action: 'approved', at: Date.now(), taskId: t.id };
+    if (typeof bnUpdateRequestsBadge === 'function') bnUpdateRequestsBadge();
   }
   saveStore(STORE);
   closeModal(); render();
@@ -3026,6 +3046,8 @@ function renderTagManager() {
   });
 }
 document.getElementById("manageTagsBtn").addEventListener("click", openTagManager);
+const teamManageTagsBtnEl = document.getElementById("teamManageTagsBtn");
+if (teamManageTagsBtnEl) teamManageTagsBtnEl.addEventListener("click", openTagManager);
 document.getElementById("tagManagerBg").addEventListener("click", e => {
   if (e.target.id === "tagManagerBg") closeTagManager();
 });
@@ -5518,6 +5540,10 @@ async function bnLoadRequests(opts) {
     requestsLastSyncedAt = (store._meta && store._meta.syncedAt) || null;
     bnUpdateRequestsBadge();
     if (!opts.skipNotify) bnMaybeNotifyNew();
+    // If user is currently on the Requests page, refresh the cards now that data arrived.
+    if (typeof currentView !== 'undefined' && currentView === 'requests') {
+      try { renderRequestsPage(); } catch (_) {}
+    }
     return { ok: true };
   } catch (e) {
     console.error('bnLoadRequests:', e);
@@ -5595,7 +5621,7 @@ function rqCardHtml(r, handled) {
   if (r.extraComments) html += '<div class="rq-section"><div class="rq-label">Comments</div><div class="rq-comments">' + escapeHtml(r.extraComments) + '</div></div>';
   html += '<div class="rq-actions">';
   if (handled) {
-    html += '<button class="btn rq-undo-btn" data-act="undo" title="Move back to pending">↶ Undo</button>';
+    html += '<button class="btn rq-undo-btn" data-act="undo" title="Move back to pending"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg> Undo</button>';
     if (handled.action === 'approved' && handled.taskId) html += '<a class="rq-link" href="#" data-open-task="' + escapeHtml(handled.taskId) + '">View created task →</a>';
   } else {
     html += '<button class="btn approve" data-act="approve">Approve</button>';
@@ -5701,10 +5727,12 @@ function renderRequestsPage() {
         } else if (act === 'reject' || act === 'dismiss') {
           STORE.requestActions[ts] = { action: (act === 'reject' ? 'rejected' : 'dismissed'), at: Date.now() };
           saveStore(STORE);
+          bnUpdateRequestsBadge();
           renderRequestsPage();
         } else if (act === 'undo') {
           delete STORE.requestActions[ts];
           saveStore(STORE);
+          bnUpdateRequestsBadge();
           renderRequestsPage();
         }
       });
