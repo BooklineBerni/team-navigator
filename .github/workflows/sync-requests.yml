@@ -1,0 +1,39 @@
+name: Sync Requests from Slack
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # every 10 minutes
+  workflow_dispatch:        # allow manual trigger
+
+concurrency:
+  group: sync-requests
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run sync script
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          REQUESTS_PASSPHRASE: ${{ secrets.REQUESTS_PASSPHRASE }}
+          CHANNEL_ID: 'C09P8BMJHA4'
+        run: node .github/scripts/sync-requests.js
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add requests.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: sync requests from Slack [skip ci]"
+            git push
+          fi
