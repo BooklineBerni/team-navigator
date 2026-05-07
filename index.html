@@ -5443,14 +5443,16 @@ document.getElementById("showCountsChk").addEventListener("change", e => {
   render();
 });
 
+// =================== REQUESTS FEATURE ===================
+// Declarations must come BEFORE setTasksViewMode/switchView to avoid
+// temporal-dead-zone errors when render() runs early on the requests view.
+var incomingRequestsCache = [];
+var requestsLastSyncedAt = null;
+var requestsCollapsedHistory = (localStorage.getItem('bn-requests-history-collapsed') !== '0');
+if (!STORE.requestActions) STORE.requestActions = {};
+
 // Apply saved tasks view mode visually before first switchView
 setTasksViewMode(tasksViewMode);
-
-// =================== REQUESTS FEATURE ===================
-let incomingRequestsCache = [];
-let requestsLastSyncedAt = null;
-const requestsCollapsedHistory = (localStorage.getItem('bn-requests-history-collapsed') !== '0');
-if (!STORE.requestActions) STORE.requestActions = {};
 
 function bnGetPassphrase() { return localStorage.getItem('bn-requests-passphrase') || ''; }
 function bnSavePassphrase(p) {
