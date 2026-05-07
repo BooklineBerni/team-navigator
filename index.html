@@ -2465,10 +2465,11 @@ function populateUserSelects() {
 }
 populateUserSelects();
 
-function openModal(tid) {
+function openModal(tid, overrides) {
   let t;
   if (tid === "new") {
     t = { id: uid(), subject: "", completed: false, responsibleId: currentPersonIds.size === 1 ? Array.from(currentPersonIds)[0] : "U07E6NHMLBV", responsibleRaw: "", proposedById: "U07E6NHMLBV", proposedByRaw: "bernat@bookline.ai", priority: "Media", type: "", dueDate: "", slackStatus: "Proposed", slackStatusRaw: "Proposed", panelStatus: "pending", dedicatedHours: 0, estimatedHours: 0, shareWith: "", extraComments: "", sharing: false, _pendingSync: true, _createdLocal: Date.now(), _isNew: true };
+    if (overrides && typeof overrides === 'object') Object.assign(t, overrides);
   } else {
     t = STORE.tasks.find(x => x.id === tid);
     if (!t) return;
@@ -2523,6 +2524,11 @@ document.getElementById("saveBtn").addEventListener("click", () => {
   const propPerson = findPerson(t.proposedById);
   if (propPerson) t.proposedByRaw = propPerson.email || propPerson.name;
   if (t.completed) { t.panelStatus = "completed"; if (!(t.slackStatus||"").toLowerCase().includes('complete')) t.slackStatus = "Completed"; }
+  // If this task came from a Slack request approval, mark the request as handled
+  if (t._fromRequestTs) {
+    if (!STORE.requestActions) STORE.requestActions = {};
+    STORE.requestActions[t._fromRequestTs] = { action: 'approved', at: Date.now(), taskId: t.id };
+  }
   saveStore(STORE);
   closeModal(); render();
 });
@@ -5664,32 +5670,25 @@ function renderRequestsPage() {
         const r = incomingRequestsCache.find(x => x.ts === ts);
         if (!r) return;
         if (act === 'approve') {
-          if (!confirm("Create a task from '" + r.subject + "'?")) return;
-          const newTaskId = "rq" + Math.random().toString(36).slice(2, 10);
-          STORE.tasks.unshift({
-            id: newTaskId,
-            subject: r.subject,
+          // Open the standard New Task modal pre-filled with this request's defaults.
+          // Saving the modal will create the task AND mark the request as approved.
+          openModal('new', {
+            subject: r.subject || '',
             extraComments: r.extraComments || '',
-            responsibleId: null,
+            responsibleId: null,           // user pediste sin responsable por defecto
             responsibleRaw: '',
-            panelStatus: 'pending',
             priority: '',
             type: '',
-            slackStatus: '',
-            dueDate: '',
+            slackStatus: 'Proposed',
+            panelStatus: 'pending',
             taskTags: r.privacyLevel ? [r.privacyLevel] : [],
-            fromRequestTs: ts
+            _fromRequestTs: ts             // backlink — saveBtn looks for this to mark request approved
           });
-          STORE.requestActions[ts] = { action: 'approved', at: Date.now(), taskId: newTaskId };
-          saveStore(STORE);
-          renderRequestsPage();
         } else if (act === 'reject' || act === 'dismiss') {
-          if (!confirm((act === 'reject' ? 'Reject' : 'Dismiss') + " '" + r.subject + "'?")) return;
           STORE.requestActions[ts] = { action: (act === 'reject' ? 'rejected' : 'dismissed'), at: Date.now() };
           saveStore(STORE);
           renderRequestsPage();
         } else if (act === 'undo') {
-          if (!confirm('Undo this action?')) return;
           delete STORE.requestActions[ts];
           saveStore(STORE);
           renderRequestsPage();
