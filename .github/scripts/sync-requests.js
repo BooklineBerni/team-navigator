@@ -20,21 +20,32 @@ async function slackApi(method, params) {
   return data;
 }
 
+// Strip Slack markdown wrappers and trim
+function cleanField(s) {
+  if (!s) return '';
+  return s
+    .replace(/<@U[A-Z0-9]+>/g, '')        // strip stray bot/user mentions
+    .replace(/[*_]+/g, '')                 // strip bold/italic markers
+    .replace(/[ \t]+\n/g, '\n')           // trailing spaces on lines
+    .replace(/\n{3,}/g, '\n\n')           // collapse blank lines
+    .trim();
+}
+
 // Parse a Slack message text against the request template.
 // Returns { subject, submittedById, proposedByIds, privacyLevel, extraComments } or null.
 function parseRequest(text) {
   if (!text || !text.includes('Se ha añadido una nueva request')) return null;
-  const t = text.replace(/\r\n/g, '\n');
+  // Normalise + strip the "Sent using <@bot>" footer some integrations add
+  let t = text.replace(/\r\n/g, '\n');
+  t = t.replace(/\*?\s*Sent using\s*\*?\s*<@[^>]+>\s*$/m, '').trimEnd();
 
   const byMatch = t.match(/Por:\s*<@(U[A-Z0-9]+)>/);
   const submittedById = byMatch ? byMatch[1] : null;
 
-  // Subject: capture from "Subject:" until "Proposed By"
-  const subjectMatch = t.match(/Subject:\s*\n?\s*([\s\S]*?)\s*\n?\s*Proposed By/);
-  const subject = subjectMatch ? subjectMatch[1].trim() : '';
+  const subjectMatch = t.match(/Subject:\s*([\s\S]*?)\s*Proposed By/);
+  const subject = cleanField(subjectMatch ? subjectMatch[1] : '');
 
-  // Proposed By: collect all <@USERID> in the section between marker and "Privacy Level"
-  const proposedByMatch = t.match(/Proposed By\.\.\.\s*\n?([\s\S]*?)(?=Select the Privacy)/);
+  const proposedByMatch = t.match(/Proposed By\.\.\.\s*([\s\S]*?)(?=Select the Privacy)/);
   const proposedByIds = [];
   if (proposedByMatch) {
     const re = /<@(U[A-Z0-9]+)>/g;
@@ -42,11 +53,11 @@ function parseRequest(text) {
     while ((m = re.exec(proposedByMatch[1])) !== null) proposedByIds.push(m[1]);
   }
 
-  const privacyMatch = t.match(/Privacy Level\s*=\s*(\w+)/);
+  const privacyMatch = t.match(/Privacy Level\s*=\s*\*?\s*(\w+)\s*\*?/);
   const privacyLevel = privacyMatch ? privacyMatch[1] : null;
 
-  const commentsMatch = t.match(/Extra Comments:\s*\n?([\s\S]*?)$/);
-  const extraComments = commentsMatch ? commentsMatch[1].trim() : '';
+  const commentsMatch = t.match(/Extra Comments:\s*([\s\S]*?)$/);
+  const extraComments = cleanField(commentsMatch ? commentsMatch[1] : '');
 
   if (!subject) return null;
   return { subject, submittedById, proposedByIds, privacyLevel, extraComments };
@@ -117,6 +128,13 @@ function decrypt(payload, passphrase) {
     }
   }
 
+  // FORCE_REPARSE=1 to re-read everything from scratch (used after parser changes)
+  const FORCE_REPARSE = process.env.FORCE_REPARSE === '1';
+  if (FORCE_REPARSE) {
+    console.log('FORCE_REPARSE=1 — re-reading channel from scratch and rebuilding the store.');
+    store.items = [];
+    store._meta.lastSeenTs = '0';
+  }
   const knownTs = new Set(store.items.map(r => r.ts));
 
   // Fetch messages newer than lastSeenTs
@@ -143,8 +161,9 @@ function decrypt(payload, passphrase) {
     const ts = msg.ts;
     if (parseFloat(ts) > maxTs) maxTs = parseFloat(ts);
     if (knownTs.has(ts)) continue;
+    // Prefer plain text (already includes mentions). Only fall back to blocks when text is empty.
     let text = msg.text || '';
-    if (msg.blocks) text += '\n' + flattenBlockText(msg.blocks);
+    if (!text || text.length < 30) text = flattenBlockText(msg.blocks || []);
     const parsed = parseRequest(text);
     if (!parsed) continue;
     let permalink = '';
