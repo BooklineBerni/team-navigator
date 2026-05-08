@@ -1144,6 +1144,29 @@
   .flat-task .edit-btn { appearance: none; border: none; background: transparent; cursor: pointer; color: #9a9a9a; font-size: 14px; padding: 0 6px; }
   .flat-task .edit-btn:hover { color: #1a1a1a; }
 
+  /* Multi-select Proposed By picker */
+  .proposed-box { position: relative; border: 1px solid #d8d6d1; border-radius: 6px; padding: 4px; background: #fff; min-height: 36px; cursor: text; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .proposed-box:focus-within { border-color: #1a1a1a; }
+  .proposed-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .proposed-chip { display: inline-flex; align-items: center; gap: 6px; background: #f1f3f4; border: 1px solid #e2e4e7; padding: 2px 4px 2px 2px; border-radius: 16px; font-size: 12px; color: #1a1a1a; }
+  .proposed-chip.proposed-chip-external { background: #fff7ed; border-color: #fed7aa; }
+  .proposed-chip .av-mini { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; overflow: hidden; position: relative; }
+  .proposed-chip .av-mini img,
+  .proposed-dd-item .av-mini img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; position: absolute; top: 0; left: 0; }
+  .proposed-dd-item .av-mini { overflow: hidden; position: relative; }
+  .proposed-chip-name { font-size: 12px; font-weight: 500; line-height: 1; }
+  .proposed-chip-x { appearance: none; border: none; background: transparent; cursor: pointer; color: #6b6b6b; font-size: 14px; padding: 0 4px 0 2px; line-height: 1; }
+  .proposed-chip-x:hover { color: #dc2626; }
+  .proposed-input { flex: 1; min-width: 100px; border: none; outline: none; padding: 4px 6px; font-size: 13px; background: transparent; }
+  .proposed-dropdown { position: absolute; top: 100%; left: 0; right: 0; max-height: 240px; overflow-y: auto; margin-top: 2px; background: #fff; border: 1px solid #d8d6d1; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 100; }
+  .proposed-dd-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer; }
+  .proposed-dd-item:hover { background: #f1f3f4; }
+  .proposed-dd-item .av-mini { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; }
+  .proposed-dd-meta { flex: 1; min-width: 0; }
+  .proposed-dd-name { font-size: 13px; font-weight: 500; color: #1a1a1a; }
+  .proposed-dd-email { font-size: 11px; color: #6b6b6b; }
+  .proposed-dd-ext { font-size: 10px; padding: 2px 6px; background: #fff7ed; color: #c2410c; border-radius: 999px; flex-shrink: 0; }
+
   /* Group cards (parent tasks) */
   .group-row {
     display: grid; grid-template-columns: 22px 1fr auto auto; gap: 10px; align-items: center;
@@ -1704,7 +1727,15 @@
     </div>
     <div class="field-row f_taskOnlyRow">
       <div class="field"><label>Responsible</label><select id="f_responsibleId"></select></div>
-      <div class="field"><label>Proposed by</label><select id="f_proposedById"></select></div>
+      <div class="field">
+        <label>Proposed by <span style="color:#dc2626">*</span></label>
+        <div id="f_proposedBox" class="proposed-box">
+          <div id="f_proposedChips" class="proposed-chips"></div>
+          <input type="text" id="f_proposedInput" class="proposed-input" placeholder="Type a name or email…" autocomplete="off">
+          <div id="f_proposedDropdown" class="proposed-dropdown" style="display:none"></div>
+        </div>
+        <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Add one or more proposers. Click × on a chip to remove.</div>
+      </div>
     </div>
     <div class="field-row-3 f_taskOnlyRow">
       <div class="field"><label>Dedicated hours</label><input type="number" id="f_dedicatedHours" step="0.5" min="0"></div>
@@ -1751,6 +1782,36 @@ const DEFAULT_TEAM = [
   { id: "U09M8KWD67M", name: "Alina",            displayName: "Alina",   email: "alina@bookline.ai",         role: "Bookline", photo: "https://avatars.slack-edge.com/2025-10-22/9738384568405_f77982408214593062d0_original.png", color: "#9333ea" },
   { id: "U066E2648J1", name: "Jaime Amor",       displayName: "Jaime",   email: "jaime@bookline.ai",         role: "Bookline", photo: "https://avatars.slack-edge.com/2024-09-10/7706883276898_c910893731befd8803e4_original.jpg", color: "#0d9488" },
   { id: "U08KBAWNB4Z", name: "Roxana Intriago",  displayName: "Roxana",  email: "suanny7@hotmail.com",       role: "External",  photo: "",                                                                                          color: "#64748b" }
+];
+
+// Extended directory: extra Bookline Slack members referenced as proposers but not on the active Team.
+// They appear in the Proposed By picker but NOT on the Team page.
+const EXTERNAL_TEAM = [
+  { id: "U0500TETAR3", name: "Quique Roca",          displayName: "Quique",        email: "quique@bookline.io",          role: "Bookline", photo: "https://avatars.slack-edge.com/2023-05-02/5200612379922_aad3b7a2922e0ace7695_original.png", color: "#0ea5e9", external: true },
+  { id: "U052UT74VV0", name: "Almu",                 displayName: "Almu",          email: "almudena@bookline.io",        role: "Bookline", photo: "https://avatars.slack-edge.com/2023-04-28/5182951459827_88320b13ceadb380465d_original.jpg", color: "#7c3aed", external: true },
+  { id: "U0322MPEKN3", name: "Joan Ramon Camí",      displayName: "Joancami",      email: "joancami@bookline.io",        role: "Bookline", photo: "https://avatars.slack-edge.com/2022-02-17/3104761551399_37b539985a546b67237e_original.jpg", color: "#f59e0b", external: true },
+  { id: "U062XKJ331V", name: "Pablo",                displayName: "Pablo",         email: "pablo@bookline.ai",           role: "Bookline", photo: "https://avatars.slack-edge.com/2023-12-15/6364374488401_7900dff039d1616b1cad_original.jpg", color: "#16a34a", external: true },
+  { id: "U05GFM54QEL", name: "Dani Romances",        displayName: "Dani Romances", email: "dani.romances@bookline.io",   role: "Bookline", photo: "https://avatars.slack-edge.com/2023-07-06/5521998340311_ebb103851a45bbd5a438_original.jpg", color: "#dc2626", external: true },
+  { id: "U053HCQ8L15", name: "Luis López-Balcells",  displayName: "Luis",          email: "luis@bookline.io",            role: "Bookline", photo: "https://avatars.slack-edge.com/2023-06-01/5358887946628_c5f0f228f2fee0405d3b_original.png", color: "#0891b2", external: true },
+  { id: "U07L0G8TKLH", name: "Laia",                 displayName: "Laia",          email: "laia@bookline.ai",            role: "Bookline", photo: "https://avatars.slack-edge.com/2024-09-17/7740853010914_7789811877d4e770723e_original.jpg", color: "#ea580c", external: true },
+  { id: "U06HX22P9TL", name: "Pablo Mayor",          displayName: "Pablo Mayor",   email: "pablo.mayor@bookline.ai",     role: "Bookline", photo: "https://avatars.slack-edge.com/2024-02-23/6678352261431_a2e97163ff933887e194_original.jpg", color: "#9333ea", external: true },
+  { id: "U056QF3C02C", name: "Daniel Esteves",       displayName: "Dani Esteves",  email: "dani@bookline.io",            role: "Bookline", photo: "https://avatars.slack-edge.com/2024-10-14/7870974346662_31227767026a7d0c9c52_original.png", color: "#0d9488", external: true },
+  { id: "U04M2KP2UUB", name: "Clara Segura",         displayName: "Clara",         email: "clara.segura@bookline.io",    role: "Bookline", photo: "https://avatars.slack-edge.com/2023-02-16/4813687087891_e7c70ab97edd143ecfda_original.png", color: "#db2777", external: true },
+  { id: "U0705TV8P8Q", name: "Blanca",               displayName: "Blanca",        email: "blanca@bookline.ai",          role: "Bookline", photo: "https://avatars.slack-edge.com/2024-04-24/7012642898739_987fb40ab33a39e82db8_original.jpg", color: "#e11d48", external: true },
+  { id: "U093C6QJSSZ", name: "Coni Quiero",          displayName: "Coni",          email: "constanza@bookline.ai",       role: "Marketing", photo: "https://avatars.slack-edge.com/2025-06-30/9124251464642_67c4c0a9318f4758fdee_original.jpg", color: "#7c3aed", external: true },
+  { id: "U094Z6H4F9Q", name: "Jaime Ruiz",           displayName: "Jaime Ruiz",    email: "jaime.ruiz@bookline.ai",      role: "Bookline", photo: "https://avatars.slack-edge.com/2025-07-11/9184876952757_11f4bb241baf70fc7c31_original.png", color: "#0ea5e9", external: true },
+  { id: "U0A3QSMAECU", name: "pamela",               displayName: "Pamela",        email: "pamela@bookline.ai",          role: "Bookline", photo: "https://avatars.slack-edge.com/2025-12-18/10151990502260_62c5005acaefc7eef065_original.png", color: "#f59e0b", external: true },
+  { id: "U08GD3KKJJH", name: "Adria Ubeda",          displayName: "Adria",         email: "adria@bookline.ai",           role: "Bookline", photo: "https://avatars.slack-edge.com/2025-07-12/9188747439316_0949c6386fcfe29a48aa_original.png", color: "#16a34a", external: true },
+  { id: "U07230N9LHK", name: "Carlos Sarrias",       displayName: "Carlos S",      email: "carlos.sarrias@bookline.ai",  role: "Bookline", photo: "https://avatars.slack-edge.com/2024-05-17/7137455695012_8afa4308fb4469a541b5_original.png", color: "#dc2626", external: true },
+  { id: "U08RU8RGY21", name: "Teo",                  displayName: "Teo",           email: "teo@bookline.ai",             role: "Bookline", photo: "https://avatars.slack-edge.com/2025-05-12/8885175394434_30c28ab3a561ddf2f6dc_original.jpg", color: "#0891b2", external: true },
+  { id: "U05U9MMMQPR", name: "Carlos Zapater",       displayName: "Carlos Z",      email: "carlos@bookline.ai",          role: "Bookline", photo: "https://avatars.slack-edge.com/2023-10-26/6096149761893_54cb111aa9700f7b5c51_original.png", color: "#ea580c", external: true },
+  { id: "U09G8A5PR60", name: "Mauro Rovira",         displayName: "Mauro",         email: "mauro@bookline.ai",           role: "Bookline", photo: "https://avatars.slack-edge.com/2026-01-22/10352238232246_060e87a0621fee311d00_original.png", color: "#9333ea", external: true },
+  { id: "U09MMCLEJSJ", name: "Andrea",               displayName: "Andrea",        email: "andrea@bookline.ai",          role: "Bookline", photo: "https://avatars.slack-edge.com/2025-10-21/9737550061122_0370752d0be85c52f97b_original.png", color: "#0d9488", external: true },
+  { id: "U09MRUL5WDS", name: "Giulia",               displayName: "Giulia",        email: "giulia@bookline.ai",          role: "Bookline", photo: "https://avatars.slack-edge.com/2025-10-22/9742790098261_e706da89523d40a7e6c0_original.png", color: "#db2777", external: true },
+  { id: "U078DJQ3JBD", name: "Gloria Florido",       displayName: "Gloria",        email: "gloria@bookline.ai",          role: "Bookline", photo: "https://avatars.slack-edge.com/2024-06-17/7302294046689_8eb7785e03086c464666_original.png", color: "#e11d48", external: true },
+  { id: "U04UCU77XM3", name: "Jose",                 displayName: "Jose",          email: "jose@bookline.io",            role: "Bookline", photo: "https://avatars.slack-edge.com/2023-03-17/4955863539591_e6e149b0f9a7418cf102_original.png", color: "#7c3aed", external: true },
+  { id: "U06U0UCPU22", name: "Gonzalo Falcón",       displayName: "Gonzalo F",     email: "gonzalo@bookline.ai",         role: "Bookline", photo: "https://avatars.slack-edge.com/2024-06-09/7246950468226_62976ebff46566bff8cb_original.png", color: "#0ea5e9", external: true },
+  { id: "U07NHTVHDHD", name: "Bruno Jover",          displayName: "Bruno",         email: "bruno@bookline.ai",           role: "Bookline", photo: "https://avatars.slack-edge.com/2026-02-23/10546793820503_315847811bbb8328f233_original.png", color: "#f59e0b", external: true }
 ];
 
 let TEAM = DEFAULT_TEAM.map(p => ({ ...p }));
@@ -1842,7 +1903,25 @@ rebuildTeam();
 function uid() { return "loc" + Math.random().toString(36).slice(2, 10); }
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);}
 function initials(name){return (name||'').split(/\s+/).filter(Boolean).slice(0,2).map(s => s[0]).join("").toUpperCase();}
-function findPerson(id) { return TEAM.find(p => p.id === id) || null; }
+function findPerson(id) {
+  if (!id) return null;
+  return TEAM.find(p => p.id === id) ||
+         (typeof EXTERNAL_TEAM !== 'undefined' && EXTERNAL_TEAM.find(p => p.id === id)) ||
+         null;
+}
+function findPersonByEmail(email) {
+  if (!email) return null;
+  const e = email.trim().toLowerCase();
+  return TEAM.find(p => (p.email||'').toLowerCase() === e) ||
+         (typeof EXTERNAL_TEAM !== 'undefined' && EXTERNAL_TEAM.find(p => (p.email||'').toLowerCase() === e)) ||
+         null;
+}
+function allPeopleForPicker() {
+  // Active team first, then external (alphabetical within each group), excluding deactivated.
+  const active = (TEAM || []).filter(p => !isDeactivated(p.id));
+  const ext = (typeof EXTERNAL_TEAM !== 'undefined') ? EXTERNAL_TEAM : [];
+  return [...active, ...ext];
+}
 function isPersonSelected(id) {
   return currentPersonIds.size === 0 || currentPersonIds.has(id);
 }
@@ -2670,12 +2749,113 @@ function taskHtml(t) {
 }
 
 function populateUserSelects() {
-  const sels = [document.getElementById("f_responsibleId"), document.getElementById("f_proposedById")];
-  sels.forEach(sel => {
-    sel.innerHTML = '<option value="">(ninguno)</option>' + TEAM.map(p => '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>').join("");
-  });
+  const sel = document.getElementById("f_responsibleId");
+  if (sel) sel.innerHTML = '<option value="">(ninguno)</option>' + TEAM.map(p => '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>').join("");
 }
 populateUserSelects();
+
+// =========================== Multi-select Proposed By picker ===========================
+let proposedSelectedIds = [];
+
+function proposedChipHtml(p) {
+  const ini = initials(p.name||'');
+  const color = p.color || '#9a9a9a';
+  const photoImg = p.photo ? '<img src="'+escapeHtml(p.photo)+'" alt="" onerror="this.remove()">' : '';
+  const ext = p.external ? ' proposed-chip-external' : '';
+  return '<span class="proposed-chip'+ext+'" data-pid="'+escapeHtml(p.id)+'">' +
+    '<span class="av-mini" style="background:'+color+'">'+photoImg+'<span class="ini">'+escapeHtml(ini)+'</span></span>' +
+    '<span class="proposed-chip-name">'+escapeHtml(p.displayName||p.name||'?')+'</span>' +
+    '<button type="button" class="proposed-chip-x" title="Remove">×</button>' +
+    '</span>';
+}
+
+function refreshProposedChips() {
+  const cont = document.getElementById('f_proposedChips');
+  if (!cont) return;
+  const html = proposedSelectedIds.map(id => {
+    const p = findPerson(id);
+    if (!p) return '<span class="proposed-chip" data-pid="'+escapeHtml(id)+'" title="Unknown user">'+escapeHtml(id)+'<button type="button" class="proposed-chip-x">×</button></span>';
+    return proposedChipHtml(p);
+  }).join('');
+  cont.innerHTML = html;
+  cont.querySelectorAll('.proposed-chip-x').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const chip = btn.closest('.proposed-chip');
+      const pid = chip.dataset.pid;
+      proposedSelectedIds = proposedSelectedIds.filter(x => x !== pid);
+      refreshProposedChips();
+      filterProposedDropdown(document.getElementById('f_proposedInput').value);
+    });
+  });
+}
+
+function filterProposedDropdown(query) {
+  const dd = document.getElementById('f_proposedDropdown');
+  if (!dd) return;
+  const q = (query||'').trim().toLowerCase();
+  const all = allPeopleForPicker();
+  const matches = all.filter(p => {
+    if (proposedSelectedIds.includes(p.id)) return false;
+    if (!q) return true;
+    return (p.name||'').toLowerCase().includes(q) ||
+           (p.displayName||'').toLowerCase().includes(q) ||
+           (p.email||'').toLowerCase().includes(q);
+  }).slice(0, 12);
+  if (matches.length === 0) {
+    dd.style.display = 'none';
+    return;
+  }
+  dd.innerHTML = matches.map(p => {
+    const ini = initials(p.name||'');
+    const photoImg = p.photo ? '<img src="'+escapeHtml(p.photo)+'" alt="" onerror="this.remove()">' : '';
+    const extLabel = p.external ? '<span class="proposed-dd-ext">extended</span>' : '';
+    return '<div class="proposed-dd-item" data-pid="'+escapeHtml(p.id)+'">' +
+      '<span class="av-mini" style="background:'+(p.color||'#9a9a9a')+'">'+photoImg+'<span class="ini">'+escapeHtml(ini)+'</span></span>' +
+      '<div class="proposed-dd-meta"><div class="proposed-dd-name">'+escapeHtml(p.name||'')+'</div>' +
+      '<div class="proposed-dd-email">'+escapeHtml(p.email||'')+'</div></div>' +
+      extLabel +
+      '</div>';
+  }).join('');
+  dd.style.display = '';
+  dd.querySelectorAll('.proposed-dd-item').forEach(it => {
+    it.addEventListener('click', e => {
+      e.stopPropagation();
+      const pid = it.dataset.pid;
+      if (!proposedSelectedIds.includes(pid)) proposedSelectedIds.push(pid);
+      const inp = document.getElementById('f_proposedInput');
+      inp.value = '';
+      refreshProposedChips();
+      filterProposedDropdown('');
+      inp.focus();
+    });
+  });
+}
+
+(function wireProposedPicker(){
+  const inp = document.getElementById('f_proposedInput');
+  if (!inp) return;
+  inp.addEventListener('focus', () => filterProposedDropdown(inp.value));
+  inp.addEventListener('input', () => filterProposedDropdown(inp.value));
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !inp.value && proposedSelectedIds.length > 0) {
+      proposedSelectedIds.pop();
+      refreshProposedChips();
+      filterProposedDropdown('');
+    } else if (e.key === 'Escape') {
+      document.getElementById('f_proposedDropdown').style.display = 'none';
+    }
+  });
+  // Close dropdown on outside click
+  document.addEventListener('click', e => {
+    const box = document.getElementById('f_proposedBox');
+    if (!box) return;
+    if (!box.contains(e.target)) {
+      const dd = document.getElementById('f_proposedDropdown');
+      if (dd) dd.style.display = 'none';
+    }
+  });
+})();
 
 function refreshGroupSelectOptions(currentGroupId, excludeTaskId) {
   const sel = document.getElementById("f_groupId");
@@ -2730,7 +2910,15 @@ function openModal(tid, overrides) {
   document.getElementById("f_type").value = t.type || "";
   document.getElementById("f_dueDate").value = t.dueDate || "";
   document.getElementById("f_responsibleId").value = t.responsibleId || "";
-  document.getElementById("f_proposedById").value = t.proposedById || "";
+  // Proposed By: support new array model + legacy single id
+  proposedSelectedIds = Array.isArray(t.proposedByIds) && t.proposedByIds.length > 0
+    ? [...t.proposedByIds]
+    : (t.proposedById ? [t.proposedById] : []);
+  refreshProposedChips();
+  const propInp = document.getElementById('f_proposedInput');
+  if (propInp) propInp.value = '';
+  const propDd = document.getElementById('f_proposedDropdown');
+  if (propDd) propDd.style.display = 'none';
   document.getElementById("f_dedicatedHours").value = (t.dedicatedHours === 0 || t.dedicatedHours) ? t.dedicatedHours : "";
   document.getElementById("f_estimatedHours").value = (t.estimatedHours === 0 || t.estimatedHours) ? t.estimatedHours : "";
   document.getElementById("f_shareWith").value = t.shareWith || "";
@@ -2770,6 +2958,7 @@ document.getElementById("saveBtn").addEventListener("click", () => {
     if (!priority) missing.push("Priority");
     if (!type) missing.push("Type");
     if (!shareWith) missing.push("Share with");
+    if (!Array.isArray(proposedSelectedIds) || proposedSelectedIds.length === 0) missing.push("Proposed by (at least one)");
     if (missing.length > 0) { alert("Please fill in: " + missing.join(", ")); return; }
   }
   const newCarry = document.getElementById("modal").__newTask;
@@ -2802,7 +2991,9 @@ document.getElementById("saveBtn").addEventListener("click", () => {
     t.type = document.getElementById("f_type").value;
     t.dueDate = document.getElementById("f_dueDate").value;
     t.responsibleId = document.getElementById("f_responsibleId").value;
-    t.proposedById = document.getElementById("f_proposedById").value;
+    t.proposedByIds = [...proposedSelectedIds];
+    // Keep legacy single-id field in sync (first selected) for backward compat
+    t.proposedById = proposedSelectedIds[0] || "";
     const ded = document.getElementById("f_dedicatedHours").value;
     const est = document.getElementById("f_estimatedHours").value;
     t.dedicatedHours = ded === "" ? "" : (parseFloat(ded) || 0);
@@ -2815,8 +3006,13 @@ document.getElementById("saveBtn").addEventListener("click", () => {
   t._pendingSync = true;
   const respPerson = findPerson(t.responsibleId);
   if (respPerson) t.responsibleRaw = respPerson.email || respPerson.name;
-  const propPerson = findPerson(t.proposedById);
-  if (propPerson) t.proposedByRaw = propPerson.email || propPerson.name;
+  // Build proposedByRaw from all selected proposers (comma-separated emails)
+  if (Array.isArray(t.proposedByIds) && t.proposedByIds.length > 0) {
+    t.proposedByRaw = t.proposedByIds.map(id => {
+      const p = findPerson(id);
+      return p ? (p.email || p.name) : id;
+    }).join(', ');
+  }
   if (t.completed) { t.panelStatus = "completed"; if (!(t.slackStatus||"").toLowerCase().includes('complete')) t.slackStatus = "Completed"; }
   // If this task came from a Slack request approval, mark the request as handled
   if (t._fromRequestTs) {
