@@ -5661,14 +5661,78 @@ function detectFileType(url) {
   return 'link';
 }
 function fileIconForType(type) {
+  // Mini Google-product-style SVG icons (paper sheet with colored corner + colored content lines)
+  function paperSvg(accent, lines) {
+    // accent = color of folded corner; lines = array of small horizontal bars (color, width%)
+    const w = 36, h = 44;
+    const linesSvg = (lines || []).map((l, i) => {
+      const y = 22 + i * 4;
+      return '<rect x="6" y="' + y + '" width="' + (l.w || 16) + '" height="2" rx="1" fill="' + l.c + '"/>';
+    }).join('');
+    return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M4 2h18l10 10v28a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fff" stroke="' + accent + '" stroke-width="1"/>' +
+      '<path d="M22 2v8a2 2 0 0 0 2 2h8" fill="' + accent + '" fill-opacity="0.18" stroke="' + accent + '" stroke-width="1"/>' +
+      linesSvg +
+      '</svg>';
+  }
   const map = {
-    doc:    { color: '#4285f4', label: 'D', name: 'Google Doc' },
-    sheet:  { color: '#0f9d58', label: 'S', name: 'Google Sheet' },
-    slides: { color: '#f4b400', label: 'P', name: 'Google Slides' },
-    form:   { color: '#673ab7', label: 'F', name: 'Google Form' },
-    file:   { color: '#5f6368', label: '📎', name: 'Drive file' },
-    folder: { color: '#5f6368', label: '📁', name: 'Folder' },
-    link:   { color: '#9aa0a6', label: '🔗', name: 'Link' }
+    doc: {
+      color: '#e8f0fe',
+      svg: paperSvg('#1a73e8', [
+        { c: '#1a73e8', w: 22 }, { c: '#1a73e8', w: 22 }, { c: '#1a73e8', w: 22 }, { c: '#1a73e8', w: 14 }
+      ]),
+      name: 'Google Doc'
+    },
+    sheet: {
+      color: '#e6f4ea',
+      svg: '<svg width="36" height="44" viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        '<path d="M4 2h18l10 10v28a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fff" stroke="#0f9d58" stroke-width="1"/>' +
+        '<path d="M22 2v8a2 2 0 0 0 2 2h8" fill="#0f9d58" fill-opacity="0.18" stroke="#0f9d58" stroke-width="1"/>' +
+        '<rect x="6" y="22" width="24" height="14" rx="1" fill="none" stroke="#0f9d58" stroke-width="1"/>' +
+        '<line x1="6" y1="26" x2="30" y2="26" stroke="#0f9d58" stroke-width="0.8"/>' +
+        '<line x1="6" y1="30" x2="30" y2="30" stroke="#0f9d58" stroke-width="0.8"/>' +
+        '<line x1="14" y1="22" x2="14" y2="36" stroke="#0f9d58" stroke-width="0.8"/>' +
+        '<line x1="22" y1="22" x2="22" y2="36" stroke="#0f9d58" stroke-width="0.8"/>' +
+        '</svg>',
+      name: 'Google Sheet'
+    },
+    slides: {
+      color: '#fef7e0',
+      svg: '<svg width="36" height="44" viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        '<path d="M4 2h18l10 10v28a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fff" stroke="#f4b400" stroke-width="1"/>' +
+        '<path d="M22 2v8a2 2 0 0 0 2 2h8" fill="#f4b400" fill-opacity="0.18" stroke="#f4b400" stroke-width="1"/>' +
+        '<rect x="6" y="22" width="24" height="14" rx="1" fill="none" stroke="#f4b400" stroke-width="1.2"/>' +
+        '</svg>',
+      name: 'Google Slides'
+    },
+    form: {
+      color: '#f3e8fd',
+      svg: paperSvg('#7e3ff2', [
+        { c: '#7e3ff2', w: 4 }, { c: '#bdbdbd', w: 18 },
+        { c: '#7e3ff2', w: 4 }, { c: '#bdbdbd', w: 18 }
+      ]).replace('y="22"', 'y="22"').replace('y="26"', 'y="26"'),
+      name: 'Google Form'
+    },
+    file: {
+      color: '#f1f3f4',
+      svg: paperSvg('#5f6368', [{ c: '#5f6368', w: 22 }, { c: '#5f6368', w: 18 }, { c: '#5f6368', w: 14 }]),
+      name: 'Drive file'
+    },
+    folder: {
+      color: '#fef7e0',
+      svg: '<svg width="36" height="44" viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        '<path d="M4 12h10l3 3h15a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V14a2 2 0 0 1 2-2z" fill="#ffd54f" stroke="#f4b400" stroke-width="1"/>' +
+        '</svg>',
+      name: 'Folder'
+    },
+    link: {
+      color: '#f1f3f4',
+      svg: '<svg width="36" height="44" viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        '<circle cx="18" cy="22" r="14" fill="#fff" stroke="#5f6368" stroke-width="1"/>' +
+        '<path d="M14 22a4 4 0 0 1 4-4h2m-2 8h-2a4 4 0 0 1-4-4zm8-4h2a4 4 0 0 1 4 4 4 4 0 0 1-4 4h-2m-4-4h8" stroke="#5f6368" stroke-width="1.4" stroke-linecap="round"/>' +
+        '</svg>',
+      name: 'Link'
+    }
   };
   return map[type] || map.link;
 }
@@ -5710,7 +5774,7 @@ function renderFilesPage() {
     const ic = fileIconForType(t);
     const dateStr = f.addedAt ? new Date(f.addedAt).toLocaleDateString('es-ES', { dateStyle: 'short' }) : '';
     html += '<div class="file-card" data-id="' + escapeHtml(f.id) + '">' +
-      '<div class="file-icon" style="background:' + ic.color + '">' + escapeHtml(ic.label) + '</div>' +
+      '<div class="file-icon" style="background:' + ic.color + '">' + (ic.svg || '') + '</div>' +
       '<div class="file-info">' +
         '<div class="file-name" title="' + escapeHtml(f.name) + '">' + escapeHtml(f.name) + '</div>' +
         '<div class="file-meta">' +
@@ -5780,7 +5844,9 @@ function ffUpdateTypePreview() {
   const ic = fileIconForType(t);
   document.getElementById('ff_typePreview').innerHTML =
     '<span style="display:inline-flex;align-items:center;gap:6px;font-size:13px">' +
-    '<span style="width:18px;height:18px;border-radius:5px;background:' + ic.color + ';color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center">' + escapeHtml(ic.label) + '</span>' +
+    '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px">' +
+    '<svg width="18" height="22" viewBox="0 0 36 44" preserveAspectRatio="xMidYMid meet">' + (ic.svg || '').replace(/<svg[^>]*>/, '').replace('</svg>', '') + '</svg>' +
+    '</span>' +
     escapeHtml(ic.name) +
     '</span>';
 }
@@ -6070,10 +6136,23 @@ async function bnPushTeamFiles(opts) {
       };
     }
 
+    // Network-resilient fetch (retry up to 2x on TypeError "Failed to fetch")
+    async function netFetch(url, init) {
+      let lastErr = null;
+      for (let i = 0; i < 3; i++) {
+        try { return await fetch(url, init); }
+        catch (e) {
+          lastErr = e;
+          if (i < 2) await new Promise(r => setTimeout(r, 400 * (i + 1)));
+        }
+      }
+      throw lastErr;
+    }
+
     // Helper: GET fresh SHA, bypassing browser cache
     async function fetchSha() {
       const url = apiBase + '?ref=' + BN_FILES_REPO_BRANCH + '&_=' + Date.now();
-      const r = await fetch(url, { headers: makeHeaders(token), cache: 'no-store' });
+      const r = await netFetch(url, { headers: makeHeaders(token), cache: 'no-store' });
       if (r.status === 404) return null;
       if (r.status === 401) {
         const txt = await r.text();
@@ -6095,7 +6174,7 @@ async function bnPushTeamFiles(opts) {
         branch: BN_FILES_REPO_BRANCH
       };
       if (sha) putBody.sha = sha;
-      const r = await fetch(apiBase, {
+      const r = await netFetch(apiBase, {
         method: 'PUT',
         headers: Object.assign({ 'Content-Type': 'application/json' }, makeHeaders(token)),
         body: JSON.stringify(putBody),
