@@ -488,6 +488,14 @@
     font-size: 14px; font-weight: 700; color: #6b6b6b;
     margin: 24px 0 10px; padding-top: 14px; border-top: 1px solid #ececea;
   }
+  .members-section-heading.members-section-bookline {
+    color: #c2410c;
+  }
+  .member-card.member-bookline {
+    border-color: #fed7aa;
+    background: #fffbf6;
+  }
+  .member-card.member-bookline:hover { border-color: #fb923c; }
   .members-grid-disabled .member-card {
     opacity: 0.7;
     filter: grayscale(0.7);
@@ -1287,7 +1295,7 @@
       <button class="nav-item" data-view="requests"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span class="nav-label">Requests</span> <span class="nav-count" id="nav-requests-count"></span></button>
       <button class="nav-item" data-view="files"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="nav-label">Files</span> <span class="nav-count" id="nav-files-count"></span></button>
       <button class="nav-item" data-view="profile"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="nav-label">Profile</span></button>
-      <button class="nav-item" data-view="members"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">Team</span> <span class="nav-count" id="nav-members-count"></span></button>
+      <button class="nav-item" data-view="members"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">People</span> <span class="nav-count" id="nav-members-count"></span></button>
     </aside>
     <main class="main-content">
 
@@ -1390,10 +1398,10 @@
   <section id="view-members" class="view-section" style="display:none">
       <div class="page-header">
         <div>
-          <h2 class="page-title">Team</h2>
+          <h2 class="page-title">People</h2>
         </div>
         <div style="display:flex; gap:8px; align-items:center">
-          <input class="search-input" id="memberPageSearch" placeholder="Search members..." style="max-width:240px">
+          <input class="search-input" id="memberPageSearch" placeholder="Search people..." style="max-width:240px">
           <button class="btn" id="teamManageTagsBtn" title="Create, edit, recolor and reorder member tags">Member Tags</button>
           <button class="btn primary" id="teamAddMemberBtn" title="Add someone from Slack who isn't in the team yet">+ Member</button>
         </div>
@@ -4262,23 +4270,63 @@ function renderHomePage() {
 
 // ---- Members page (just people, no task lists) ----
 let membersPageQuery = "";
+// Build the set of person IDs that appear as proposers in any task (excludes groups)
+function getAllProposerIds() {
+  const s = new Set();
+  for (const t of (STORE.tasks || [])) {
+    if (t.isGroup) continue;
+    if (Array.isArray(t.proposedByIds)) for (const id of t.proposedByIds) if (id) s.add(id);
+    else if (t.proposedById) s.add(t.proposedById);
+  }
+  return s;
+}
+
+function countProposerTasks(personId) {
+  let n = 0;
+  for (const t of (STORE.tasks || [])) {
+    if (t.isGroup) continue;
+    if (Array.isArray(t.proposedByIds) ? t.proposedByIds.includes(personId) : t.proposedById === personId) n++;
+  }
+  return n;
+}
+
 function renderMembersPage() {
   const grid = document.getElementById("membersGrid");
   const q = (membersPageQuery || "").toLowerCase();
-  let arr = TEAM.filter(p => {
+  function matchesQuery(p) {
     if (!q) return true;
-    return (p.name + " " + p.email + " " + p.displayName + " " + getTagsFor(p.id).join(" ")).toLowerCase().includes(q);
-  });
-  // Apply same sort as team
-  arr = sortPersons(arr.map(p => p.id), STORE.tasks).map(id => findPerson(id)).filter(Boolean);
-  if (arr.length === 0) {
-    grid.innerHTML = '<div class="rm-empty">No members match.</div>';
+    return (p.name + " " + (p.email||"") + " " + (p.displayName||"") + " " + getTagsFor(p.id).join(" ")).toLowerCase().includes(q);
+  }
+  // 1) Team people (active TEAM, not disabled)
+  const teamActive = TEAM.filter(p => matchesQuery(p) && !isDeactivated(p.id));
+  // 2) Bookline people: appear as proposers AND are NOT in TEAM AND not disabled
+  const teamIds = new Set(TEAM.map(p => p.id));
+  const proposerIds = getAllProposerIds();
+  const bookline = [];
+  for (const id of proposerIds) {
+    if (teamIds.has(id)) continue;
+    if (isDeactivated(id)) continue;
+    const p = findPerson(id);
+    if (!p) continue;
+    if (!matchesQuery(p)) continue;
+    bookline.push(p);
+  }
+  bookline.sort((a, b) => countProposerTasks(b.id) - countProposerTasks(a.id) || (a.name||'').localeCompare(b.name||''));
+  // 3) Disabled (anyone disabled — could be from TEAM or EXTERNAL_TEAM or ad-hoc)
+  const disabledSet = new Set();
+  TEAM.forEach(p => { if (isDeactivated(p.id) && matchesQuery(p)) disabledSet.add(p.id); });
+  if (typeof EXTERNAL_TEAM !== 'undefined') EXTERNAL_TEAM.forEach(p => { if (isDeactivated(p.id) && matchesQuery(p)) disabledSet.add(p.id); });
+  const disabled = Array.from(disabledSet).map(id => findPerson(id)).filter(Boolean);
+
+  // Sort team using existing sort
+  const teamSorted = sortPersons(teamActive.map(p => p.id), STORE.tasks).map(id => findPerson(id)).filter(Boolean);
+
+  if (teamSorted.length === 0 && bookline.length === 0 && disabled.length === 0) {
+    grid.innerHTML = '<div class="rm-empty">No people match.</div>';
     return;
   }
-  // Split active vs disabled
-  const active = arr.filter(p => !isDeactivated(p.id));
-  const disabled = arr.filter(p => isDeactivated(p.id));
-  function memberCardHtml(p) {
+
+  function memberCardHtml(p, mode) {
     const tags = getTagsFor(p.id);
     const tagsHtml = tags.length
       ? '<div class="person-tags-line">' + tags.map(t => tagBadgeHtml(t, false)).join("") + '</div>'
@@ -4286,57 +4334,75 @@ function renderMembersPage() {
     const settings = getPersonSettings(p.id);
     const awt = (settings.availableWeekTime != null && settings.availableWeekTime !== "")
       ? '<div class="role" style="color:#0891b2; font-weight:600">Available: ' + settings.availableWeekTime + 'h/week</div>' : "";
-    const taskCount = STORE.tasks.filter(t => t.responsibleId === p.id).length;
-    const pendingCount = STORE.tasks.filter(t => t.responsibleId === p.id && t.panelStatus === "pending").length;
-    const inProgressCount = STORE.tasks.filter(t => t.responsibleId === p.id && t.panelStatus === "in_progress").length;
-    // Roadmaps where person is owner OR has tasks assigned
-    const personRoadmaps = getRoadmaps().filter(r => {
-      if (r.responsibleId === p.id) return true;
-      return (r.tasks || []).some(entry => {
-        const t = STORE.tasks.find(x => x.id === entry.taskId);
-        return t && t.responsibleId === p.id;
+
+    let statsHtml = '';
+    let roadmapsHtml = '';
+    if (mode === 'team') {
+      const taskCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id).length;
+      const pendingCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id && t.panelStatus === "pending").length;
+      const inProgressCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id && t.panelStatus === "in_progress").length;
+      const personRoadmaps = getRoadmaps().filter(r => {
+        if (r.responsibleId === p.id) return true;
+        return (r.tasks || []).some(entry => {
+          const t = STORE.tasks.find(x => x.id === entry.taskId);
+          return t && t.responsibleId === p.id;
+        });
       });
-    });
-    const roadmapsHtml = personRoadmaps.length
-      ? '<div class="person-roadmaps-line" data-uid="' + p.id + '">' +
-          personRoadmaps.map(r => '<span class="rm-mini-badge" data-rm="' + r.id + '" title="Open ' + escapeHtml(r.name||'') + '">' + escapeHtml((r.name||'').slice(0,22)) + (r.responsibleId === p.id ? ' <span class="rm-mini-owner" title="Owner">●</span>' : '') + '</span>').join('') +
-        '</div>'
-      : '';
-    return '<div class="member-card ' + (isDeactivated(p.id) ? "deactivated" : "") + '" data-uid="' + p.id + '">' +
+      roadmapsHtml = personRoadmaps.length
+        ? '<div class="person-roadmaps-line" data-uid="' + p.id + '">' +
+            personRoadmaps.map(r => '<span class="rm-mini-badge" data-rm="' + r.id + '" title="Open ' + escapeHtml(r.name||'') + '">' + escapeHtml((r.name||'').slice(0,22)) + (r.responsibleId === p.id ? ' <span class="rm-mini-owner" title="Owner">●</span>' : '') + '</span>').join('') +
+          '</div>'
+        : '';
+      statsHtml = '<span class="stat" title="Total tasks">' + taskCount + ' tasks</span>' +
+        (pendingCount > 0 ? '<span class="stat" title="Pending"><span class="dot pending"></span>' + pendingCount + '</span>' : '') +
+        (inProgressCount > 0 ? '<span class="stat" title="In Progress"><span class="dot progress"></span>' + inProgressCount + '</span>' : '');
+    } else {
+      // Bookline / disabled-non-team: show proposer count
+      const propCount = countProposerTasks(p.id);
+      const respCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id).length;
+      statsHtml = '<span class="stat" title="Tasks where they are a proposer">📝 ' + propCount + ' proposed</span>';
+      if (respCount > 0) statsHtml += '<span class="stat" title="Tasks where they are responsible">' + respCount + ' responsible</span>';
+    }
+
+    const cls = 'member-card' +
+      (isDeactivated(p.id) ? ' deactivated' : '') +
+      (mode === 'bookline' ? ' member-bookline' : '');
+    return '<div class="' + cls + '" data-uid="' + p.id + '">' +
       '<div class="person-row">' +
-        '<span class="avatar" style="background:' + p.color + '">' +
-          '<img src="' + p.photo + '" alt="" onerror="this.remove()">' +
-          '<span class="ini">' + initials(p.name) + '</span>' +
+        '<span class="avatar" style="background:' + (p.color || '#9a9a9a') + '">' +
+          (p.photo ? '<img src="' + escapeHtml(p.photo) + '" alt="" onerror="this.remove()">' : '') +
+          '<span class="ini">' + escapeHtml(initials(p.name||'')) + '</span>' +
         '</span>' +
         '<div class="meta">' +
-          '<div class="name">' + escapeHtml(p.name) + '</div>' +
-          '<div class="role">' + escapeHtml(p.role || "") + '</div>' +
+          '<div class="name">' + escapeHtml(p.name||'') + '</div>' +
+          '<div class="role">' + escapeHtml(p.role || "") + (p.external && mode === 'bookline' ? ' · Bookline' : '') + '</div>' +
           '<div class="email">' + escapeHtml(p.email || "") + '</div>' +
           awt +
         '</div>' +
       '</div>' +
       tagsHtml +
       roadmapsHtml +
-      '<div class="stats" style="margin-top:auto; padding-top:6px; border-top:1px solid #f0efeb">' +
-        '<span class="stat" title="Total tasks">' + taskCount + ' tasks</span>' +
-        (pendingCount > 0 ? '<span class="stat" title="Pending"><span class="dot pending"></span>' + pendingCount + '</span>' : '') +
-        (inProgressCount > 0 ? '<span class="stat" title="In Progress"><span class="dot progress"></span>' + inProgressCount + '</span>' : '') +
-      '</div>' +
+      '<div class="stats" style="margin-top:auto; padding-top:6px; border-top:1px solid #f0efeb">' + statsHtml + '</div>' +
     '</div>';
   }
-  // Build HTML with two sections
+
   let html = '';
-  if (active.length > 0) {
-    html += '<div class="members-grid">' + active.map(memberCardHtml).join("") + '</div>';
+  if (teamSorted.length > 0) {
+    html += '<h3 class="members-section-heading">Team <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + teamSorted.length + ')</span></h3>';
+    html += '<div class="members-grid">' + teamSorted.map(p => memberCardHtml(p, 'team')).join("") + '</div>';
+  }
+  if (bookline.length > 0) {
+    html += '<h3 class="members-section-heading members-section-bookline">Bookline <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + bookline.length + ')</span> <span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— people who proposed tasks but aren\'t on your team</span></h3>';
+    html += '<div class="members-grid">' + bookline.map(p => memberCardHtml(p, 'bookline')).join("") + '</div>';
   }
   if (disabled.length > 0) {
     html += '<h3 class="members-section-heading">Disabled <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + disabled.length + ')</span></h3>';
-    html += '<div class="members-grid members-grid-disabled">' + disabled.map(memberCardHtml).join("") + '</div>';
+    html += '<div class="members-grid members-grid-disabled">' + disabled.map(p => memberCardHtml(p, 'disabled')).join("") + '</div>';
   }
   grid.innerHTML = html;
+
   document.querySelectorAll("#membersGrid .member-card").forEach(node => {
     node.addEventListener("click", e => {
-      // Roadmap badge clicks should jump to that roadmap, not the profile
       const badge = e.target.closest('.rm-mini-badge');
       if (badge) {
         e.stopPropagation();
@@ -4348,7 +4414,7 @@ function renderMembersPage() {
         }
         return;
       }
-      // Otherwise navigate to Profile page for this person
+      // Open Profile page (which has full edit mode for tags, disable, etc.)
       setProfilePerson(node.dataset.uid);
       switchView("profile");
     });
