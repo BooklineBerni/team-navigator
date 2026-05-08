@@ -502,6 +502,69 @@
   #view-roadmaps { padding-top: 18px; }
   #view-members { padding-top: 18px; }
   #view-requests { padding-top: 18px; }
+  #view-files { padding-top: 18px; }
+  /* Files page */
+  .files-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+  }
+  .file-card {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: #fff; border: 1px solid #ececea; border-radius: 12px;
+    padding: 14px; transition: box-shadow .12s, border-color .12s;
+    cursor: pointer; min-width: 0;
+  }
+  .file-card:hover { border-color: #1a1a1a; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .file-card .file-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 16px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .file-card .file-info { flex: 1; min-width: 0; }
+  .file-card .file-name {
+    font-size: 14px; font-weight: 600; color: #1a1a1a;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 4px;
+  }
+  .file-card .file-meta {
+    font-size: 11.5px; color: #6b6b6b;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .file-card .file-share {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em;
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .file-card .file-share.private { background: #f0efeb; color: #6b6b6b; }
+  .file-card .file-share.team { background: #dbeafe; color: #1e40af; }
+  .file-card .file-actions {
+    display: flex; gap: 4px; opacity: 0;
+    transition: opacity .12s;
+  }
+  .file-card:hover .file-actions { opacity: 1; }
+  .file-card .file-action-btn {
+    background: transparent; border: 1px solid #ececea; border-radius: 6px;
+    padding: 4px 8px; font-size: 11px; cursor: pointer; color: #6b6b6b;
+    font-family: inherit;
+  }
+  .file-card .file-action-btn:hover { background: #f7f6f2; color: #1a1a1a; }
+  .file-card .file-action-btn.danger { color: #dc2626; border-color: #fecaca; }
+  .file-card .file-action-btn.danger:hover { background: #fef2f2; }
+  .files-empty {
+    padding: 48px 24px; text-align: center; color: #6b6b6b; font-size: 13px;
+    background: #fff; border: 1px dashed #ececea; border-radius: 12px;
+  }
+  .files-filter-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px;
+    border: 1px solid #d8d6d1; background: #fff; cursor: pointer;
+    font-size: 12px; font-weight: 600; margin-right: 6px;
+    color: #1a1a1a; font-family: inherit;
+  }
+  .files-filter-pill.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .files-filter-pill .count { color: #9a9a9a; font-weight: 600; margin-left: 4px; }
+  .files-filter-pill.active .count { color: rgba(255,255,255,0.7); }
   /* Requests page */
   .rq-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .rq-toolbar .rq-sync-info { font-size: 11.5px; color: #6b6b6b; }
@@ -1173,6 +1236,7 @@
       <button class="nav-item" data-view="roadmaps"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="nav-label">Roadmaps</span> <span class="nav-count" id="nav-roadmaps-count"></span></button>
       <button class="nav-item" data-view="tasks"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="nav-label">Tasks</span> <span class="nav-count" id="nav-tasks-count"></span></button>
       <button class="nav-item" data-view="requests"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span class="nav-label">Requests</span> <span class="nav-count" id="nav-requests-count"></span></button>
+      <button class="nav-item" data-view="files"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="nav-label">Files</span> <span class="nav-count" id="nav-files-count"></span></button>
       <button class="nav-item" data-view="profile"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="nav-label">Profile</span></button>
       <button class="nav-item" data-view="members"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">Team</span> <span class="nav-count" id="nav-members-count"></span></button>
     </aside>
@@ -1295,6 +1359,52 @@
     <section id="view-requests" class="view-section" style="display:none">
       <div id="requestsPageContent"></div>
     </section>
+
+    <section id="view-files" class="view-section" style="display:none">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Files</h2>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center">
+          <input class="search-input" id="filesSearch" placeholder="Search files..." style="max-width:240px">
+          <button class="btn primary" id="filesAddBtn">+ Add file</button>
+        </div>
+      </div>
+      <div id="filesFilterBar" style="margin-bottom:14px"></div>
+      <div id="filesPageContent"></div>
+    </section>
+
+    <div class="modal-bg" id="fileModalBg">
+      <div class="modal" style="max-width:520px">
+        <span class="close-x" onclick="closeFileModal()">&times;</span>
+        <h2 id="fileModalTitle">Add file</h2>
+        <div class="field"><label>Drive link <span style="color:#dc2626">*</span></label>
+          <input type="url" id="ff_url" placeholder="https://docs.google.com/document/d/...">
+          <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Paste the share link from Google Drive (Share → Copy link). Make sure it's accessible to whoever you'll share this with.</div>
+        </div>
+        <div class="field"><label>Name <span style="color:#dc2626">*</span></label>
+          <input type="text" id="ff_name" placeholder="e.g. Q4 plan">
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Type</label>
+            <div id="ff_typePreview" style="font-size:13px; color:#1a1a1a; padding:6px 0">—</div>
+          </div>
+          <div class="field"><label>Share with <span style="color:#dc2626">*</span></label>
+            <select id="ff_shareWith">
+              <option value="private">Private (only me)</option>
+              <option value="team">Team (everyone)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn danger" id="ff_deleteBtn" style="display:none">Delete</button>
+          <div style="display:flex; gap:8px">
+            <button class="btn" onclick="closeFileModal()">Cancel</button>
+            <button class="btn primary" id="ff_saveBtn">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <section id="view-roadmaps" class="view-section" style="display:none">
       <div class="page-header">
@@ -2337,6 +2447,10 @@ function render() {
     renderRequestsPage();
     // Trigger a background refresh so the user sees fresh data without clicking Sync now
     if (typeof bnLoadRequests === 'function') bnLoadRequests({ skipNotify: true });
+    return;
+  }
+  if (currentView === "files") {
+    renderFilesPage();
     return;
   }
   // currentView === "tasks"
@@ -4753,7 +4867,7 @@ let selectedRoadmapPageId = null;
 
 function switchView(view) {
   if (view === "team") view = "tasks";
-  if (!["home","tasks","members","profile","roadmaps","requests"].includes(view)) view = "home";
+  if (!["home","tasks","members","profile","roadmaps","requests","files"].includes(view)) view = "home";
   currentView = view;
   localStorage.setItem("bookline-currentView", view);
   document.querySelectorAll(".nav-item").forEach(t => t.classList.toggle("active", t.dataset.view === view));
@@ -4763,9 +4877,10 @@ function switchView(view) {
   document.getElementById("view-tasks").style.display    = view === "tasks"    ? "" : "none";
   document.getElementById("view-roadmaps").style.display = view === "roadmaps" ? "" : "none";
   document.getElementById("view-requests").style.display = view === "requests" ? "" : "none";
+  document.getElementById("view-files").style.display    = view === "files"    ? "" : "none";
   // Hide global action buttons on pages that have their own controls
   const headerTop = document.querySelector("header.top");
-  if (headerTop) headerTop.style.display = (view === "roadmaps" || view === "profile" || view === "members" || view === "requests") ? "none" : "";
+  if (headerTop) headerTop.style.display = (view === "roadmaps" || view === "profile" || view === "members" || view === "requests" || view === "files") ? "none" : "";
   render();
 }
 
@@ -5515,6 +5630,205 @@ document.getElementById("showCountsChk").addEventListener("change", e => {
   localStorage.setItem("bookline-showCounts", showCounts ? "true" : "false");
   render();
 });
+
+// =================== FILES (Google Drive links) ===================
+if (!STORE.driveFiles) STORE.driveFiles = [];
+let filesEditingId = null;
+let filesFilter = "all";  // "all" | "private" | "team"
+let filesSearchQ = "";
+
+function detectFileType(url) {
+  if (!url) return 'link';
+  if (/docs\.google\.com\/document/i.test(url)) return 'doc';
+  if (/docs\.google\.com\/spreadsheets/i.test(url)) return 'sheet';
+  if (/docs\.google\.com\/presentation/i.test(url)) return 'slides';
+  if (/docs\.google\.com\/forms/i.test(url)) return 'form';
+  if (/drive\.google\.com\/file/i.test(url)) return 'file';
+  if (/drive\.google\.com\/drive\/folders/i.test(url)) return 'folder';
+  if (/drive\.google\.com/i.test(url)) return 'file';
+  return 'link';
+}
+function fileIconForType(type) {
+  const map = {
+    doc:    { color: '#4285f4', label: 'D', name: 'Google Doc' },
+    sheet:  { color: '#0f9d58', label: 'S', name: 'Google Sheet' },
+    slides: { color: '#f4b400', label: 'P', name: 'Google Slides' },
+    form:   { color: '#673ab7', label: 'F', name: 'Google Form' },
+    file:   { color: '#5f6368', label: '📎', name: 'Drive file' },
+    folder: { color: '#5f6368', label: '📁', name: 'Folder' },
+    link:   { color: '#9aa0a6', label: '🔗', name: 'Link' }
+  };
+  return map[type] || map.link;
+}
+
+function fileMatchesFilter(f) {
+  if (filesFilter === 'private' && f.sharedWith !== 'private') return false;
+  if (filesFilter === 'team' && f.sharedWith !== 'team') return false;
+  const q = (filesSearchQ || '').toLowerCase().trim();
+  if (q && !((f.name||'').toLowerCase().includes(q) || (f.url||'').toLowerCase().includes(q))) return false;
+  return true;
+}
+
+function renderFilesPage() {
+  const cont = document.getElementById('filesPageContent');
+  const filterBar = document.getElementById('filesFilterBar');
+  if (!cont || !filterBar) return;
+  const all = STORE.driveFiles || [];
+  const counts = { all: all.length, private: all.filter(f => f.sharedWith === 'private').length, team: all.filter(f => f.sharedWith === 'team').length };
+  // Filter bar
+  filterBar.innerHTML =
+    '<button class="files-filter-pill ' + (filesFilter === 'all' ? 'active' : '') + '" data-fil="all">All <span class="count">' + counts.all + '</span></button>' +
+    '<button class="files-filter-pill ' + (filesFilter === 'private' ? 'active' : '') + '" data-fil="private">Private <span class="count">' + counts.private + '</span></button>' +
+    '<button class="files-filter-pill ' + (filesFilter === 'team' ? 'active' : '') + '" data-fil="team">Team <span class="count">' + counts.team + '</span></button>';
+  filterBar.querySelectorAll('.files-filter-pill').forEach(btn => {
+    btn.addEventListener('click', () => { filesFilter = btn.dataset.fil; renderFilesPage(); });
+  });
+  // List
+  const visible = all.filter(fileMatchesFilter);
+  if (visible.length === 0) {
+    cont.innerHTML = '<div class="files-empty">' +
+      (all.length === 0 ? 'No files yet. Click <strong>+ Add file</strong> to link a Google Drive document.' : 'No files match the current filter.') +
+      '</div>';
+    bnUpdateFilesBadge();
+    return;
+  }
+  let html = '<div class="files-grid">';
+  visible.forEach(f => {
+    const t = f.type || detectFileType(f.url);
+    const ic = fileIconForType(t);
+    const dateStr = f.addedAt ? new Date(f.addedAt).toLocaleDateString('es-ES', { dateStyle: 'short' }) : '';
+    html += '<div class="file-card" data-id="' + escapeHtml(f.id) + '">' +
+      '<div class="file-icon" style="background:' + ic.color + '">' + escapeHtml(ic.label) + '</div>' +
+      '<div class="file-info">' +
+        '<div class="file-name" title="' + escapeHtml(f.name) + '">' + escapeHtml(f.name) + '</div>' +
+        '<div class="file-meta">' +
+          '<span>' + escapeHtml(ic.name) + '</span>' +
+          (dateStr ? '<span>·</span><span>' + escapeHtml(dateStr) + '</span>' : '') +
+          '<span class="file-share ' + (f.sharedWith || 'private') + '">' + (f.sharedWith === 'team' ? 'Team' : 'Private') + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="file-actions">' +
+        '<button class="file-action-btn" data-act="edit" title="Edit">✎</button>' +
+        '<button class="file-action-btn danger" data-act="delete" title="Remove">×</button>' +
+      '</div>' +
+    '</div>';
+  });
+  html += '</div>';
+  cont.innerHTML = html;
+  // Wire up
+  cont.querySelectorAll('.file-card').forEach(card => {
+    const id = card.dataset.id;
+    const f = (STORE.driveFiles || []).find(x => x.id === id);
+    if (!f) return;
+    card.querySelector('[data-act="edit"]').addEventListener('click', e => { e.stopPropagation(); openFileModal(id); });
+    card.querySelector('[data-act="delete"]').addEventListener('click', e => {
+      e.stopPropagation();
+      if (!confirm("Remove '" + (f.name||'this file') + "' from the list?")) return;
+      STORE.driveFiles = (STORE.driveFiles || []).filter(x => x.id !== id);
+      saveStore(STORE);
+      renderFilesPage();
+    });
+    card.addEventListener('click', () => {
+      if (f.url) window.open(f.url, '_blank', 'noopener');
+    });
+  });
+  bnUpdateFilesBadge();
+}
+
+function bnUpdateFilesBadge() {
+  const el = document.getElementById('nav-files-count');
+  if (!el) return;
+  const n = (STORE.driveFiles || []).length;
+  el.textContent = n > 0 ? n : '';
+}
+
+function openFileModal(id) {
+  const isNew = !id;
+  filesEditingId = id || null;
+  document.getElementById('fileModalTitle').textContent = isNew ? 'Add file' : 'Edit file';
+  let f = isNew ? { url: '', name: '', sharedWith: 'private' } : (STORE.driveFiles || []).find(x => x.id === id);
+  if (!f) { f = { url: '', name: '', sharedWith: 'private' }; }
+  document.getElementById('ff_url').value = f.url || '';
+  document.getElementById('ff_name').value = f.name || '';
+  document.getElementById('ff_shareWith').value = f.sharedWith || 'private';
+  document.getElementById('ff_deleteBtn').style.display = isNew ? 'none' : 'inline-block';
+  ffUpdateTypePreview();
+  document.getElementById('fileModalBg').classList.add('show');
+  setTimeout(() => document.getElementById('ff_url').focus(), 50);
+}
+function closeFileModal() {
+  document.getElementById('fileModalBg').classList.remove('show');
+  filesEditingId = null;
+}
+function ffUpdateTypePreview() {
+  const url = document.getElementById('ff_url').value;
+  const t = detectFileType(url);
+  const ic = fileIconForType(t);
+  document.getElementById('ff_typePreview').innerHTML =
+    '<span style="display:inline-flex;align-items:center;gap:6px;font-size:13px">' +
+    '<span style="width:18px;height:18px;border-radius:5px;background:' + ic.color + ';color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center">' + escapeHtml(ic.label) + '</span>' +
+    escapeHtml(ic.name) +
+    '</span>';
+}
+
+document.getElementById('ff_url').addEventListener('input', () => {
+  ffUpdateTypePreview();
+  // Auto-fill name if empty (extract slug from URL)
+  const nameInp = document.getElementById('ff_name');
+  if (!nameInp.value.trim()) {
+    const url = document.getElementById('ff_url').value;
+    // Try to detect a useful default name from URL — fallback to file ID
+    const m = url.match(/\/d\/([^/]+)/);
+    if (m) nameInp.placeholder = 'Doc ' + m[1].slice(0, 6) + '...';
+  }
+});
+document.getElementById('ff_saveBtn').addEventListener('click', () => {
+  const url = document.getElementById('ff_url').value.trim();
+  const name = document.getElementById('ff_name').value.trim();
+  const sharedWith = document.getElementById('ff_shareWith').value;
+  const missing = [];
+  if (!url) missing.push('Drive link');
+  if (!name) missing.push('Name');
+  if (missing.length) { alert('Please fill in: ' + missing.join(', ')); return; }
+  if (!STORE.driveFiles) STORE.driveFiles = [];
+  if (filesEditingId) {
+    const f = STORE.driveFiles.find(x => x.id === filesEditingId);
+    if (f) { f.url = url; f.name = name; f.sharedWith = sharedWith; f.type = detectFileType(url); f.updatedAt = Date.now(); }
+  } else {
+    STORE.driveFiles.unshift({
+      id: 'f' + Math.random().toString(36).slice(2, 10),
+      url, name, sharedWith,
+      type: detectFileType(url),
+      addedAt: Date.now(),
+      addedBy: 'U07E6NHMLBV'
+    });
+  }
+  saveStore(STORE);
+  closeFileModal();
+  bnUpdateFilesBadge();
+  if (currentView === 'files') renderFilesPage();
+});
+document.getElementById('ff_deleteBtn').addEventListener('click', () => {
+  if (!filesEditingId) return;
+  const f = (STORE.driveFiles || []).find(x => x.id === filesEditingId);
+  if (!confirm("Remove '" + ((f && f.name) || 'this file') + "' from the list?")) return;
+  STORE.driveFiles = (STORE.driveFiles || []).filter(x => x.id !== filesEditingId);
+  saveStore(STORE);
+  closeFileModal();
+  bnUpdateFilesBadge();
+  if (currentView === 'files') renderFilesPage();
+});
+document.getElementById('fileModalBg').addEventListener('click', e => {
+  if (e.target.id === 'fileModalBg') closeFileModal();
+});
+document.getElementById('filesAddBtn').addEventListener('click', () => openFileModal(null));
+document.getElementById('filesSearch').addEventListener('input', e => {
+  filesSearchQ = e.target.value;
+  if (currentView === 'files') renderFilesPage();
+});
+
+// Initial badge + boot
+bnUpdateFilesBadge();
 
 // =================== REQUESTS FEATURE ===================
 // Declarations must come BEFORE setTasksViewMode/switchView to avoid
