@@ -557,6 +557,27 @@
   .rq-card .rq-handled-badge.approved { background: #dcfce7; color: #15803d; }
   .rq-card .rq-handled-badge.rejected { background: #fee2e2; color: #b91c1c; }
   .rq-card .rq-handled-badge.dismissed { background: #f0efeb; color: #6b6b6b; }
+  /* Member search results in "+ Member" modal */
+  .member-result {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border: 1px solid #ececea; border-radius: 10px;
+    background: #fff;
+  }
+  .member-result.in-team { opacity: 0.55; }
+  .member-result .av {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 11px; font-weight: 700;
+    flex-shrink: 0; overflow: hidden; position: relative;
+  }
+  .member-result .av img { width: 32px; height: 32px; object-fit: cover; }
+  .member-result .av .ini { position: absolute; }
+  .member-result .av img + .ini { display: none; }
+  .member-result .info { flex: 1; min-width: 0; }
+  .member-result .info .name { font-size: 13px; font-weight: 600; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .member-result .info .email { font-size: 11.5px; color: #6b6b6b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .member-result .btn { flex-shrink: 0; padding: 5px 12px; font-size: 12px; }
+
   .rq-card .rq-undo-btn {
     background: #fff; color: #1a1a1a; border: 1px solid #d8d6d1;
     padding: 6px 14px; font-size: 12.5px; font-weight: 600;
@@ -565,7 +586,17 @@
     transition: background .12s, border-color .12s;
   }
   .rq-card .rq-undo-btn:hover { background: #f7f6f2; border-color: #1a1a1a; }
-  .rq-card .rq-meta .chip { cursor: pointer; }
+  /* Submitter chip in the meta line — same style as proposed-by chips */
+  .rq-card .rq-meta .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #f0efeb; padding: 3px 9px 3px 3px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600; cursor: pointer;
+    color: #1a1a1a; border: 1px solid #ececea;
+    transition: background .12s;
+  }
+  .rq-card .rq-meta .chip:hover { background: #e7e5e0; }
+  .rq-card .rq-meta .chip .av { width: 18px; height: 18px; }
+  .rq-card .rq-meta .chip .av img { width: 18px; height: 18px; object-fit: cover; }
   .rq-locked-card {
     max-width: 480px; margin: 48px auto;
     background: #fff; border: 1px solid #ececea; border-radius: 14px; padding: 24px;
