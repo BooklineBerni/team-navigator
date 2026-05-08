@@ -25,6 +25,7 @@
   .nav-item:hover { background: #f0efeb; color: #1a1a1a; }
   .nav-item.active { background: #1a1a1a; color: #fff; }
   .nav-item .nav-count { font-size: 11px; padding: 1px 7px; background: #f0efeb; border-radius: 999px; font-weight: 700; color: #6b6b6b; }
+  .nav-item .nav-count:empty { display: none; }
   .nav-item.active .nav-count { background: #fff; color: #1a1a1a; }
 
   /* Buttons */
@@ -489,13 +490,17 @@
     margin: 24px 0 10px; padding-top: 14px; border-top: 1px solid #ececea;
   }
   .members-section-heading.members-section-bookline {
-    color: #c2410c;
+    color: #0F2A4F;
+    display: flex; align-items: center; gap: 8px;
   }
+  .members-section-heading.members-section-bookline .bookline-logo-mark { display: inline-flex; align-items: center; }
+  .members-section-heading.members-section-bookline .bookline-label { font-weight: 800; letter-spacing: -0.01em; }
   .member-card.member-bookline {
-    border-color: #fed7aa;
-    background: #fffbf6;
+    border-color: #c7d2e0;
+    background: #f8fafc;
   }
-  .member-card.member-bookline:hover { border-color: #fb923c; }
+  .member-card.member-bookline:hover { border-color: #0F2A4F; box-shadow: 0 0 0 1px #0F2A4F inset; }
+  .member-card.member-bookline .role { color: #0F2A4F; font-weight: 600; font-size: 11.5px; }
   .members-grid-disabled .member-card {
     opacity: 0.7;
     filter: grayscale(0.7);
@@ -1665,6 +1670,10 @@
     <div class="field"><label>Available week time <span style="font-weight:400; color:#9a9a9a">(hours/week)</span></label>
       <input type="number" id="f_availableWeekTime" min="0" step="0.5" placeholder="e.g. 20" style="max-width:200px">
     </div>
+    <div class="checkbox-field" style="margin-bottom:10px; padding:10px 12px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px">
+      <input type="checkbox" id="f_personIsTeam">
+      <label for="f_personIsTeam" style="margin:0; font-weight:600">Team member <span style="font-weight:400; color:#6b6b6b">(part of your direct team — appears in the Team section instead of Bookline)</span></label>
+    </div>
     <div class="checkbox-field" style="margin-bottom:14px; padding:10px 12px; background:#fef2f2; border:1px solid #fecdca; border-radius:8px">
       <input type="checkbox" id="f_personDisabled">
       <label for="f_personDisabled" style="margin:0; font-weight:600">Disable this person <span style="font-weight:400; color:#6b6b6b">(left the company / inactive — appears in disabled section, greyed out)</span></label>
@@ -2039,6 +2048,17 @@ function isDeactivated(personId) {
     const tl = t.toLowerCase();
     return tl === "desactivado" || tl === "disabled";
   });
+}
+function isTeamMember(personId) {
+  const s = getPersonSettings(personId);
+  // Explicit setting takes precedence
+  if (typeof s.team === 'boolean') return s.team;
+  // Default: TEAM members are team=true; EXTERNAL_TEAM members are team=false
+  if (TEAM.find(p => p.id === personId)) return true;
+  return false;
+}
+function setTeamMember(personId, isTeam) {
+  setPersonSettings(personId, { team: !!isTeam });
 }
 
 // ---- Task Tag Library ----
@@ -3112,6 +3132,7 @@ function openPersonModal(personId) {
   const awtInput = document.getElementById("f_availableWeekTime");
   awtInput.value = (settings.availableWeekTime != null && settings.availableWeekTime !== "") ? settings.availableWeekTime : "";
   document.getElementById("f_personDisabled").checked = !!settings.disabled;
+  document.getElementById("f_personIsTeam").checked = isTeamMember(personId);
   renderPersonModal();
   document.getElementById("personModalBg").classList.add("show");
 }
@@ -3190,6 +3211,11 @@ document.getElementById("f_personDisabled").addEventListener("change", e => {
   if (!editingPersonId) return;
   setPersonSettings(editingPersonId, { disabled: e.target.checked });
   // Re-render team page to move person to correct section
+  if (currentView === "members") render();
+});
+document.getElementById("f_personIsTeam").addEventListener("change", e => {
+  if (!editingPersonId) return;
+  setTeamMember(editingPersonId, e.target.checked);
   if (currentView === "members") render();
 });
 
@@ -4297,26 +4323,30 @@ function renderMembersPage() {
     if (!q) return true;
     return (p.name + " " + (p.email||"") + " " + (p.displayName||"") + " " + getTagsFor(p.id).join(" ")).toLowerCase().includes(q);
   }
-  // 1) Team people (active TEAM, not disabled)
-  const teamActive = TEAM.filter(p => matchesQuery(p) && !isDeactivated(p.id));
-  // 2) Bookline people: appear as proposers AND are NOT in TEAM AND not disabled
-  const teamIds = new Set(TEAM.map(p => p.id));
+  // Build a unified pool of all known people
+  const pool = [];
+  const seen = new Set();
+  function addToPool(p){ if (!p || seen.has(p.id)) return; seen.add(p.id); pool.push(p); }
+  TEAM.forEach(addToPool);
+  if (typeof EXTERNAL_TEAM !== 'undefined') EXTERNAL_TEAM.forEach(addToPool);
+  // Also include anyone appearing as proposer but not in either constant
+  getAllProposerIds().forEach(id => { const p = findPerson(id); if (p) addToPool(p); });
+
+  // 1) Team: any person with isTeamMember=true and not disabled
+  const teamActive = pool.filter(p => isTeamMember(p.id) && !isDeactivated(p.id) && matchesQuery(p));
+  // 2) Bookline: appears as proposer AND is NOT a team member AND not disabled
   const proposerIds = getAllProposerIds();
   const bookline = [];
-  for (const id of proposerIds) {
-    if (teamIds.has(id)) continue;
-    if (isDeactivated(id)) continue;
-    const p = findPerson(id);
-    if (!p) continue;
+  for (const p of pool) {
+    if (!proposerIds.has(p.id)) continue;
+    if (isTeamMember(p.id)) continue;
+    if (isDeactivated(p.id)) continue;
     if (!matchesQuery(p)) continue;
     bookline.push(p);
   }
   bookline.sort((a, b) => countProposerTasks(b.id) - countProposerTasks(a.id) || (a.name||'').localeCompare(b.name||''));
-  // 3) Disabled (anyone disabled — could be from TEAM or EXTERNAL_TEAM or ad-hoc)
-  const disabledSet = new Set();
-  TEAM.forEach(p => { if (isDeactivated(p.id) && matchesQuery(p)) disabledSet.add(p.id); });
-  if (typeof EXTERNAL_TEAM !== 'undefined') EXTERNAL_TEAM.forEach(p => { if (isDeactivated(p.id) && matchesQuery(p)) disabledSet.add(p.id); });
-  const disabled = Array.from(disabledSet).map(id => findPerson(id)).filter(Boolean);
+  // 3) Disabled (anyone disabled — could be from any source)
+  const disabled = pool.filter(p => isDeactivated(p.id) && matchesQuery(p));
 
   // Sort team using existing sort
   const teamSorted = sortPersons(teamActive.map(p => p.id), STORE.tasks).map(id => findPerson(id)).filter(Boolean);
@@ -4357,11 +4387,22 @@ function renderMembersPage() {
         (pendingCount > 0 ? '<span class="stat" title="Pending"><span class="dot pending"></span>' + pendingCount + '</span>' : '') +
         (inProgressCount > 0 ? '<span class="stat" title="In Progress"><span class="dot progress"></span>' + inProgressCount + '</span>' : '');
     } else {
-      // Bookline / disabled-non-team: show proposer count
-      const propCount = countProposerTasks(p.id);
-      const respCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id).length;
-      statsHtml = '<span class="stat" title="Tasks where they are a proposer">📝 ' + propCount + ' proposed</span>';
-      if (respCount > 0) statsHtml += '<span class="stat" title="Tasks where they are responsible">' + respCount + ' responsible</span>';
+      // Bookline / disabled-non-team: show task phase counts (where they are proposer)
+      const isProposer = (t) => Array.isArray(t.proposedByIds) ? t.proposedByIds.includes(p.id) : t.proposedById === p.id;
+      const all = STORE.tasks.filter(t => !t.isGroup && isProposer(t));
+      const counts = {
+        pending:     all.filter(t => t.panelStatus === "pending").length,
+        in_progress: all.filter(t => t.panelStatus === "in_progress").length,
+        completed:   all.filter(t => t.panelStatus === "completed").length,
+        archived:    all.filter(t => t.panelStatus === "archived").length,
+        discarded:   all.filter(t => t.panelStatus === "discarded").length
+      };
+      statsHtml = '<span class="stat" title="Tasks where they are a proposer"><strong>' + all.length + '</strong> proposed</span>';
+      if (counts.pending > 0)     statsHtml += '<span class="stat" title="Pending"><span class="dot pending"></span>' + counts.pending + '</span>';
+      if (counts.in_progress > 0) statsHtml += '<span class="stat" title="In Progress"><span class="dot progress"></span>' + counts.in_progress + '</span>';
+      if (counts.completed > 0)   statsHtml += '<span class="stat" title="Completed"><span class="dot done"></span>' + counts.completed + '</span>';
+      if (counts.archived > 0)    statsHtml += '<span class="stat" title="Archived"><span class="dot archived"></span>' + counts.archived + '</span>';
+      if (counts.discarded > 0)   statsHtml += '<span class="stat" title="Discarded"><span class="dot discarded"></span>' + counts.discarded + '</span>';
     }
 
     const cls = 'member-card' +
@@ -4392,7 +4433,16 @@ function renderMembersPage() {
     html += '<div class="members-grid">' + teamSorted.map(p => memberCardHtml(p, 'team')).join("") + '</div>';
   }
   if (bookline.length > 0) {
-    html += '<h3 class="members-section-heading members-section-bookline">Bookline <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + bookline.length + ')</span> <span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— people who proposed tasks but aren\'t on your team</span></h3>';
+    const bookline_logo = '<span class="bookline-logo-mark">' +
+      '<svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect width="32" height="32" rx="8" fill="#0F2A4F"/>' +
+        '<text x="16" y="22" text-anchor="middle" font-family="-apple-system, Inter, sans-serif" font-weight="800" font-size="18" fill="#fff">b.</text>' +
+      '</svg>' +
+    '</span>';
+    html += '<h3 class="members-section-heading members-section-bookline">' + bookline_logo +
+      '<span class="bookline-label">Bookline</span> ' +
+      '<span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + bookline.length + ')</span> ' +
+      '<span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— people who proposed tasks but aren\'t on your team</span></h3>';
     html += '<div class="members-grid">' + bookline.map(p => memberCardHtml(p, 'bookline')).join("") + '</div>';
   }
   if (disabled.length > 0) {
@@ -5613,9 +5663,9 @@ function renderRoadmapDetailInline(id) {
 function updateTabCounts() {
   // Don't count groups themselves as tasks
   const taskCount = STORE.tasks.filter(t => !t.isGroup).length;
-  const teamCount = TEAM.length;
   const rmCount = getRoadmaps().length;
-  document.getElementById("nav-members-count").textContent = teamCount;
+  // People sidebar: no count
+  document.getElementById("nav-members-count").textContent = "";
   document.getElementById("nav-tasks-count").textContent = taskCount;
   document.getElementById("nav-roadmaps-count").textContent = rmCount;
   const totalEl = document.getElementById("tasks-page-total");
