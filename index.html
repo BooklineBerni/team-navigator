@@ -1144,6 +1144,30 @@
   .flat-task .edit-btn { appearance: none; border: none; background: transparent; cursor: pointer; color: #9a9a9a; font-size: 14px; padding: 0 6px; }
   .flat-task .edit-btn:hover { color: #1a1a1a; }
 
+  /* Group cards (parent tasks) */
+  .group-row {
+    display: grid; grid-template-columns: 22px 1fr auto auto; gap: 10px; align-items: center;
+    padding: 10px 14px; background: #fffaf0; border: 1px solid #f0e3c4; border-radius: 10px;
+    margin-bottom: 6px; cursor: pointer;
+  }
+  .group-row:hover { border-color: #d6b962; background: #fff5dc; }
+  .group-row .caret { font-size: 11px; color: #6b6b6b; transition: transform .15s; display: inline-flex; align-items: center; justify-content: center; }
+  .group-row.expanded .caret { transform: rotate(90deg); }
+  .group-row .group-title { font-weight: 600; font-size: 14px; color: #1a1a1a; display: flex; align-items: center; gap: 8px; }
+  .group-row .group-title .folder-emoji { font-size: 16px; }
+  .group-row .group-progress { display: flex; align-items: center; gap: 8px; }
+  .group-row .group-progress-bar-wrap { width: 80px; height: 6px; background: #f0e3c4; border-radius: 3px; overflow: hidden; }
+  .group-row .group-progress-bar-fill { height: 100%; background: #16a34a; transition: width .2s; }
+  .group-row .group-progress-text { font-size: 11.5px; color: #6b6b6b; min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
+  .group-row .group-edit-btn { appearance: none; border: none; background: transparent; cursor: pointer; color: #9a9a9a; font-size: 14px; padding: 0 6px; }
+  .group-row .group-edit-btn:hover { color: #1a1a1a; }
+  .group-children { padding-left: 28px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 4px; border-left: 2px dashed #f0e3c4; margin-left: 12px; padding-top: 4px; padding-bottom: 4px; }
+  .group-children.collapsed { display: none; }
+  .group-children .flat-task { background: #fffefb; }
+  .group-children .task { background: #fffefb; }
+  .group-row .group-empty { color: #9a9a9a; font-size: 11.5px; font-style: italic; }
+  .badge.group-badge { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-weight: 600; }
+
   /* Roadmaps page */
   .rm-page-header {
     display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap;
@@ -1639,8 +1663,20 @@
   <div class="modal" id="modal">
     <span class="close-x" onclick="closeModal()">&times;</span>
     <h2 id="modalTitle">Edit task</h2>
+    <div class="field" id="f_isGroupRow" style="margin-bottom:6px">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:13px; font-weight:500">
+        <input type="checkbox" id="f_isGroup" style="width:16px; height:16px; cursor:pointer">
+        <span>📁 This is a group (a folder for other tasks)</span>
+      </label>
+      <div style="font-size:11px; color:#6b6b6b; margin-top:4px; padding-left:24px">Groups have only a title + description and show a progress bar based on their children.</div>
+    </div>
     <div class="field"><label>Title <span style="color:#dc2626">*</span></label><input type="text" id="f_subject"></div>
-    <div class="field-row">
+    <div class="field" id="f_groupRow" style="display:none">
+      <label>Group (optional)</label>
+      <select id="f_groupId"><option value="">— No group —</option></select>
+      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Assign this task to a group to nest it under a parent.</div>
+    </div>
+    <div class="field-row f_taskOnlyRow" id="f_statusRow">
       <div class="field"><label>Panel status <span style="color:#dc2626">*</span></label><select id="f_panelStatus">
         <option value="pending">Pending</option><option value="in_progress">In Progress</option>
         <option value="completed">Completed</option><option value="archived">Archived</option><option value="discarded">Discarded</option>
@@ -1653,7 +1689,7 @@
         <option value="Archived">Archived</option><option value="Discarded">Discarded</option>
       </select></div>
     </div>
-    <div class="field-row-3">
+    <div class="field-row-3 f_taskOnlyRow">
       <div class="field"><label>Priority <span style="color:#dc2626">*</span></label><select id="f_priority">
         <option value="">(empty)</option><option value="Critical">Critical</option>
         <option value="Alta">Alta</option><option value="Media">Media</option>
@@ -1666,11 +1702,11 @@
       </select></div>
       <div class="field"><label>Due date</label><input type="date" id="f_dueDate"></div>
     </div>
-    <div class="field-row">
+    <div class="field-row f_taskOnlyRow">
       <div class="field"><label>Responsible</label><select id="f_responsibleId"></select></div>
       <div class="field"><label>Proposed by</label><select id="f_proposedById"></select></div>
     </div>
-    <div class="field-row-3">
+    <div class="field-row-3 f_taskOnlyRow">
       <div class="field"><label>Dedicated hours</label><input type="number" id="f_dedicatedHours" step="0.5" min="0"></div>
       <div class="field"><label>Estimated hours</label><input type="number" id="f_estimatedHours" step="0.5" min="0"></div>
       <div class="field"><label>Share with <span style="color:#dc2626">*</span></label>
@@ -1682,12 +1718,12 @@
         </select>
       </div>
     </div>
-    <div class="field-row">
+    <div class="field-row f_taskOnlyRow">
       <div class="checkbox-field"><input type="checkbox" id="f_completed"><label for="f_completed" style="margin:0">Completed (boolean)</label></div>
       <div class="checkbox-field"><input type="checkbox" id="f_sharing"><label for="f_sharing" style="margin:0">Sharing on</label></div>
     </div>
-    <div class="field"><label>Extra comments</label><textarea id="f_extraComments"></textarea></div>
-    <div class="field"><label>Task tags</label>
+    <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
+    <div class="field f_taskOnlyRow"><label>Task tags</label>
       <div id="f_taskTagsContainer" class="person-modal-tags"></div>
       <div class="preset-tags" id="f_presetTaskTagsContainer" style="margin-top:6px"></div>
       <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click an assigned tag to remove it. Click a suggested tag to add it. Manage the library from the "Task Tags" button in the header.</div>
@@ -2020,6 +2056,8 @@ function tagMiniHtml(tag) {
 function mapPanelStatus(s) { const v = (s||'').toLowerCase(); if (v.includes('complete')) return 'completed'; if (v.includes('progress') || v.includes('review')) return 'in_progress'; if (v.includes('discard')) return 'discarded'; if (v.includes('archived')) return 'archived'; return 'pending'; }
 
 function taskMatchesFilters(t) {
+  // Groups themselves are never returned by this filter — they're rendered separately.
+  if (t.isGroup) return false;
   // Tasks page hides tasks owned by disabled persons
   if (t.responsibleId && isDeactivated(t.responsibleId)) return false;
   // Person tristate: include & exclude
@@ -2602,6 +2640,10 @@ function taskHtml(t) {
   const prioCls = "prio-" + (t.priority || "").replace(/\s+/g, '');
   const typeCls = "type-" + (t.type || "").replace(/\s+/g, '');
   const badges = [];
+  if (t.groupId) {
+    const g = findGroup(t.groupId);
+    if (g) badges.push('<span class="badge group-badge" title="In group: ' + escapeHtml(g.subject||'') + '">📁 ' + escapeHtml((g.subject||'').slice(0,18)) + '</span>');
+  }
   if (t.priority) badges.push('<span class="badge ' + prioCls + '">' + escapeHtml(t.priority) + '</span>');
   if (t.type)     badges.push('<span class="badge ' + typeCls + '">' + escapeHtml(t.type) + '</span>');
   if (t.slackStatus) badges.push('<span class="badge slack-status">' + escapeHtml(t.slackStatus) + '</span>');
@@ -2635,18 +2677,53 @@ function populateUserSelects() {
 }
 populateUserSelects();
 
+function refreshGroupSelectOptions(currentGroupId, excludeTaskId) {
+  const sel = document.getElementById("f_groupId");
+  if (!sel) return;
+  const groups = (STORE.tasks || []).filter(x => x.isGroup && x.id !== excludeTaskId);
+  groups.sort((a,b) => (a.subject||'').localeCompare(b.subject||''));
+  sel.innerHTML = '<option value="">— No group —</option>' +
+    groups.map(g => '<option value="'+g.id+'"'+(g.id===currentGroupId?' selected':'')+'>📁 '+escapeHtml(g.subject||'(unnamed)')+'</option>').join('');
+}
+
+function applyGroupModeToModal(isGroup) {
+  // When isGroup=true, hide all task-only fields and tweak labels
+  document.querySelectorAll(".f_taskOnlyRow").forEach(el => {
+    el.style.display = isGroup ? "none" : "";
+  });
+  // Group has no parent group itself — hide the group selector when isGroup
+  document.getElementById("f_groupRow").style.display = isGroup ? "none" : "";
+  document.getElementById("f_extraCommentsLabel").textContent = isGroup ? "Description" : "Extra comments";
+  // Title hint
+  const subjInp = document.getElementById("f_subject");
+  if (subjInp) subjInp.placeholder = isGroup ? "e.g. Q4 Redesign Project" : "";
+}
+
 function openModal(tid, overrides) {
   let t;
   if (tid === "new") {
-    t = { id: uid(), subject: "", completed: false, responsibleId: currentPersonIds.size === 1 ? Array.from(currentPersonIds)[0] : "U07E6NHMLBV", responsibleRaw: "", proposedById: "U07E6NHMLBV", proposedByRaw: "bernat@bookline.ai", priority: "", type: "", dueDate: "", slackStatus: "Proposed", slackStatusRaw: "Proposed", panelStatus: "pending", dedicatedHours: "", estimatedHours: "", shareWith: "", extraComments: "", sharing: false, _pendingSync: true, _createdLocal: Date.now(), _isNew: true };
+    t = { id: uid(), subject: "", completed: false, responsibleId: currentPersonIds.size === 1 ? Array.from(currentPersonIds)[0] : "U07E6NHMLBV", responsibleRaw: "", proposedById: "U07E6NHMLBV", proposedByRaw: "bernat@bookline.ai", priority: "", type: "", dueDate: "", slackStatus: "Proposed", slackStatusRaw: "Proposed", panelStatus: "pending", dedicatedHours: "", estimatedHours: "", shareWith: "", extraComments: "", sharing: false, isGroup: false, groupId: "", _pendingSync: true, _createdLocal: Date.now(), _isNew: true };
     if (overrides && typeof overrides === 'object') Object.assign(t, overrides);
   } else {
     t = STORE.tasks.find(x => x.id === tid);
     if (!t) return;
   }
   editingId = t.id;
-  document.getElementById("modalTitle").textContent = t._isNew ? "New task" : "Edit task";
+  const isG = !!t.isGroup;
+  document.getElementById("modalTitle").textContent = (t._isNew ? "New " : "Edit ") + (isG ? "group" : "task");
   document.getElementById("f_subject").value = t.subject || "";
+  document.getElementById("f_isGroup").checked = isG;
+  // Disable toggling isGroup on existing groups that already have children (would orphan them)
+  const isGroupCb = document.getElementById("f_isGroup");
+  if (!t._isNew && isG) {
+    const childCount = (STORE.tasks||[]).filter(x => x.groupId === t.id).length;
+    isGroupCb.disabled = childCount > 0;
+    isGroupCb.title = childCount > 0 ? 'Cannot un-group: it has '+childCount+' child task(s). Move or delete them first.' : '';
+  } else {
+    isGroupCb.disabled = false;
+    isGroupCb.title = '';
+  }
+  refreshGroupSelectOptions(t.groupId || "", t.id);
   document.getElementById("f_panelStatus").value = t.panelStatus || "pending";
   document.getElementById("f_slackStatus").value = t.slackStatus || "";
   document.getElementById("f_priority").value = t.priority || "";
@@ -2661,52 +2738,79 @@ function openModal(tid, overrides) {
   document.getElementById("f_sharing").checked = !!t.sharing;
   document.getElementById("f_extraComments").value = t.extraComments || "";
   renderTaskTagsInModal(t);
+  applyGroupModeToModal(isG);
   document.getElementById("deleteBtn").style.display = t._isNew ? "none" : "inline-block";
   document.getElementById("modalBg").classList.add("show");
   document.getElementById("modal").__newTask = t._isNew ? t : null;
 }
+
+document.getElementById("f_isGroup").addEventListener("change", e => {
+  applyGroupModeToModal(e.target.checked);
+});
 function closeModal() { document.getElementById("modalBg").classList.remove("show"); editingId = null; }
 document.getElementById("modalBg").addEventListener("click", e => { if (e.target.id === "modalBg") closeModal(); });
 
 document.getElementById("saveBtn").addEventListener("click", () => {
   if (!editingId) return;
-  // Validate required fields before persisting
   const subject = document.getElementById("f_subject").value.trim();
-  const panelStatus = document.getElementById("f_panelStatus").value;
-  const slackStatus = document.getElementById("f_slackStatus").value;
-  const priority = document.getElementById("f_priority").value;
-  const type = document.getElementById("f_type").value;
-  const shareWith = document.getElementById("f_shareWith").value;
-  const missing = [];
-  if (!subject) missing.push("Title");
-  if (!panelStatus) missing.push("Panel status");
-  if (!slackStatus) missing.push("Slack status");
-  if (!priority) missing.push("Priority");
-  if (!type) missing.push("Type");
-  if (!shareWith) missing.push("Share with");
-  if (missing.length > 0) {
-    alert("Please fill in: " + missing.join(", "));
-    return;
+  const isGroup = document.getElementById("f_isGroup").checked;
+  // Groups only require a title
+  if (isGroup) {
+    if (!subject) { alert("Please fill in: Title"); return; }
+  } else {
+    const panelStatus = document.getElementById("f_panelStatus").value;
+    const slackStatus = document.getElementById("f_slackStatus").value;
+    const priority = document.getElementById("f_priority").value;
+    const type = document.getElementById("f_type").value;
+    const shareWith = document.getElementById("f_shareWith").value;
+    const missing = [];
+    if (!subject) missing.push("Title");
+    if (!panelStatus) missing.push("Panel status");
+    if (!slackStatus) missing.push("Slack status");
+    if (!priority) missing.push("Priority");
+    if (!type) missing.push("Type");
+    if (!shareWith) missing.push("Share with");
+    if (missing.length > 0) { alert("Please fill in: " + missing.join(", ")); return; }
   }
   const newCarry = document.getElementById("modal").__newTask;
   let t = STORE.tasks.find(x => x.id === editingId);
   if (!t && newCarry) { t = newCarry; delete t._isNew; STORE.tasks.push(t); }
   if (!t) return;
   t.subject = subject;
-  t.panelStatus = panelStatus;
-  t.slackStatus = slackStatus;
-  t.priority = priority;
-  t.type = type;
-  t.dueDate = document.getElementById("f_dueDate").value;
-  t.responsibleId = document.getElementById("f_responsibleId").value;
-  t.proposedById = document.getElementById("f_proposedById").value;
-  const ded = document.getElementById("f_dedicatedHours").value;
-  const est = document.getElementById("f_estimatedHours").value;
-  t.dedicatedHours = ded === "" ? "" : (parseFloat(ded) || 0);
-  t.estimatedHours = est === "" ? "" : (parseFloat(est) || 0);
-  t.shareWith = shareWith;
-  t.completed = document.getElementById("f_completed").checked;
-  t.sharing = document.getElementById("f_sharing").checked;
+  t.isGroup = isGroup;
+  if (isGroup) {
+    // Groups: keep title + description only; clear other fields so they don't appear in lists
+    t.groupId = "";
+    t.panelStatus = "";
+    t.slackStatus = "";
+    t.priority = "";
+    t.type = "";
+    t.dueDate = "";
+    t.responsibleId = "";
+    t.proposedById = "";
+    t.dedicatedHours = "";
+    t.estimatedHours = "";
+    t.shareWith = "";
+    t.completed = false;
+    t.sharing = false;
+    t.taskTags = [];
+  } else {
+    t.groupId = document.getElementById("f_groupId").value || "";
+    t.panelStatus = document.getElementById("f_panelStatus").value;
+    t.slackStatus = document.getElementById("f_slackStatus").value;
+    t.priority = document.getElementById("f_priority").value;
+    t.type = document.getElementById("f_type").value;
+    t.dueDate = document.getElementById("f_dueDate").value;
+    t.responsibleId = document.getElementById("f_responsibleId").value;
+    t.proposedById = document.getElementById("f_proposedById").value;
+    const ded = document.getElementById("f_dedicatedHours").value;
+    const est = document.getElementById("f_estimatedHours").value;
+    t.dedicatedHours = ded === "" ? "" : (parseFloat(ded) || 0);
+    t.estimatedHours = est === "" ? "" : (parseFloat(est) || 0);
+    t.shareWith = document.getElementById("f_shareWith").value;
+    t.completed = document.getElementById("f_completed").checked;
+    t.sharing = document.getElementById("f_sharing").checked;
+  }
   t.extraComments = document.getElementById("f_extraComments").value;
   t._pendingSync = true;
   const respPerson = findPerson(t.responsibleId);
@@ -2726,6 +2830,20 @@ document.getElementById("saveBtn").addEventListener("click", () => {
 
 document.getElementById("deleteBtn").addEventListener("click", () => {
   if (!editingId) return;
+  const t = STORE.tasks.find(x => x.id === editingId);
+  if (t && t.isGroup) {
+    const kids = (STORE.tasks || []).filter(x => x.groupId === t.id);
+    if (kids.length > 0) {
+      const msg = "Delete the group '" + (t.subject||'') + "' (" + kids.length + " task" + (kids.length===1?'':'s') + " inside)?\n\nOK = ungroup the tasks (keep them, no parent)\nCancel = abort";
+      if (!confirm(msg)) return;
+      kids.forEach(c => { c.groupId = ""; });
+    } else {
+      if (!confirm("Delete this empty group?")) return;
+    }
+    STORE.tasks = STORE.tasks.filter(x => x.id !== editingId);
+    saveStore(STORE); closeModal(); render();
+    return;
+  }
   if (!confirm("Delete this task? It's only removed from the panel; in Slack it stays.")) return;
   STORE.tasks = STORE.tasks.filter(x => x.id !== editingId);
   saveStore(STORE); closeModal(); render();
@@ -4915,14 +5033,116 @@ document.querySelectorAll("#tasksViewToggle button").forEach(b => {
 });
 
 // ---- Flat tasks view ----
+// =============== Group helpers ===============
+function getGroupExpanded() {
+  try { return JSON.parse(localStorage.getItem("bn-group-expanded") || "{}"); }
+  catch (_) { return {}; }
+}
+function setGroupExpanded(map) {
+  localStorage.setItem("bn-group-expanded", JSON.stringify(map || {}));
+}
+function isGroupExpanded(gid) {
+  return !!getGroupExpanded()[gid];
+}
+function toggleGroupExpanded(gid) {
+  const m = getGroupExpanded();
+  m[gid] = !m[gid];
+  setGroupExpanded(m);
+  return !!m[gid];
+}
+function groupChildrenOf(groupId) {
+  return (STORE.tasks || []).filter(t => !t.isGroup && t.groupId === groupId);
+}
+function findGroup(groupId) {
+  return (STORE.tasks || []).find(t => t.isGroup && t.id === groupId);
+}
+function groupProgress(groupId) {
+  const kids = groupChildrenOf(groupId);
+  const done = kids.filter(t => t.panelStatus === "completed" || t.completed).length;
+  const total = kids.length;
+  const pct = total > 0 ? Math.round(100 * done / total) : 0;
+  return { done, total, pct };
+}
+function groupRowHtml(g) {
+  const expanded = isGroupExpanded(g.id);
+  const prog = groupProgress(g.id);
+  return '<div class="group-row' + (expanded ? ' expanded' : '') + '" data-gid="' + escapeHtml(g.id) + '">' +
+      '<span class="caret">▶</span>' +
+      '<span class="group-title"><span class="folder-emoji">📁</span>' + escapeHtml(g.subject || '(unnamed group)') + '</span>' +
+      '<span class="group-progress">' +
+        '<span class="group-progress-bar-wrap"><span class="group-progress-bar-fill" style="width:' + prog.pct + '%"></span></span>' +
+        '<span class="group-progress-text">' + prog.done + '/' + prog.total + '</span>' +
+      '</span>' +
+      '<button class="group-edit-btn" title="Edit group">&#9998;</button>' +
+    '</div>';
+}
+function attachGroupHandlers(container) {
+  container.querySelectorAll(".group-row").forEach(node => {
+    const gid = node.dataset.gid;
+    node.addEventListener("click", e => {
+      if (e.target.closest(".group-edit-btn")) return;
+      toggleGroupExpanded(gid);
+      // Toggle visually + render new children
+      const childrenEl = node.nextElementSibling;
+      if (childrenEl && childrenEl.classList.contains("group-children")) {
+        childrenEl.classList.toggle("collapsed");
+        node.classList.toggle("expanded");
+      } else {
+        // No siblings rendered yet — full re-render
+        if (typeof render === "function") render();
+      }
+    });
+    const editBtn = node.querySelector(".group-edit-btn");
+    if (editBtn) editBtn.addEventListener("click", e => { e.stopPropagation(); openModal(gid); });
+  });
+}
+
 function renderFlatTasks() {
   const cont = document.getElementById("flatTasksList");
-  const tasks = sortTaskList(STORE.tasks.filter(taskMatchesFilters));
-  if (tasks.length === 0) {
-    cont.innerHTML = '<div class="rm-empty">No tasks match the current filters.</div>';
+  // Get all groups + ungrouped tasks separately
+  const groups = (STORE.tasks || []).filter(t => t.isGroup);
+  groups.sort((a,b) => (a.subject||'').localeCompare(b.subject||''));
+  const visibleTasks = sortTaskList(STORE.tasks.filter(taskMatchesFilters));
+  const ungroupedTasks = visibleTasks.filter(t => !t.groupId);
+  const groupedTasks = visibleTasks.filter(t => t.groupId);
+
+  // Hide empty groups when filters narrow them out (but show them all when no filters)
+  const haveAnyFilter = personInclude.size > 0 || personExclude.size > 0 ||
+                        statusInclude.size > 0 || statusExclude.size > 0 ||
+                        prioInclude.size > 0 || prioExclude.size > 0 ||
+                        (typeof searchQuery === 'string' && searchQuery.length > 0);
+
+  if (groups.length === 0 && visibleTasks.length === 0) {
+    cont.innerHTML = '<div class="rm-empty">No tasks yet. Click <strong>+ New task</strong> to create one (toggle "This is a group" to make a folder).</div>';
     return;
   }
-  cont.innerHTML = tasks.map(t => flatTaskHtml(t)).join("");
+
+  let html = '';
+  groups.forEach(g => {
+    const matchedKids = groupedTasks.filter(t => t.groupId === g.id);
+    if (haveAnyFilter && matchedKids.length === 0) return;   // hide groups with no matching children when filtering
+    const expanded = isGroupExpanded(g.id);
+    html += groupRowHtml(g);
+    html += '<div class="group-children' + (expanded ? '' : ' collapsed') + '" data-gid="' + escapeHtml(g.id) + '">';
+    if (matchedKids.length === 0) {
+      html += '<div class="group-empty" style="padding:6px 8px">No tasks in this group yet.</div>';
+    } else {
+      html += matchedKids.map(t => flatTaskHtml(t)).join("");
+    }
+    html += '</div>';
+  });
+  if (ungroupedTasks.length > 0) {
+    if (groups.length > 0) {
+      html += '<div style="font-size:12px; color:#6b6b6b; font-weight:600; margin:14px 0 6px; text-transform:uppercase; letter-spacing:0.04em">Ungrouped</div>';
+    }
+    html += ungroupedTasks.map(t => flatTaskHtml(t)).join("");
+  }
+  if (html === '') {
+    html = '<div class="rm-empty">No tasks match the current filters.</div>';
+  }
+  cont.innerHTML = html;
+
+  attachGroupHandlers(cont);
   cont.querySelectorAll(".flat-task").forEach(node => {
     const tid = node.dataset.tid;
     node.querySelector(".text").addEventListener("click", () => openModal(tid));
@@ -4943,6 +5163,10 @@ function flatTaskHtml(t) {
   const prioCls = "prio-" + (t.priority || "").replace(/\s+/g, '');
   const typeCls = "type-" + (t.type || "").replace(/\s+/g, '');
   const badges = [];
+  if (t.groupId) {
+    const g = findGroup(t.groupId);
+    if (g) badges.push('<span class="badge group-badge" title="In group: ' + escapeHtml(g.subject||'') + '">📁 ' + escapeHtml((g.subject||'').slice(0,18)) + '</span>');
+  }
   if (t.priority) badges.push('<span class="badge ' + prioCls + '">' + escapeHtml(t.priority) + '</span>');
   if (t.type) badges.push('<span class="badge ' + typeCls + '">' + escapeHtml(t.type) + '</span>');
   if (t.slackStatus) badges.push('<span class="badge slack-status">' + escapeHtml(t.slackStatus) + '</span>');
@@ -5125,7 +5349,8 @@ function renderRoadmapDetailInline(id) {
 
 // Update tab counts
 function updateTabCounts() {
-  const taskCount = STORE.tasks.length;
+  // Don't count groups themselves as tasks
+  const taskCount = STORE.tasks.filter(t => !t.isGroup).length;
   const teamCount = TEAM.length;
   const rmCount = getRoadmaps().length;
   document.getElementById("nav-members-count").textContent = teamCount;
