@@ -6047,7 +6047,7 @@ async function bnPushTeamFiles(opts) {
   if (bnFilesSyncInFlight) return { ok: false, reason: 'busy' };
   const passphrase = bnGetPassphrase();
   if (!passphrase) return { ok: false, reason: 'no-passphrase' };
-  const token = bnGetGhToken();
+  let token = bnGetGhToken();
   if (!token) return { ok: false, reason: 'no-token' };
   bnFilesSyncInFlight = true;
   bnSetFilesSyncStatus('Saving team files to cloud…');
@@ -6060,38 +6060,86 @@ async function bnPushTeamFiles(opts) {
     const blob = await bnEncryptForRepo(JSON.stringify(payload), passphrase);
     const content = btoa(unescape(encodeURIComponent(JSON.stringify(blob, null, 2))));
 
-    // GET current SHA (if file exists)
     const apiBase = 'https://api.github.com/repos/' + BN_FILES_REPO_OWNER + '/' + BN_FILES_REPO_NAME + '/contents/' + BN_FILES_JSON_PATH;
-    const headers = {
-      'Authorization': 'Bearer ' + token,
-      'Accept': 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28'
-    };
-    let sha = null;
-    const getRes = await fetch(apiBase + '?ref=' + BN_FILES_REPO_BRANCH, { headers });
-    if (getRes.ok) {
-      const j = await getRes.json();
-      sha = j.sha || null;
-    } else if (getRes.status !== 404) {
-      const txt = await getRes.text();
-      throw new Error('GET sha failed: ' + getRes.status + ' ' + txt.slice(0, 120));
+    function makeHeaders(t) {
+      return {
+        'Authorization': 'Bearer ' + t,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Cache-Control': 'no-cache'
+      };
     }
 
-    const putBody = {
-      message: 'chore: sync team files from web app [skip ci]',
-      content,
-      branch: BN_FILES_REPO_BRANCH
-    };
-    if (sha) putBody.sha = sha;
-    const putRes = await fetch(apiBase, {
-      method: 'PUT',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
-      body: JSON.stringify(putBody)
-    });
-    if (!putRes.ok) {
-      const txt = await putRes.text();
-      throw new Error('PUT failed: ' + putRes.status + ' ' + txt.slice(0, 120));
+    // Helper: GET fresh SHA, bypassing browser cache
+    async function fetchSha() {
+      const url = apiBase + '?ref=' + BN_FILES_REPO_BRANCH + '&_=' + Date.now();
+      const r = await fetch(url, { headers: makeHeaders(token), cache: 'no-store' });
+      if (r.status === 404) return null;
+      if (r.status === 401) {
+        const txt = await r.text();
+        throw Object.assign(new Error('Bad credentials'), { _401: true, body: txt });
+      }
+      if (!r.ok) {
+        const txt = await r.text();
+        throw new Error('GET sha failed: ' + r.status + ' ' + txt.slice(0, 120));
+      }
+      const j = await r.json();
+      return j.sha || null;
     }
+
+    // PUT, retrying once if SHA conflict (409) — refetch SHA and retry.
+    async function tryPut(sha, attempt) {
+      const putBody = {
+        message: 'chore: sync team files from web app [skip ci]',
+        content,
+        branch: BN_FILES_REPO_BRANCH
+      };
+      if (sha) putBody.sha = sha;
+      const r = await fetch(apiBase, {
+        method: 'PUT',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, makeHeaders(token)),
+        body: JSON.stringify(putBody),
+        cache: 'no-store'
+      });
+      if (r.ok) return;
+      if (r.status === 401) {
+        const txt = await r.text();
+        throw Object.assign(new Error('Bad credentials'), { _401: true, body: txt });
+      }
+      if (r.status === 409 && attempt < 2) {
+        // Stale SHA — refetch and retry
+        const fresh = await fetchSha();
+        return tryPut(fresh, attempt + 1);
+      }
+      const txt = await r.text();
+      throw new Error('PUT failed: ' + r.status + ' ' + txt.slice(0, 120));
+    }
+
+    let sha;
+    try { sha = await fetchSha(); }
+    catch (e) {
+      if (e._401) {
+        // Token is wrong — drop it and ask for a fresh one
+        bnSaveGhToken('');
+        const t2 = bnPromptForGhToken();
+        if (!t2) throw new Error('No valid GitHub token. Team file kept locally only.');
+        token = t2;
+        sha = await fetchSha();
+      } else { throw e; }
+    }
+
+    try { await tryPut(sha, 1); }
+    catch (e) {
+      if (e._401) {
+        bnSaveGhToken('');
+        const t2 = bnPromptForGhToken();
+        if (!t2) throw new Error('No valid GitHub token. Team file kept locally only.');
+        token = t2;
+        const fresh = await fetchSha();
+        await tryPut(fresh, 1);
+      } else { throw e; }
+    }
+
     bnFilesLastSyncedAt = new Date().toISOString();
     bnSetFilesSyncStatus('Team files synced · ' + new Date(bnFilesLastSyncedAt).toLocaleTimeString('es-ES'));
     return { ok: true };
@@ -6106,10 +6154,11 @@ async function bnPushTeamFiles(opts) {
 
 function bnPromptForGhToken() {
   const t = prompt(
-    'To sync Team files across devices, paste a GitHub Personal Access Token (fine-grained) with Contents: write on this repo. ' +
-    'It will be stored locally on this device only.'
+    'To sync Team files across devices, paste your GitHub Personal Access Token (fine-grained) with Contents: write on BooklineBerni/berni-navigator.\n\n' +
+    'Token starts with "github_pat_". Stored locally on this device only.\n\n' +
+    'Paste the FULL token below:'
   );
-  if (t) bnSaveGhToken(t.trim());
+  if (t && t.trim()) bnSaveGhToken(t.trim());
   return bnGetGhToken();
 }
 
