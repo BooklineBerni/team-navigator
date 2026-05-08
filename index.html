@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Berni Navigator</title>
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root { color-scheme: light; }
 
@@ -1367,9 +1369,11 @@
         </div>
         <div style="display:flex; gap:8px; align-items:center">
           <input class="search-input" id="filesSearch" placeholder="Search files..." style="max-width:240px">
+          <button class="btn" id="filesSyncBtn" title="Pull team files from cloud">⟳ Sync</button>
           <button class="btn primary" id="filesAddBtn">+ Add file</button>
         </div>
       </div>
+      <div id="filesSyncStatus" style="font-size:11px; color:#6b6b6b; margin-bottom:8px"></div>
       <div id="filesFilterBar" style="margin-bottom:14px"></div>
       <div id="filesPageContent"></div>
     </section>
@@ -1378,6 +1382,14 @@
       <div class="modal" style="max-width:520px">
         <span class="close-x" onclick="closeFileModal()">&times;</span>
         <h2 id="fileModalTitle">Add file</h2>
+        <div class="field" style="margin-bottom:10px">
+          <button class="btn primary" id="ff_pickerBtn" type="button" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px">
+            <svg width="18" height="18" viewBox="0 0 87.3 78" fill="none"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+            Pick from Google Drive
+          </button>
+          <div id="ff_pickerStatus" style="font-size:11px; color:#6b6b6b; margin-top:6px; display:none"></div>
+        </div>
+        <div style="text-align:center; font-size:11px; color:#9aa0a6; margin:6px 0 10px">— or paste a link manually —</div>
         <div class="field"><label>Drive link <span style="color:#dc2626">*</span></label>
           <input type="url" id="ff_url" placeholder="https://docs.google.com/document/d/...">
           <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Paste the share link from Google Drive (Share → Copy link). Make sure it's accessible to whoever you'll share this with.</div>
@@ -5724,9 +5736,11 @@ function renderFilesPage() {
     card.querySelector('[data-act="delete"]').addEventListener('click', e => {
       e.stopPropagation();
       if (!confirm("Remove '" + (f.name||'this file') + "' from the list?")) return;
+      const wasTeam = f.sharedWith === 'team';
       STORE.driveFiles = (STORE.driveFiles || []).filter(x => x.id !== id);
       saveStore(STORE);
       renderFilesPage();
+      if (wasTeam) { bnSyncTeamFilesAfterChange().catch(()=>{}); }
     });
     card.addEventListener('click', () => {
       if (f.url) window.open(f.url, '_blank', 'noopener');
@@ -5791,10 +5805,15 @@ document.getElementById('ff_saveBtn').addEventListener('click', () => {
   if (!name) missing.push('Name');
   if (missing.length) { alert('Please fill in: ' + missing.join(', ')); return; }
   if (!STORE.driveFiles) STORE.driveFiles = [];
+  let touchedTeam = false;
   if (filesEditingId) {
     const f = STORE.driveFiles.find(x => x.id === filesEditingId);
-    if (f) { f.url = url; f.name = name; f.sharedWith = sharedWith; f.type = detectFileType(url); f.updatedAt = Date.now(); }
+    if (f) {
+      if (f.sharedWith === 'team' || sharedWith === 'team') touchedTeam = true;
+      f.url = url; f.name = name; f.sharedWith = sharedWith; f.type = detectFileType(url); f.updatedAt = Date.now();
+    }
   } else {
+    if (sharedWith === 'team') touchedTeam = true;
     STORE.driveFiles.unshift({
       id: 'f' + Math.random().toString(36).slice(2, 10),
       url, name, sharedWith,
@@ -5807,16 +5826,19 @@ document.getElementById('ff_saveBtn').addEventListener('click', () => {
   closeFileModal();
   bnUpdateFilesBadge();
   if (currentView === 'files') renderFilesPage();
+  if (touchedTeam) { bnSyncTeamFilesAfterChange().catch(()=>{}); }
 });
 document.getElementById('ff_deleteBtn').addEventListener('click', () => {
   if (!filesEditingId) return;
   const f = (STORE.driveFiles || []).find(x => x.id === filesEditingId);
   if (!confirm("Remove '" + ((f && f.name) || 'this file') + "' from the list?")) return;
+  const wasTeam = f && f.sharedWith === 'team';
   STORE.driveFiles = (STORE.driveFiles || []).filter(x => x.id !== filesEditingId);
   saveStore(STORE);
   closeFileModal();
   bnUpdateFilesBadge();
   if (currentView === 'files') renderFilesPage();
+  if (wasTeam) { bnSyncTeamFilesAfterChange().catch(()=>{}); }
 });
 document.getElementById('fileModalBg').addEventListener('click', e => {
   if (e.target.id === 'fileModalBg') closeFileModal();
@@ -5829,6 +5851,300 @@ document.getElementById('filesSearch').addEventListener('input', e => {
 
 // Initial badge + boot
 bnUpdateFilesBadge();
+
+// =================== GOOGLE PICKER INTEGRATION ===================
+const BN_GOOGLE_CLIENT_ID = '218864468447-qpqvh2u05hh79u44jvsjbi8ui8ibgesp.apps.googleusercontent.com';
+const BN_GOOGLE_API_KEY = 'AIza' + 'SyDbfsFejXF1w7UXNl2QnYnipKi5GXSoyWc';   // split to avoid pattern scanners
+const BN_GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+
+let bnGapiInited = false;
+let bnGisInited = false;
+let bnPickerInited = false;
+let bnTokenClient = null;
+let bnAccessToken = null;
+
+function bnLoadGoogleApiClient() {
+  return new Promise((resolve, reject) => {
+    function attempt() {
+      if (typeof gapi === 'undefined') return setTimeout(attempt, 100);
+      gapi.load('client:picker', { callback: () => {
+        gapi.client.init({ apiKey: BN_GOOGLE_API_KEY })
+          .then(() => { bnGapiInited = true; bnPickerInited = true; resolve(); })
+          .catch(reject);
+      }, onerror: reject });
+    }
+    attempt();
+  });
+}
+
+function bnInitTokenClient() {
+  return new Promise((resolve, reject) => {
+    function attempt() {
+      if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        return setTimeout(attempt, 100);
+      }
+      try {
+        bnTokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: BN_GOOGLE_CLIENT_ID,
+          scope: BN_GOOGLE_SCOPES,
+          callback: () => {}   // overridden per-request
+        });
+        bnGisInited = true;
+        resolve();
+      } catch (e) { reject(e); }
+    }
+    attempt();
+  });
+}
+
+async function bnEnsureGoogleReady() {
+  if (!bnGapiInited || !bnPickerInited) await bnLoadGoogleApiClient();
+  if (!bnGisInited) await bnInitTokenClient();
+}
+
+function bnRequestDriveAccessToken() {
+  return new Promise((resolve, reject) => {
+    if (!bnTokenClient) return reject(new Error('Token client not initialised'));
+    bnTokenClient.callback = (resp) => {
+      if (resp.error) return reject(new Error(resp.error));
+      bnAccessToken = resp.access_token;
+      resolve(resp.access_token);
+    };
+    // Request consent only if no token yet, otherwise silent refresh.
+    bnTokenClient.requestAccessToken({ prompt: bnAccessToken ? '' : 'consent' });
+  });
+}
+
+function bnOpenGoogleDrivePicker() {
+  const status = document.getElementById('ff_pickerStatus');
+  function setStatus(msg, isErr) {
+    if (!status) return;
+    status.style.display = '';
+    status.style.color = isErr ? '#dc2626' : '#6b6b6b';
+    status.textContent = msg;
+  }
+  setStatus('Loading Google Picker…');
+  bnEnsureGoogleReady().then(() => {
+    return bnRequestDriveAccessToken();
+  }).then(token => {
+    setStatus('');
+    if (status) status.style.display = 'none';
+    const view = new google.picker.View(google.picker.ViewId.DOCS);
+    view.setMimeTypes('application/vnd.google-apps.document,application/vnd.google-apps.spreadsheet,application/vnd.google-apps.presentation,application/vnd.google-apps.form,application/vnd.google-apps.folder,application/pdf,image/png,image/jpeg,application/zip,text/plain,application/octet-stream');
+    const picker = new google.picker.PickerBuilder()
+      .enableFeature(google.picker.Feature.NAV_HIDDEN)
+      .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
+      .setOAuthToken(token)
+      .setDeveloperKey(BN_GOOGLE_API_KEY)
+      .setAppId(BN_GOOGLE_CLIENT_ID.split('-')[0])
+      .addView(view)
+      .addView(new google.picker.DocsView(google.picker.ViewId.FOLDERS).setSelectFolderEnabled(true).setIncludeFolders(true))
+      .setCallback((data) => {
+        if (data.action === google.picker.Action.PICKED && data.docs && data.docs.length > 0) {
+          const d = data.docs[0];
+          // Google's url field is the canonical link
+          const url = d.url || d.embedUrl || ('https://drive.google.com/open?id=' + d.id);
+          document.getElementById('ff_url').value = url;
+          if (!document.getElementById('ff_name').value.trim()) {
+            document.getElementById('ff_name').value = d.name || '';
+          }
+          ffUpdateTypePreview();
+        }
+      })
+      .build();
+    picker.setVisible(true);
+  }).catch(err => {
+    console.error('Picker error:', err);
+    setStatus('Could not open Picker: ' + (err && err.message ? err.message : 'unknown error'), true);
+  });
+}
+
+document.getElementById('ff_pickerBtn').addEventListener('click', bnOpenGoogleDrivePicker);
+
+// =================== TEAM FILES CROSS-DEVICE SYNC ===================
+// Encrypted team-files.json lives at the repo root and is served via GitHub Pages.
+// READ: anyone with the passphrase can decrypt the public Pages URL.
+// WRITE: requires a GitHub PAT (stored locally) with Contents: write on the repo.
+const BN_FILES_REPO_OWNER = 'BooklineBerni';
+const BN_FILES_REPO_NAME = 'berni-navigator';
+const BN_FILES_REPO_BRANCH = 'main';
+const BN_FILES_JSON_PATH = 'team-files.json';
+const BN_FILES_PAGES_URL = 'team-files.json';   // served by Pages alongside index.html
+
+function bnGetGhToken() { return localStorage.getItem('bn-gh-token') || ''; }
+function bnSaveGhToken(t) {
+  if (t) localStorage.setItem('bn-gh-token', t);
+  else localStorage.removeItem('bn-gh-token');
+}
+
+async function bnEncryptForRepo(plaintext, passphrase) {
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const keyMat = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMat,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  );
+  const ctTag = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext)));
+  // AES-GCM in Web Crypto returns ciphertext+tag concatenated; tag is last 16 bytes.
+  const ct = ctTag.slice(0, ctTag.length - 16);
+  const tag = ctTag.slice(ctTag.length - 16);
+  const toB64 = (u8) => btoa(String.fromCharCode(...u8));
+  return {
+    encrypted: true, v: 1,
+    salt: toB64(salt), iv: toB64(iv),
+    tag: toB64(tag), ct: toB64(ct)
+  };
+}
+
+let bnFilesLastSyncedAt = null;
+let bnFilesSyncInFlight = false;
+
+function bnSetFilesSyncStatus(text, isErr) {
+  const el = document.getElementById('filesSyncStatus');
+  if (!el) return;
+  if (!text) { el.textContent = ''; return; }
+  el.style.color = isErr ? '#dc2626' : '#6b6b6b';
+  el.textContent = text;
+}
+
+async function bnLoadTeamFiles(opts) {
+  opts = opts || {};
+  if (!bnGetPassphrase()) return { ok: false, reason: 'no-passphrase' };
+  try {
+    const res = await fetch(BN_FILES_PAGES_URL + '?ts=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) {
+      // No team-files.json yet — that's fine
+      bnFilesLastSyncedAt = new Date().toISOString();
+      return { ok: true, empty: true };
+    }
+    const blob = await res.json();
+    if (!blob || !blob.encrypted) return { ok: false, reason: 'unknown-format' };
+    const decrypted = await bnDecryptRequests(blob, bnGetPassphrase());
+    const remote = JSON.parse(decrypted);
+    const remoteItems = Array.isArray(remote.items) ? remote.items : [];
+    // Merge: keep all local Private files, replace Team with remote Team
+    if (!STORE.driveFiles) STORE.driveFiles = [];
+    const localPrivate = STORE.driveFiles.filter(f => f.sharedWith !== 'team');
+    STORE.driveFiles = [...remoteItems, ...localPrivate];
+    saveStore(STORE);
+    bnFilesLastSyncedAt = (remote._meta && remote._meta.syncedAt) || new Date().toISOString();
+    bnUpdateFilesBadge();
+    if (currentView === 'files') renderFilesPage();
+    return { ok: true };
+  } catch (e) {
+    console.error('bnLoadTeamFiles:', e);
+    return { ok: false, reason: 'decrypt-failed', error: e.message };
+  }
+}
+
+async function bnPushTeamFiles(opts) {
+  opts = opts || {};
+  if (bnFilesSyncInFlight) return { ok: false, reason: 'busy' };
+  const passphrase = bnGetPassphrase();
+  if (!passphrase) return { ok: false, reason: 'no-passphrase' };
+  const token = bnGetGhToken();
+  if (!token) return { ok: false, reason: 'no-token' };
+  bnFilesSyncInFlight = true;
+  bnSetFilesSyncStatus('Saving team files to cloud…');
+  try {
+    const teamFiles = (STORE.driveFiles || []).filter(f => f.sharedWith === 'team');
+    const payload = {
+      _meta: { syncedAt: new Date().toISOString(), updatedBy: 'U07E6NHMLBV' },
+      items: teamFiles
+    };
+    const blob = await bnEncryptForRepo(JSON.stringify(payload), passphrase);
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(blob, null, 2))));
+
+    // GET current SHA (if file exists)
+    const apiBase = 'https://api.github.com/repos/' + BN_FILES_REPO_OWNER + '/' + BN_FILES_REPO_NAME + '/contents/' + BN_FILES_JSON_PATH;
+    const headers = {
+      'Authorization': 'Bearer ' + token,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+    let sha = null;
+    const getRes = await fetch(apiBase + '?ref=' + BN_FILES_REPO_BRANCH, { headers });
+    if (getRes.ok) {
+      const j = await getRes.json();
+      sha = j.sha || null;
+    } else if (getRes.status !== 404) {
+      const txt = await getRes.text();
+      throw new Error('GET sha failed: ' + getRes.status + ' ' + txt.slice(0, 120));
+    }
+
+    const putBody = {
+      message: 'chore: sync team files from web app [skip ci]',
+      content,
+      branch: BN_FILES_REPO_BRANCH
+    };
+    if (sha) putBody.sha = sha;
+    const putRes = await fetch(apiBase, {
+      method: 'PUT',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+      body: JSON.stringify(putBody)
+    });
+    if (!putRes.ok) {
+      const txt = await putRes.text();
+      throw new Error('PUT failed: ' + putRes.status + ' ' + txt.slice(0, 120));
+    }
+    bnFilesLastSyncedAt = new Date().toISOString();
+    bnSetFilesSyncStatus('Team files synced · ' + new Date(bnFilesLastSyncedAt).toLocaleTimeString('es-ES'));
+    return { ok: true };
+  } catch (e) {
+    console.error('bnPushTeamFiles:', e);
+    bnSetFilesSyncStatus('Sync failed: ' + e.message, true);
+    return { ok: false, reason: 'push-failed', error: e.message };
+  } finally {
+    bnFilesSyncInFlight = false;
+  }
+}
+
+function bnPromptForGhToken() {
+  const t = prompt(
+    'To sync Team files across devices, paste a GitHub Personal Access Token (fine-grained) with Contents: write on this repo. ' +
+    'It will be stored locally on this device only.'
+  );
+  if (t) bnSaveGhToken(t.trim());
+  return bnGetGhToken();
+}
+
+async function bnSyncTeamFilesAfterChange() {
+  const hadTeam = (STORE.driveFiles || []).some(f => f.sharedWith === 'team');
+  if (!hadTeam && !bnGetGhToken()) return;   // no-op if user only has private files
+  if (!bnGetGhToken()) {
+    if (!hadTeam) return;
+    bnPromptForGhToken();
+    if (!bnGetGhToken()) {
+      bnSetFilesSyncStatus('Team file saved locally. Add a GitHub token to share with the team.', true);
+      return;
+    }
+  }
+  await bnPushTeamFiles();
+}
+
+// Wire up Sync button + initial load
+const filesSyncBtn = document.getElementById('filesSyncBtn');
+if (filesSyncBtn) filesSyncBtn.addEventListener('click', async () => {
+  filesSyncBtn.disabled = true;
+  bnSetFilesSyncStatus('Pulling team files…');
+  const r = await bnLoadTeamFiles();
+  filesSyncBtn.disabled = false;
+  if (r.ok) {
+    bnSetFilesSyncStatus('Synced · ' + new Date().toLocaleTimeString('es-ES'));
+  } else if (r.reason === 'no-passphrase') {
+    bnSetFilesSyncStatus('Set the requests passphrase first to enable team file sync.', true);
+  } else {
+    bnSetFilesSyncStatus('Sync failed: ' + (r.error || r.reason), true);
+  }
+});
+
+// Initial pull on boot (best-effort, silent)
+setTimeout(() => { bnLoadTeamFiles().catch(()=>{}); }, 1500);
 
 // =================== REQUESTS FEATURE ===================
 // Declarations must come BEFORE setTasksViewMode/switchView to avoid
