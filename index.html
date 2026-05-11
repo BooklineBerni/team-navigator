@@ -1783,13 +1783,15 @@
     <div class="field"><label>Available week time <span style="font-weight:400; color:#9a9a9a">(hours/week)</span></label>
       <input type="number" id="f_availableWeekTime" min="0" step="0.5" placeholder="e.g. 20" style="max-width:200px">
     </div>
-    <div class="checkbox-field" style="margin-bottom:10px; padding:10px 12px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px">
-      <input type="checkbox" id="f_personIsTeam">
-      <label for="f_personIsTeam" style="margin:0; font-weight:600">Team member <span style="font-weight:400; color:#6b6b6b">(part of your direct team — appears in the Team section instead of Bookline)</span></label>
-    </div>
-    <div class="checkbox-field" style="margin-bottom:14px; padding:10px 12px; background:#fef2f2; border:1px solid #fecdca; border-radius:8px">
-      <input type="checkbox" id="f_personDisabled">
-      <label for="f_personDisabled" style="margin:0; font-weight:600">Disable this person <span style="font-weight:400; color:#6b6b6b">(left the company / inactive — appears in disabled section, greyed out)</span></label>
+    <div class="field" style="margin-bottom:14px">
+      <label>Section</label>
+      <select id="f_personSection" style="max-width:240px">
+        <option value="">— Bookline (default)</option>
+        <option value="team">Team</option>
+        <option value="supplementary">Supplementary</option>
+        <option value="disabled">Disabled</option>
+      </select>
+      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Pick which section this person belongs to on the People page.</div>
     </div>
     <div class="field"><label>Assigned tags</label>
       <div class="person-modal-tags" id="personTagsContainer"></div>
@@ -2164,26 +2166,36 @@ function setTagsFor(personId, tags) {
   STORE.personTags[personId] = tags;
   saveStore(STORE);
 }
-function isDeactivated(personId) {
+// Sections (single-choice): "team" | "supplementary" | "disabled" | "" (empty = Bookline if has tasks)
+function getPersonSection(personId) {
   const s = getPersonSettings(personId);
-  if (s.disabled) return true;
-  // Legacy fallback: also detect the tag (for users who haven't migrated)
-  return getTagsFor(personId).some(t => {
-    const tl = t.toLowerCase();
-    return tl === "desactivado" || tl === "disabled";
+  // Explicit section wins
+  if (s.section === "team" || s.section === "supplementary" || s.section === "disabled" || s.section === "") return s.section;
+  // Legacy: disabled flag → disabled section
+  if (s.disabled) return "disabled";
+  // Legacy: tag-based deactivation
+  const tags = getTagsFor(personId).map(t => t.toLowerCase());
+  if (tags.includes("desactivado") || tags.includes("disabled")) return "disabled";
+  // Legacy: explicit team boolean
+  if (typeof s.team === 'boolean') return s.team ? "team" : "";
+  // Default: TEAM array members are team; everyone else is empty (Bookline)
+  if (TEAM.find(p => p.id === personId)) return "team";
+  return "";
+}
+function setPersonSection(personId, section) {
+  if (!["team", "supplementary", "disabled", ""].includes(section)) section = "";
+  // Write the new field AND clean up the legacy ones so older logic agrees
+  setPersonSettings(personId, {
+    section: section,
+    disabled: section === "disabled",
+    team: section === "team"
   });
 }
-function isTeamMember(personId) {
-  const s = getPersonSettings(personId);
-  // Explicit setting takes precedence
-  if (typeof s.team === 'boolean') return s.team;
-  // Default: TEAM members are team=true; EXTERNAL_TEAM members are team=false
-  if (TEAM.find(p => p.id === personId)) return true;
-  return false;
-}
-function setTeamMember(personId, isTeam) {
-  setPersonSettings(personId, { team: !!isTeam });
-}
+function isDeactivated(personId) { return getPersonSection(personId) === "disabled"; }
+function isTeamMember(personId) { return getPersonSection(personId) === "team"; }
+function isSupplementary(personId) { return getPersonSection(personId) === "supplementary"; }
+// Backwards-compat shim
+function setTeamMember(personId, isTeam) { setPersonSection(personId, isTeam ? "team" : ""); }
 
 // ---- Task Tag Library ----
 function getTaskTagLibrary() {
@@ -2907,7 +2919,7 @@ function render() {
         </span>
         <div class="meta">
           <div class="name">${escapeHtml(person.name)}</div>
-          <div class="role">${escapeHtml(person.role || "")} &middot; ${escapeHtml(person.email || "")}</div>
+          <div class="role">${escapeHtml(person.email || "")}</div>
           ${(() => { const awt = getPersonSettings(person.id).availableWeekTime; return (awt != null && awt !== "") ? '<div class="role" style="color:#0891b2; font-weight:600">Available: ' + awt + 'h/week</div>' : ''; })()}
           ${tagsLine}
         </div>
@@ -2929,11 +2941,10 @@ function render() {
   });
 
   // ===== Unassigned card =====
-  // Show all tasks with no responsibleId, but only when teamOnly is off (since teamOnly
-  // explicitly excludes unassigned). Hide when there are no unassigned tasks at all.
+  // Always show when teamOnly is off so the user can park new tasks here.
   if (!teamOnly) {
     const unassignedAll = allTasks.filter(t => !t.isGroup && !t.responsibleId);
-    if (unassignedAll.length > 0) {
+    {
       const unassignedVisible = unassignedAll.filter(taskMatchesFilters);
       const u_counts = {
         pending:     unassignedVisible.filter(t => t.panelStatus === "pending").length,
@@ -3419,8 +3430,8 @@ function openPersonModal(personId) {
   const settings = getPersonSettings(personId);
   const awtInput = document.getElementById("f_availableWeekTime");
   awtInput.value = (settings.availableWeekTime != null && settings.availableWeekTime !== "") ? settings.availableWeekTime : "";
-  document.getElementById("f_personDisabled").checked = !!settings.disabled;
-  document.getElementById("f_personIsTeam").checked = isTeamMember(personId);
+  const _personSectionEl = document.getElementById("f_personSection");
+  if (_personSectionEl) _personSectionEl.value = getPersonSection(personId);
   renderPersonModal();
   document.getElementById("personModalBg").classList.add("show");
 }
@@ -3495,15 +3506,10 @@ document.getElementById("f_availableWeekTime").addEventListener("change", e => {
   const v = e.target.value === "" ? null : parseFloat(e.target.value);
   setPersonSettings(editingPersonId, { availableWeekTime: (isNaN(v) ? null : v) });
 });
-document.getElementById("f_personDisabled").addEventListener("change", e => {
+const _f_personSection = document.getElementById("f_personSection");
+if (_f_personSection) _f_personSection.addEventListener("change", e => {
   if (!editingPersonId) return;
-  setPersonSettings(editingPersonId, { disabled: e.target.checked });
-  // Re-render team page to move person to correct section
-  if (currentView === "members") render();
-});
-document.getElementById("f_personIsTeam").addEventListener("change", e => {
-  if (!editingPersonId) return;
-  setTeamMember(editingPersonId, e.target.checked);
+  setPersonSection(editingPersonId, e.target.value);
   if (currentView === "members") render();
 });
 
@@ -4698,26 +4704,37 @@ function renderMembersPage() {
   // Also include anyone appearing as proposer but not in either constant
   getAllProposerIds().forEach(id => { const p = findPerson(id); if (p) addToPool(p); });
 
-  // 1) Team: any person with isTeamMember=true and not disabled
-  const teamActive = pool.filter(p => isTeamMember(p.id) && !isDeactivated(p.id) && matchesQuery(p));
-  // 2) Bookline: appears as proposer AND is NOT a team member AND not disabled
+  // Section-based grouping (single-choice picklist):
+  //   team / supplementary / disabled / "" (Bookline = empty + has tasks)
+  // Special rule: a person also appears in Team if they're Disabled AND own at least one task.
+  function ownsTasks(pid) {
+    return (STORE.tasks || []).some(t => !t.isGroup && t.responsibleId === pid);
+  }
+  const teamActive = pool.filter(p => {
+    if (!matchesQuery(p)) return false;
+    const s = getPersonSection(p.id);
+    if (s === "team") return true;
+    if (s === "disabled" && ownsTasks(p.id)) return true;
+    return false;
+  });
+  const supplementary = pool.filter(p => getPersonSection(p.id) === "supplementary" && matchesQuery(p));
   const proposerIds = getAllProposerIds();
   const bookline = [];
   for (const p of pool) {
+    if (getPersonSection(p.id) !== "") continue;
     if (!proposerIds.has(p.id)) continue;
-    if (isTeamMember(p.id)) continue;
-    if (isDeactivated(p.id)) continue;
     if (!matchesQuery(p)) continue;
     bookline.push(p);
   }
   bookline.sort((a, b) => countProposerTasks(b.id) - countProposerTasks(a.id) || (a.name||'').localeCompare(b.name||''));
-  // 3) Disabled (anyone disabled — could be from any source)
-  const disabled = pool.filter(p => isDeactivated(p.id) && matchesQuery(p));
+  supplementary.sort((a, b) => (a.name||'').localeCompare(b.name||''));
+  // Disabled section: only those without tasks (the ones with tasks were promoted to Team above)
+  const disabled = pool.filter(p => getPersonSection(p.id) === "disabled" && !ownsTasks(p.id) && matchesQuery(p));
 
   // Sort team using existing sort
   const teamSorted = sortPersons(teamActive.map(p => p.id), STORE.tasks).map(id => findPerson(id)).filter(Boolean);
 
-  if (teamSorted.length === 0 && bookline.length === 0 && disabled.length === 0) {
+  if (teamSorted.length === 0 && supplementary.length === 0 && bookline.length === 0 && disabled.length === 0) {
     grid.innerHTML = '<div class="rm-empty">No people match.</div>';
     return;
   }
@@ -4782,7 +4799,6 @@ function renderMembersPage() {
         '</span>' +
         '<div class="meta">' +
           '<div class="name">' + escapeHtml(p.name||'') + '</div>' +
-          '<div class="role">' + escapeHtml(p.role || "") + '</div>' +
           '<div class="email">' + escapeHtml(p.email || "") + '</div>' +
           awt +
         '</div>' +
@@ -4810,6 +4826,10 @@ function renderMembersPage() {
   if (teamSorted.length > 0) {
     const inner = 'Team <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + teamSorted.length + ')</span>';
     html += makeSectionHtml('team', inner, teamSorted.map(p => memberCardHtml(p, 'team')).join(""));
+  }
+  if (supplementary.length > 0) {
+    const inner = 'Supplementary <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + supplementary.length + ')</span> <span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— people you collaborate with, not on your direct team</span>';
+    html += makeSectionHtml('supplementary', inner, supplementary.map(p => memberCardHtml(p, 'supplementary')).join(""));
   }
   if (bookline.length > 0) {
     const inner = '<img class="bookline-logo-img" src="https://framerusercontent.com/images/uTJVj3ufTlg1OOblrAuZMyDSHOA.png" alt="Bookline">' +
@@ -4959,7 +4979,6 @@ function renderProfilePage() {
   if (profilePickerOpen) html += buildProfilePickerPopover();
   html += '</div>';
   html += '<div class="meta-line">';
-  if (person.role) html += '<span>' + escapeHtml(person.role) + '</span>';
   if (person.email) html += '<span>' + escapeHtml(person.email) + '</span>';
   html += '</div>';
   // Tags row
@@ -4978,17 +4997,25 @@ function renderProfilePage() {
   // Fields (read-only or editable)
   const hoursVal = (settings.availableWeekTime != null && settings.availableWeekTime !== "") ? settings.availableWeekTime : "";
   html += '<div class="profile-fields-grid">';
-  const isTeam = isTeamMember(person.id);
+  const sec = getPersonSection(person.id);
+  function sectionLabelHtml(s) {
+    if (s === "team")          return '<span style="color:#16a34a;font-weight:600">Team</span>';
+    if (s === "supplementary") return '<span style="color:#7c3aed;font-weight:600">Supplementary</span>';
+    if (s === "disabled")      return '<span style="color:#9a9a9a">Disabled</span>';
+    return '<span style="color:#0F2A4F;font-weight:600">Bookline</span>';
+  }
   if (profileEditMode) {
     html += '<div class="profile-field"><label>Hours / week</label><input id="profileHoursInput" type="number" step="0.5" min="0" max="80" placeholder="—" value="' + hoursVal + '"></div>';
-    html += '<div class="profile-field checkbox"><input id="profileTeamInput" type="checkbox"' + (isTeam ? ' checked' : '') + '><label style="margin:0;cursor:pointer" for="profileTeamInput">Team member</label></div>';
-    html += '<div class="profile-field checkbox"><input id="profileDisabledInput" type="checkbox"' + (settings.disabled ? ' checked' : '') + '><label style="margin:0;cursor:pointer" for="profileDisabledInput">Disabled</label></div>';
+    html += '<div class="profile-field"><label>Section</label>' +
+      '<select id="profileSectionSel">' +
+        '<option value=""' + (sec === "" ? ' selected' : '') + '>— Bookline (default)</option>' +
+        '<option value="team"' + (sec === "team" ? ' selected' : '') + '>Team</option>' +
+        '<option value="supplementary"' + (sec === "supplementary" ? ' selected' : '') + '>Supplementary</option>' +
+        '<option value="disabled"' + (sec === "disabled" ? ' selected' : '') + '>Disabled</option>' +
+      '</select></div>';
   } else {
     html += '<div class="profile-field"><label>Hours / week</label><div style="font-size:13px;color:#1a1a1a;padding:0">' + (hoursVal !== "" ? escapeHtml(String(hoursVal)) + 'h' : '<span style="color:#9a9a9a">—</span>') + '</div></div>';
-    html += '<div class="profile-field"><label>Section</label><div style="font-size:13px;color:#1a1a1a;padding:0">' +
-      (settings.disabled ? '<span style="color:#9a9a9a">Disabled</span>' :
-       (isTeam ? '<span style="color:#16a34a;font-weight:600">Team</span>' : '<span style="color:#0F2A4F;font-weight:600">Bookline</span>')) +
-      '</div></div>';
+    html += '<div class="profile-field"><label>Section</label><div style="font-size:13px;padding:0">' + sectionLabelHtml(sec) + '</div></div>';
   }
   html += '</div>';
   html += '</div>';
@@ -5210,16 +5237,10 @@ function wireProfileHeader(person) {
         setPersonSettings(person.id, { availableWeekTime: (isNaN(v) ? null : v) });
       });
     }
-    const disabledInput = document.getElementById("profileDisabledInput");
-    if (disabledInput) {
-      disabledInput.addEventListener("change", e => {
-        setPersonSettings(person.id, { disabled: e.target.checked });
-      });
-    }
-    const teamInput = document.getElementById("profileTeamInput");
-    if (teamInput) {
-      teamInput.addEventListener("change", e => {
-        setTeamMember(person.id, e.target.checked);
+    const sectionSel = document.getElementById("profileSectionSel");
+    if (sectionSel) {
+      sectionSel.addEventListener("change", e => {
+        setPersonSection(person.id, e.target.value);
         renderProfilePage();
       });
     }
