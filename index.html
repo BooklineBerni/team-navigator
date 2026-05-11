@@ -4622,12 +4622,17 @@ function renderProfilePage() {
   // Fields (read-only or editable)
   const hoursVal = (settings.availableWeekTime != null && settings.availableWeekTime !== "") ? settings.availableWeekTime : "";
   html += '<div class="profile-fields-grid">';
+  const isTeam = isTeamMember(person.id);
   if (profileEditMode) {
     html += '<div class="profile-field"><label>Hours / week</label><input id="profileHoursInput" type="number" step="0.5" min="0" max="80" placeholder="—" value="' + hoursVal + '"></div>';
+    html += '<div class="profile-field checkbox"><input id="profileTeamInput" type="checkbox"' + (isTeam ? ' checked' : '') + '><label style="margin:0;cursor:pointer" for="profileTeamInput">Team member</label></div>';
     html += '<div class="profile-field checkbox"><input id="profileDisabledInput" type="checkbox"' + (settings.disabled ? ' checked' : '') + '><label style="margin:0;cursor:pointer" for="profileDisabledInput">Disabled</label></div>';
   } else {
     html += '<div class="profile-field"><label>Hours / week</label><div style="font-size:13px;color:#1a1a1a;padding:0">' + (hoursVal !== "" ? escapeHtml(String(hoursVal)) + 'h' : '<span style="color:#9a9a9a">—</span>') + '</div></div>';
-    html += '<div class="profile-field"><label>Status</label><div style="font-size:13px;color:#1a1a1a;padding:0">' + (settings.disabled ? '<span style="color:#9a9a9a">Disabled</span>' : 'Active') + '</div></div>';
+    html += '<div class="profile-field"><label>Section</label><div style="font-size:13px;color:#1a1a1a;padding:0">' +
+      (settings.disabled ? '<span style="color:#9a9a9a">Disabled</span>' :
+       (isTeam ? '<span style="color:#16a34a;font-weight:600">Team</span>' : '<span style="color:#0F2A4F;font-weight:600">Bookline</span>')) +
+      '</div></div>';
   }
   html += '</div>';
   html += '</div>';
@@ -4703,7 +4708,9 @@ function buildProfilePickerTrigger(person) {
 
 function buildProfilePickerPopover() {
   const q = (profilePickerSearch || "").toLowerCase().trim();
-  const list = TEAM.filter(p => {
+  // Include both Team and Bookline (external) people in the picker
+  const pool = (typeof allPeopleForPicker === 'function') ? allPeopleForPicker() : TEAM;
+  const list = pool.filter(p => {
     if (!q) return true;
     return (p.name||"").toLowerCase().includes(q) || (p.displayName||"").toLowerCase().includes(q) || (p.email||"").toLowerCase().includes(q);
   });
@@ -4851,6 +4858,13 @@ function wireProfileHeader(person) {
     if (disabledInput) {
       disabledInput.addEventListener("change", e => {
         setPersonSettings(person.id, { disabled: e.target.checked });
+      });
+    }
+    const teamInput = document.getElementById("profileTeamInput");
+    if (teamInput) {
+      teamInput.addEventListener("change", e => {
+        setTeamMember(person.id, e.target.checked);
+        renderProfilePage();
       });
     }
   }
