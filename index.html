@@ -1370,8 +1370,8 @@
       </span>
       <button class="btn" id="reimportBtn" title="Reload the 157 tasks from the CSV (overwrites local changes)">Re-import CSV</button>
       <button class="btn" id="resetFiltersBtn" title="Clear all active filters">Reset filters</button>
-      <button class="btn" id="exportCsvBtn" title="Download tasks as Excel-compatible CSV">Export CSV</button>
-      <button class="btn" id="exportBtn">Export JSON</button>
+      <button class="btn" id="exportCsvBtn" title="Download currently-filtered tasks as Excel-compatible CSV (or all if filters are off)">Export CSV</button>
+      <button class="btn" id="exportBtn" title="Download currently-filtered tasks as JSON (or full store from other pages)">Export JSON</button>
       <button class="btn" id="importBtn">Import JSON</button>
       <input type="file" id="importFile" accept="application/json" style="display:none">
       <button class="btn" id="manageTagsBtn" title="Create, edit, recolor and reorder member tags" style="display:none">Member Tags</button>
@@ -3309,9 +3309,22 @@ document.getElementById("reimportBtn").addEventListener("click", () => {
   importTasksFromCsv(); render();
 });
 document.getElementById("exportBtn").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify(STORE, null, 2)], { type: "application/json" });
+  const isTasksView = (typeof currentView !== 'undefined' && currentView === 'tasks');
+  let payload, suffix;
+  if (isTasksView) {
+    const filtered = STORE.tasks.filter(taskMatchesFilters);
+    payload = { _exportType: "filtered-tasks", _exportedAt: new Date().toISOString(), tasks: filtered };
+    suffix = "-filtered";
+    if (filtered.length === STORE.tasks.filter(t=>!t.isGroup).length) suffix = "-all";
+  } else {
+    payload = STORE;
+    suffix = "-full";
+  }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a"); a.href = url; a.download = "berni-navigator.json"; a.click();
+  const a = document.createElement("a");
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = "berni-navigator-" + date + suffix + ".json"; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
@@ -4441,6 +4454,15 @@ function csvEscape(v) {
   return s;
 }
 function exportToCsv() {
+  // Pick which tasks to export: filtered (Tasks page) or all (other pages).
+  const isTasksView = (typeof currentView !== 'undefined' && currentView === 'tasks');
+  let tasksToExport = STORE.tasks.filter(t => !t.isGroup);
+  let suffix = '-all';
+  if (isTasksView) {
+    tasksToExport = STORE.tasks.filter(taskMatchesFilters);
+    suffix = '-filtered';
+    if (tasksToExport.length === STORE.tasks.filter(t=>!t.isGroup).length) suffix = '-all';
+  }
   const cols = [
     {h: "ID", g: t => t.id},
     {h: "Subject", g: t => t.subject},
@@ -4451,19 +4473,36 @@ function exportToCsv() {
     {h: "Type", g: t => t.type},
     {h: "Responsible", g: t => { const p = findPerson(t.responsibleId); return p ? p.name : (t.responsibleRaw||t.responsibleId); }},
     {h: "Responsible Email", g: t => { const p = findPerson(t.responsibleId); return p ? p.email : t.responsibleRaw; }},
-    {h: "Proposed By", g: t => { const p = findPerson(t.proposedById); return p ? p.name : (t.proposedByRaw||t.proposedById); }},
+    {h: "Proposed By", g: t => {
+      if (Array.isArray(t.proposedByIds) && t.proposedByIds.length > 0) {
+        return t.proposedByIds.map(id => { const p = findPerson(id); return p ? p.name : id; }).join("; ");
+      }
+      const p = findPerson(t.proposedById);
+      return p ? p.name : (t.proposedByRaw||t.proposedById);
+    }},
     {h: "Due Date", g: t => t.dueDate},
     {h: "Dedicated Hours", g: t => t.dedicatedHours},
     {h: "Estimated Hours", g: t => t.estimatedHours},
     {h: "Share With", g: t => t.shareWith},
     {h: "Sharing", g: t => t.sharing ? "true" : "false"},
+    {h: "Roadmaps", g: t => {
+      const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : [];
+      const names = rms.filter(r => (r.tasks||[]).some(e => e.taskId === t.id)).map(r => r.name || '(unnamed)');
+      return names.join("; ");
+    }},
+    {h: "Group", g: t => {
+      if (!t.groupId) return "";
+      const g = (STORE.tasks||[]).find(x => x.isGroup && x.id === t.groupId);
+      return g ? (g.subject || "") : "";
+    }},
+    {h: "Task Tags", g: t => Array.isArray(t.taskTags) ? t.taskTags.join("; ") : ""},
     {h: "Pending Sync", g: t => t._pendingSync ? "true" : "false"},
     {h: "Tags of Responsible", g: t => getTagsFor(t.responsibleId).join("; ")},
     {h: "Extra Comments", g: t => t.extraComments}
   ];
   const lines = [];
   lines.push(cols.map(c => csvEscape(c.h)).join(","));
-  STORE.tasks.forEach(t => {
+  tasksToExport.forEach(t => {
     lines.push(cols.map(c => csvEscape(c.g(t))).join(","));
   });
   // BOM for Excel UTF-8 detection
@@ -4472,8 +4511,9 @@ function exportToCsv() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   const date = new Date().toISOString().slice(0,10);
-  a.href = url; a.download = "berni-navigator-" + date + ".csv"; a.click();
+  a.href = url; a.download = "berni-navigator-" + date + suffix + ".csv"; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  console.log('Exported ' + tasksToExport.length + ' task(s) to CSV.');
 }
 document.getElementById("exportCsvBtn").addEventListener("click", exportToCsv);
 
@@ -6519,24 +6559,31 @@ function renderBulkRoadmapsPopover() {
   });
   pop.innerHTML = html;
   pop.querySelectorAll(".bulk-rm-row").forEach(row => {
-    row.addEventListener("click", () => {
+    row.addEventListener("click", ev => {
+      // Stop propagation so the outside-click listener doesn't close the popover
+      // (its e.target would be detached after innerHTML refresh)
+      ev.stopPropagation();
       const rmId = row.dataset.rmid;
       const rm = findRoadmap(rmId);
       if (!rm) return;
       if (!Array.isArray(rm.tasks)) rm.tasks = [];
       const state = row.dataset.state;
       if (state === 'all') {
-        // Remove all selected tasks from this roadmap
         rm.tasks = rm.tasks.filter(e => !selectedTaskIds.has(e.taskId));
       } else {
-        // Add any missing selected tasks (partial or none → all)
         selectedTaskIds.forEach(tid => {
           if (!rm.tasks.some(e => e.taskId === tid)) rm.tasks.push({ taskId: tid });
         });
       }
       saveStore(STORE);
-      renderBulkRoadmapsPopover();   // refresh state on same popover
-      render();
+      // Refresh popover contents in place (do NOT call render() — that would reset things)
+      renderBulkRoadmapsPopover();
+      // Update task badges/list visually without full re-render
+      if (typeof renderFlatTasks === 'function' && tasksViewMode === 'list') renderFlatTasks();
+      else if (typeof render === 'function') {
+        // Light re-render — note the popover stays open because we already stopped propagation
+        render();
+      }
     });
   });
 }
