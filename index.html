@@ -1275,6 +1275,9 @@
   .proposed-dd-email { font-size: 11px; color: #6b6b6b; }
   .proposed-dd-ext { font-size: 10px; padding: 2px 6px; background: #fff7ed; color: #c2410c; border-radius: 999px; flex-shrink: 0; }
 
+  .card.card-unassigned { border: 1px dashed #d8d6d1; background: #fafaf8; }
+  .card.card-unassigned .name { color: #6b6b6b; }
+
   /* Group cards (parent tasks) */
   .group-row {
     display: grid; grid-template-columns: 22px 1fr auto auto; gap: 10px; align-items: center;
@@ -2298,14 +2301,13 @@ function mapPanelStatus(s) { const v = (s||'').toLowerCase(); if (v.includes('co
 function taskMatchesFilters(t) {
   // Groups themselves are never returned by this filter — they're rendered separately.
   if (t.isGroup) return false;
-  // Tasks page hides tasks owned by disabled persons
-  if (t.responsibleId && isDeactivated(t.responsibleId)) return false;
   // Team-only mode: only show tasks owned by an active Team member
   if (teamOnly) {
-    if (!t.responsibleId) return false;
+    if (!t.responsibleId) return false;   // unassigned tasks: hidden in team-only mode
     if (!isTeamMember(t.responsibleId)) return false;
     if (isDeactivated(t.responsibleId)) return false;
   }
+  // When teamOnly is OFF, disabled people's tasks ARE included.
   // Person tristate: include & exclude
   if (personInclude.size > 0 && !personInclude.has(t.responsibleId)) return false;
   if (personExclude.has(t.responsibleId)) return false;
@@ -2492,8 +2494,13 @@ function countTasksForPersonContextual(personId) {
 
 function countTasksMatchingExcept(dim, optKey) {
   return STORE.tasks.filter(t => {
-    // Tasks page hides tasks of disabled persons
-    if (t.responsibleId && isDeactivated(t.responsibleId)) return false;
+    if (t.isGroup) return false;
+    // Team-only mode: hide non-team / disabled / unassigned
+    if (teamOnly) {
+      if (!t.responsibleId) return false;
+      if (!isTeamMember(t.responsibleId)) return false;
+      if (isDeactivated(t.responsibleId)) return false;
+    }
     if (dim !== "person") {
       if (personInclude.size > 0 && !personInclude.has(t.responsibleId)) return false;
       if (personExclude.has(t.responsibleId)) return false;
@@ -2841,12 +2848,22 @@ function render() {
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
   const allTasks = STORE.tasks;
-  // Disabled persons are hidden from the Tasks page entirely.
-  // Tristate: include set narrows; exclude set hides.
-  const allActivePersons = TEAM.filter(p => !isDeactivated(p.id)).map(p => p.id);
+  // Person pool depends on teamOnly:
+  //  - teamOnly ON → only active TEAM (no disabled)
+  //  - teamOnly OFF → TEAM members + any other person who actually owns tasks (so disabled people show too)
+  let teamPool;
+  if (teamOnly) {
+    teamPool = TEAM.filter(p => !isDeactivated(p.id)).map(p => p.id);
+  } else {
+    teamPool = TEAM.map(p => p.id);
+    // Include any non-TEAM person who has at least one task (e.g., Bookline external proposers who own tasks)
+    const ownerIds = new Set();
+    allTasks.forEach(t => { if (!t.isGroup && t.responsibleId) ownerIds.add(t.responsibleId); });
+    ownerIds.forEach(id => { if (!teamPool.includes(id) && findPerson(id)) teamPool.push(id); });
+  }
   let personIds = personInclude.size > 0
-    ? allActivePersons.filter(id => personInclude.has(id))
-    : allActivePersons.filter(id => !personExclude.has(id));
+    ? teamPool.filter(id => personInclude.has(id))
+    : teamPool.filter(id => !personExclude.has(id));
   personIds = personIds.filter(personMatchesTagFilter);
   personIds = sortPersons(personIds, allTasks);
 
@@ -2911,6 +2928,47 @@ function render() {
     grid.appendChild(card);
   });
 
+  // ===== Unassigned card =====
+  // Show all tasks with no responsibleId, but only when teamOnly is off (since teamOnly
+  // explicitly excludes unassigned). Hide when there are no unassigned tasks at all.
+  if (!teamOnly) {
+    const unassignedAll = allTasks.filter(t => !t.isGroup && !t.responsibleId);
+    if (unassignedAll.length > 0) {
+      const unassignedVisible = unassignedAll.filter(taskMatchesFilters);
+      const u_counts = {
+        pending:     unassignedVisible.filter(t => t.panelStatus === "pending").length,
+        in_progress: unassignedVisible.filter(t => t.panelStatus === "in_progress").length,
+        completed:   unassignedVisible.filter(t => t.panelStatus === "completed").length,
+        archived:    unassignedVisible.filter(t => t.panelStatus === "archived").length,
+        discarded:   unassignedVisible.filter(t => t.panelStatus === "discarded").length
+      };
+      const ucard = document.createElement("div");
+      ucard.className = "card card-unassigned";
+      ucard.innerHTML = `
+        <div class="person-row">
+          <span class="avatar" style="background:#9aa0a6;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">?</span>
+          <div class="meta">
+            <div class="name">Unassigned</div>
+            <div class="role">Tasks without a responsible person</div>
+          </div>
+        </div>
+        <div class="stats">
+          ${u_counts.pending > 0 ? '<span class="stat" title="Pending"><span class="dot pending"></span>'+u_counts.pending+'</span>' : ''}
+          ${u_counts.in_progress > 0 ? '<span class="stat" title="In Progress"><span class="dot progress"></span>'+u_counts.in_progress+'</span>' : ''}
+          ${u_counts.completed > 0 ? '<span class="stat" title="Completed"><span class="dot done"></span>'+u_counts.completed+'</span>' : ''}
+          ${u_counts.archived > 0 ? '<span class="stat" title="Archived"><span class="dot archived"></span>'+u_counts.archived+'</span>' : ''}
+          ${u_counts.discarded > 0 ? '<span class="stat" title="Discarded"><span class="dot discarded"></span>'+u_counts.discarded+'</span>' : ''}
+          <span class="stat" style="margin-left:auto"><strong>${unassignedVisible.length}</strong> of ${unassignedAll.length}</span>
+        </div>
+        <div class="tasks" data-uid="__unassigned">${sortTaskList(unassignedVisible).map(t => taskHtml(t)).join("")}</div>
+        <form class="add-row" data-uid="__unassigned">
+          <input type="text" placeholder="New unassigned task..." required>
+          <button type="submit">Add</button>
+        </form>`;
+      grid.appendChild(ucard);
+    }
+  }
+
   grid.querySelectorAll(".add-row").forEach(form => {
     form.addEventListener("submit", e => {
       e.preventDefault();
@@ -2918,10 +2976,11 @@ function render() {
       const input = form.querySelector("input");
       const text = input.value.trim();
       if (!text) return;
-      const respPerson = findPerson(pid);
+      const isUnassigned = (pid === "__unassigned");
+      const respPerson = isUnassigned ? null : findPerson(pid);
       STORE.tasks.push({
         id: uid(), subject: text, completed: false,
-        responsibleId: pid, responsibleRaw: respPerson ? respPerson.email : "",
+        responsibleId: isUnassigned ? "" : pid, responsibleRaw: respPerson ? respPerson.email : "",
         proposedById: "U07E6NHMLBV", proposedByRaw: "bernat@bookline.ai",
         priority: "Media", type: "", dueDate: "",
         slackStatus: "Proposed", slackStatusRaw: "Proposed", panelStatus: "pending",
@@ -4723,7 +4782,7 @@ function renderMembersPage() {
         '</span>' +
         '<div class="meta">' +
           '<div class="name">' + escapeHtml(p.name||'') + '</div>' +
-          '<div class="role">' + escapeHtml(p.role || "") + (p.external && mode === 'bookline' ? ' · Bookline' : '') + '</div>' +
+          '<div class="role">' + escapeHtml(p.role || "") + '</div>' +
           '<div class="email">' + escapeHtml(p.email || "") + '</div>' +
           awt +
         '</div>' +
