@@ -2429,8 +2429,13 @@ function renderTeamStrip() {
     }
     return true;
   }).length;
-  // On Tasks page we hide disabled persons entirely (strip, grid, and the tasks tied to them)
-  const availableTeam = TEAM.filter(p => !isDeactivated(p.id));
+  // Team strip pool: if teamOnly is on, restrict to people whose section is "team"
+  let availableTeam;
+  if (teamOnly) {
+    availableTeam = [...TEAM, ...(typeof EXTERNAL_TEAM !== 'undefined' ? EXTERNAL_TEAM : [])].filter(p => isTeamMember(p.id));
+  } else {
+    availableTeam = TEAM.filter(p => !isDeactivated(p.id));
+  }
   const availableCount = availableTeam.length;
   const anyPersonFilter = personInclude.size > 0 || personExclude.size > 0;
   // visible person count: if include set is used, only those; else, all minus excluded
@@ -2861,11 +2866,15 @@ function render() {
   grid.innerHTML = "";
   const allTasks = STORE.tasks;
   // Person pool depends on teamOnly:
-  //  - teamOnly ON → only active TEAM (no disabled)
-  //  - teamOnly OFF → TEAM members + any other person who actually owns tasks (so disabled people show too)
+  //  - teamOnly ON → only those whose section is "team"
+  //  - teamOnly OFF → all sections that own tasks
   let teamPool;
   if (teamOnly) {
-    teamPool = TEAM.filter(p => !isDeactivated(p.id)).map(p => p.id);
+    // Strict: only people whose section is "team"
+    teamPool = [];
+    [...TEAM, ...(typeof EXTERNAL_TEAM !== 'undefined' ? EXTERNAL_TEAM : [])].forEach(p => {
+      if (isTeamMember(p.id) && !teamPool.includes(p.id)) teamPool.push(p.id);
+    });
   } else {
     teamPool = TEAM.map(p => p.id);
     // Include any non-TEAM person who has at least one task (e.g., Bookline external proposers who own tasks)
@@ -3007,7 +3016,9 @@ function render() {
   grid.querySelectorAll("[data-edit-person]").forEach(node => {
     node.addEventListener("click", e => {
       e.stopPropagation();
-      openPersonModal(node.dataset.editPerson);
+      const pid = node.dataset.editPerson;
+      if (typeof setProfilePerson === 'function') setProfilePerson(pid);
+      if (typeof switchView === 'function') switchView("profile");
     });
   });
 
@@ -4705,31 +4716,26 @@ function renderMembersPage() {
   getAllProposerIds().forEach(id => { const p = findPerson(id); if (p) addToPool(p); });
 
   // Section-based grouping (single-choice picklist):
-  //   team / supplementary / disabled / "" (Bookline = empty + has tasks)
-  // Special rule: a person also appears in Team if they're Disabled AND own at least one task.
+  //   team / supplementary / disabled / "" (Bookline = empty + has tasks OR proposals)
   function ownsTasks(pid) {
     return (STORE.tasks || []).some(t => !t.isGroup && t.responsibleId === pid);
   }
-  const teamActive = pool.filter(p => {
-    if (!matchesQuery(p)) return false;
-    const s = getPersonSection(p.id);
-    if (s === "team") return true;
-    if (s === "disabled" && ownsTasks(p.id)) return true;
-    return false;
-  });
+  // Team: ONLY people whose explicit section is "team"
+  const teamActive = pool.filter(p => getPersonSection(p.id) === "team" && matchesQuery(p));
   const supplementary = pool.filter(p => getPersonSection(p.id) === "supplementary" && matchesQuery(p));
   const proposerIds = getAllProposerIds();
+  // Bookline: section is empty AND (has proposals OR owns tasks)
   const bookline = [];
   for (const p of pool) {
     if (getPersonSection(p.id) !== "") continue;
-    if (!proposerIds.has(p.id)) continue;
     if (!matchesQuery(p)) continue;
+    if (!proposerIds.has(p.id) && !ownsTasks(p.id)) continue;
     bookline.push(p);
   }
   bookline.sort((a, b) => countProposerTasks(b.id) - countProposerTasks(a.id) || (a.name||'').localeCompare(b.name||''));
   supplementary.sort((a, b) => (a.name||'').localeCompare(b.name||''));
-  // Disabled section: only those without tasks (the ones with tasks were promoted to Team above)
-  const disabled = pool.filter(p => getPersonSection(p.id) === "disabled" && !ownsTasks(p.id) && matchesQuery(p));
+  // Disabled: everyone whose section is "disabled"
+  const disabled = pool.filter(p => getPersonSection(p.id) === "disabled" && matchesQuery(p));
 
   // Sort team using existing sort
   const teamSorted = sortPersons(teamActive.map(p => p.id), STORE.tasks).map(id => findPerson(id)).filter(Boolean);
@@ -5887,6 +5893,15 @@ function renderFlatTasks() {
       const cb = node.querySelector(".checkbox");
       if (sel) cb.classList.add("checked"); else cb.classList.remove("checked");
     });
+    // Click on avatar or name → go to Profile page
+    node.querySelectorAll("[data-go-profile]").forEach(el => {
+      el.addEventListener("click", e => {
+        e.stopPropagation();
+        const pid = el.dataset.goProfile;
+        if (typeof setProfilePerson === 'function') setProfilePerson(pid);
+        if (typeof switchView === 'function') switchView("profile");
+      });
+    });
   });
 }
 
@@ -5916,14 +5931,16 @@ function flatTaskHtml(t) {
   const photo = p ? p.photo : "";
   const color = p ? p.color : "#9a9a9a";
   const respName = p ? p.displayName : (t.responsibleRaw || "?");
+  const avClickAttr = p ? (' data-go-profile="' + p.id + '" title="Open ' + escapeHtml(respName) + '\'s profile" style="cursor:pointer; background:' + color + '"') : (' style="background:' + color + '"');
+  const nameClickAttr = p ? (' data-go-profile="' + p.id + '" style="font-size:11px; color:#6b6b6b; max-width:140px; text-align:right; cursor:pointer; text-decoration:underline; text-decoration-color:transparent" onmouseover="this.style.textDecorationColor=\'#6b6b6b\'" onmouseout="this.style.textDecorationColor=\'transparent\'"') : ' style="font-size:11px; color:#6b6b6b; max-width:140px; text-align:right"';
   return '<div class="flat-task" data-pstatus="' + t.panelStatus + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
     '<span class="checkbox ' + (sel ? 'checked' : '') + '" title="Select"></span>' +
-    '<span class="av-mini" style="background:' + color + '" title="' + escapeHtml(respName) + '"><img src="' + photo + '" alt="" onerror="this.remove()"><span class="ini">' + escapeHtml(ini) + '</span></span>' +
+    '<span class="av-mini"' + avClickAttr + '><img src="' + photo + '" alt="" onerror="this.remove()"><span class="ini">' + escapeHtml(ini) + '</span></span>' +
     '<div>' +
       '<div class="text" title="Click to edit">' + escapeHtml(t.subject) + '</div>' +
       '<div class="meta-line"><span class="badges-inline">' + badges.join(' ') + (taskTagsHtml ? ' ' + taskTagsHtml : '') + '</span></div>' +
     '</div>' +
-    '<span style="font-size:11px; color:#6b6b6b; max-width:140px; text-align:right">' + escapeHtml(respName) + '</span>' +
+    '<span' + nameClickAttr + '>' + escapeHtml(respName) + '</span>' +
     '<button class="edit-btn" title="Edit">&#9998;</button>' +
     '</div>';
 }
