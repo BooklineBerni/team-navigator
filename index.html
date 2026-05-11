@@ -1581,6 +1581,8 @@
     <select id="bulkRemoveTagSel" title="Remove a task tag from selected"><option value="">− Remove task tag…</option></select>
     <span class="sep"></span>
     <select id="bulkSetStatus" title="Set panel status on selected"><option value="">Set status…</option><option value="pending">Pending</option><option value="in_progress">In Progress</option><option value="completed">Completed</option><option value="archived">Archived</option><option value="discarded">Discarded</option></select>
+    <select id="bulkSetResponsible" title="Set responsible on selected"><option value="">Set responsible…</option></select>
+    <select id="bulkSetRoadmap" title="Add selected to a roadmap"><option value="">+ Add to roadmap…</option></select>
     <span class="sep"></span>
     <button id="bulkOpenTaskTagsBtn">Manage Task Tags</button>
     <button class="danger" id="bulkClearSel">Clear selection</button>
@@ -1852,6 +1854,12 @@
       <div class="checkbox-field"><input type="checkbox" id="f_sharing"><label for="f_sharing" style="margin:0">Sharing on</label></div>
     </div>
     <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
+    <div class="field f_taskOnlyRow">
+      <label>Roadmaps</label>
+      <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
+      <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
+      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap.</div>
+    </div>
     <div class="field f_taskOnlyRow"><label>Task tags</label>
       <div id="f_taskTagsContainer" class="person-modal-tags"></div>
       <div class="preset-tags" id="f_presetTaskTagsContainer" style="margin-top:6px"></div>
@@ -2228,6 +2236,20 @@ function updateBulkBar() {
   const opts = lib.map(t => '<option value="' + escapeHtml(t.name) + '">' + escapeHtml(t.name) + '</option>').join("");
   document.getElementById("bulkAddTagSel").innerHTML = '<option value="">+ Add task tag…</option>' + opts;
   document.getElementById("bulkRemoveTagSel").innerHTML = '<option value="">− Remove task tag…</option>' + opts;
+  // Responsible: only active Team members (the ones you assign work to)
+  const respSel = document.getElementById("bulkSetResponsible");
+  if (respSel) {
+    const active = (TEAM || []).filter(p => !isDeactivated(p.id));
+    const respOpts = active.map(p => '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name) + '</option>').join("");
+    respSel.innerHTML = '<option value="">Set responsible…</option>' + respOpts;
+  }
+  // Roadmap selector
+  const rmSel = document.getElementById("bulkSetRoadmap");
+  if (rmSel) {
+    const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : [];
+    const rmOpts = rms.map(r => '<option value="' + escapeHtml(r.id) + '">' + escapeHtml(r.name || '(unnamed)') + '</option>').join("");
+    rmSel.innerHTML = '<option value="">+ Add to roadmap…</option>' + rmOpts;
+  }
 }
 
 function tagBadgeHtml(tag, removable) {
@@ -3035,6 +3057,7 @@ function openModal(tid, overrides) {
   document.getElementById("f_sharing").checked = !!t.sharing;
   document.getElementById("f_extraComments").value = t.extraComments || "";
   renderTaskTagsInModal(t);
+  renderRoadmapsInModal(t);
   applyGroupModeToModal(isG);
   document.getElementById("deleteBtn").style.display = t._isNew ? "none" : "inline-block";
   document.getElementById("modalBg").classList.add("show");
@@ -3459,6 +3482,55 @@ function renderTaskTagsInModal(t) {
       });
     });
   }
+}
+
+// ---- Roadmaps assignment inside Task modal ----
+function renderRoadmapsInModal(t) {
+  const cont = document.getElementById("f_roadmapsContainer");
+  const sel = document.getElementById("f_addRoadmapSel");
+  if (!cont || !sel) return;
+  const allRoadmaps = (typeof getRoadmaps === 'function') ? getRoadmaps() : [];
+  const assigned = allRoadmaps.filter(r => (r.tasks || []).some(e => e.taskId === t.id));
+  // Render chips of assigned roadmaps
+  if (assigned.length === 0) {
+    cont.innerHTML = '<span style="color:#9a9a9a; font-size:12px">Not in any roadmap</span>';
+  } else {
+    cont.innerHTML = assigned.map(r =>
+      '<span class="rm-chip" data-rmid="' + escapeHtml(r.id) + '" style="display:inline-flex; align-items:center; gap:6px; background:#fef3c7; border:1px solid #fde68a; padding:3px 8px; border-radius:999px; font-size:12px; color:#92400e; font-weight:600">' +
+        '📍 ' + escapeHtml(r.name || '(unnamed)') +
+        '<button type="button" class="rm-chip-x" style="appearance:none; border:none; background:transparent; cursor:pointer; color:#92400e; padding:0 0 0 2px; font-size:14px; line-height:1" title="Remove from this roadmap">×</button>' +
+      '</span>'
+    ).join('');
+    cont.querySelectorAll(".rm-chip-x").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        const rmId = btn.closest(".rm-chip").dataset.rmid;
+        const rm = findRoadmap(rmId);
+        if (!rm) return;
+        rm.tasks = (rm.tasks || []).filter(entry => entry.taskId !== t.id);
+        saveStore(STORE);
+        renderRoadmapsInModal(t);
+      });
+    });
+  }
+  // Fill dropdown with un-assigned roadmaps
+  const unassigned = allRoadmaps.filter(r => !assigned.some(a => a.id === r.id));
+  sel.innerHTML = '<option value="">+ Add to roadmap…</option>' +
+    unassigned.map(r => '<option value="' + escapeHtml(r.id) + '">' + escapeHtml(r.name || '(unnamed)') + '</option>').join("");
+  sel.disabled = unassigned.length === 0;
+  sel.onchange = () => {
+    const rmId = sel.value;
+    if (!rmId) return;
+    const rm = findRoadmap(rmId);
+    if (!rm) return;
+    if (!Array.isArray(rm.tasks)) rm.tasks = [];
+    if (!rm.tasks.some(e => e.taskId === t.id)) {
+      rm.tasks.push({ taskId: t.id });
+      saveStore(STORE);
+    }
+    sel.value = "";
+    renderRoadmapsInModal(t);
+  };
 }
 
 // ---- Task Tag Manager modal ----
@@ -6286,6 +6358,45 @@ document.getElementById("bulkSetStatus").addEventListener("change", e => {
   saveStore(STORE);
   e.target.value = "";
   render();
+});
+
+// Bulk: set responsible on selected
+document.getElementById("bulkSetResponsible").addEventListener("change", e => {
+  const pid = e.target.value;
+  if (!pid || selectedTaskIds.size === 0) { e.target.value = ""; return; }
+  const person = findPerson(pid);
+  const name = person ? (person.displayName || person.name) : pid;
+  if (!confirm("Set responsible to '" + name + "' on " + selectedTaskIds.size + " task(s)?")) { e.target.value = ""; return; }
+  selectedTaskIds.forEach(tid => {
+    const t = STORE.tasks.find(x => x.id === tid);
+    if (!t) return;
+    t.responsibleId = pid;
+    if (person) t.responsibleRaw = person.email || person.name;
+    t._pendingSync = true;
+  });
+  saveStore(STORE);
+  e.target.value = "";
+  render();
+});
+
+// Bulk: add selected tasks to a roadmap
+document.getElementById("bulkSetRoadmap").addEventListener("change", e => {
+  const rmId = e.target.value;
+  if (!rmId || selectedTaskIds.size === 0) { e.target.value = ""; return; }
+  const rm = (typeof findRoadmap === 'function') ? findRoadmap(rmId) : null;
+  if (!rm) { e.target.value = ""; return; }
+  if (!confirm("Add " + selectedTaskIds.size + " task(s) to roadmap '" + (rm.name || '(unnamed)') + "'?")) { e.target.value = ""; return; }
+  if (!Array.isArray(rm.tasks)) rm.tasks = [];
+  let added = 0, skipped = 0;
+  selectedTaskIds.forEach(tid => {
+    if (rm.tasks.some(entry => entry.taskId === tid)) { skipped++; return; }
+    rm.tasks.push({ taskId: tid });
+    added++;
+  });
+  saveStore(STORE);
+  e.target.value = "";
+  render();
+  console.log('Added ' + added + ' task(s) to roadmap, ' + skipped + ' already there.');
 });
 
 document.getElementById("showCountsChk").addEventListener("change", e => {
