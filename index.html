@@ -529,17 +529,40 @@
   #view-requests { padding-top: 18px; }
   #view-files { padding-top: 18px; }
   /* Files page */
+  /* ============ Files grid view (cards with previews) ============ */
   .files-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 12px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
   }
   .file-card {
-    display: flex; align-items: flex-start; gap: 12px;
+    display: flex; flex-direction: column; gap: 0;
     background: #fff; border: 1px solid #ececea; border-radius: 12px;
-    padding: 14px; transition: box-shadow .12s, border-color .12s;
-    cursor: pointer; min-width: 0;
+    transition: box-shadow .12s, border-color .12s;
+    cursor: pointer; min-width: 0; overflow: hidden;
   }
   .file-card:hover { border-color: #1a1a1a; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .file-card .file-preview {
+    position: relative; width: 100%; aspect-ratio: 16/10;
+    background: #f7f6f2; display: flex; align-items: center; justify-content: center;
+    overflow: hidden; border-bottom: 1px solid #ececea;
+  }
+  .file-card .file-preview img.file-thumb {
+    width: 100%; height: 100%; object-fit: cover; object-position: top center;
+    transition: opacity .15s; opacity: 0;
+  }
+  .file-card .file-preview img.file-thumb.loaded { opacity: 1; }
+  .file-card .file-preview .file-icon-fallback {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    padding: 18%;
+  }
+  .file-card .file-preview .file-icon-fallback svg { width: 100%; height: 100%; }
+  .file-card .file-body { padding: 10px 14px 14px; display: flex; align-items: flex-start; gap: 10px; }
+  .file-card .file-type-mini {
+    width: 22px; height: 22px; border-radius: 5px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .file-card .file-type-mini svg { width: 18px; height: 22px; }
+  /* Legacy classes kept for compat */
   .file-card .file-icon {
     width: 40px; height: 40px; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
@@ -548,9 +571,10 @@
   }
   .file-card .file-info { flex: 1; min-width: 0; }
   .file-card .file-name {
-    font-size: 14px; font-weight: 600; color: #1a1a1a;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    margin-bottom: 4px;
+    font-size: 13.5px; font-weight: 600; color: #1a1a1a;
+    margin-bottom: 4px; line-height: 1.3;
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   }
   .file-card .file-meta {
     font-size: 11.5px; color: #6b6b6b;
@@ -576,6 +600,45 @@
   .file-card .file-action-btn:hover { background: #f7f6f2; color: #1a1a1a; }
   .file-card .file-action-btn.danger { color: #dc2626; border-color: #fecaca; }
   .file-card .file-action-btn.danger:hover { background: #fef2f2; }
+  /* Grid: float action buttons over the preview */
+  .files-view-grid .file-card .file-actions {
+    position: absolute; top: 6px; right: 6px; gap: 4px; z-index: 2;
+  }
+  .files-view-grid .file-card .file-action-btn {
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(0,0,0,.06);
+  }
+  /* ============ Files list view ============ */
+  .files-list { display: flex; flex-direction: column; }
+  .files-view-list .file-card {
+    flex-direction: row; align-items: center; gap: 12px;
+    padding: 8px 12px; border-radius: 0;
+    border-left: none; border-right: none; border-top: none;
+    border-bottom: 1px solid #ececea;
+  }
+  .files-view-list .file-card:first-child { border-top: 1px solid #ececea; }
+  .files-view-list .file-card:hover { background: #faf9f7; box-shadow: none; border-color: #ececea; }
+  .files-view-list .file-card .file-preview { display: none; }
+  .files-view-list .file-card .file-body { padding: 0; flex: 1; min-width: 0; align-items: center; gap: 10px; }
+  .files-view-list .file-card .file-type-mini { width: 32px; height: 32px; }
+  .files-view-list .file-card .file-type-mini svg { width: 24px; height: 30px; }
+  .files-view-list .file-card .file-name {
+    font-size: 14px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: block; margin: 0; flex: 1;
+  }
+  .files-view-list .file-card .file-meta { flex-shrink: 0; min-width: 0; gap: 12px; }
+  .files-view-list .file-card .file-actions { opacity: 1; flex-shrink: 0; }
+  /* View toggle pill */
+  .files-view-toggle { display: inline-flex; gap: 0; border: 1px solid #d8d6d1; border-radius: 8px; overflow: hidden; }
+  .files-view-toggle button {
+    appearance: none; background: #fff; border: none; padding: 6px 10px;
+    cursor: pointer; color: #6b6b6b; font-family: inherit; font-size: 12px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .files-view-toggle button.active { background: #1a1a1a; color: #fff; }
+  .files-view-toggle button:not(.active):hover { background: #f7f6f2; color: #1a1a1a; }
   .files-empty {
     padding: 48px 24px; text-align: center; color: #6b6b6b; font-size: 13px;
     background: #fff; border: 1px dashed #ececea; border-radius: 12px;
@@ -1439,6 +1502,14 @@
         </div>
         <div style="display:flex; gap:8px; align-items:center">
           <input class="search-input" id="filesSearch" placeholder="Search files..." style="max-width:240px">
+          <div class="files-view-toggle" id="filesViewToggle">
+            <button data-mode="grid" title="Grid with previews">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Grid
+            </button>
+            <button data-mode="list" title="List with longer names">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> List
+            </button>
+          </div>
           <button class="btn" id="filesSyncBtn" title="Pull team files from cloud">⟳ Sync</button>
           <button class="btn primary" id="filesAddBtn">+ Add file</button>
         </div>
@@ -6228,6 +6299,25 @@ if (!STORE.driveFiles) STORE.driveFiles = [];
 let filesEditingId = null;
 let filesFilter = "all";  // "all" | "private" | "team"
 let filesSearchQ = "";
+let filesViewMode = localStorage.getItem("bn-files-view-mode") || "grid";  // "grid" | "list"
+
+// Extract a Drive/Docs file ID from a URL (returns null if not detectable)
+function extractDriveId(url) {
+  if (!url) return null;
+  let m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  m = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  return null;
+}
+function driveThumbnailUrl(url, size) {
+  const id = extractDriveId(url);
+  if (!id) return null;
+  size = size || 800;
+  return 'https://drive.google.com/thumbnail?id=' + id + '&sz=w' + size;
+}
 
 function detectFileType(url) {
   if (!url) return 'link';
@@ -6348,13 +6438,28 @@ function renderFilesPage() {
     bnUpdateFilesBadge();
     return;
   }
-  let html = '<div class="files-grid">';
+  const containerClass = filesViewMode === 'list' ? 'files-list files-view-list' : 'files-grid files-view-grid';
+  let html = '<div class="' + containerClass + '">';
   visible.forEach(f => {
     const t = f.type || detectFileType(f.url);
     const ic = fileIconForType(t);
     const dateStr = f.addedAt ? new Date(f.addedAt).toLocaleDateString('es-ES', { dateStyle: 'short' }) : '';
-    html += '<div class="file-card" data-id="' + escapeHtml(f.id) + '">' +
-      '<div class="file-icon" style="background:' + ic.color + '">' + (ic.svg || '') + '</div>' +
+    const thumbUrl = (t !== 'link') ? driveThumbnailUrl(f.url, 800) : null;
+    // Preview block (used only by grid view)
+    const previewHtml = '<div class="file-preview">' +
+      (thumbUrl ? '<img class="file-thumb" data-thumb="' + escapeHtml(thumbUrl) + '" alt="">' : '') +
+      '<div class="file-icon-fallback">' + (ic.svg || '') + '</div>' +
+      '<div class="file-actions">' +
+        '<button class="file-action-btn" data-act="edit" title="Edit">✎</button>' +
+        '<button class="file-action-btn danger" data-act="delete" title="Remove">×</button>' +
+      '</div>' +
+    '</div>';
+    // Body (used by both views)
+    const typeMiniSvg = ic.svg
+      ? ic.svg.replace(/<svg[^>]*>/, '<svg viewBox="0 0 36 44" preserveAspectRatio="xMidYMid meet">')
+      : '';
+    const bodyHtml = '<div class="file-body">' +
+      (filesViewMode === 'list' ? '<div class="file-type-mini">' + typeMiniSvg + '</div>' : '') +
       '<div class="file-info">' +
         '<div class="file-name" title="' + escapeHtml(f.name) + '">' + escapeHtml(f.name) + '</div>' +
         '<div class="file-meta">' +
@@ -6363,14 +6468,24 @@ function renderFilesPage() {
           '<span class="file-share ' + (f.sharedWith || 'private') + '">' + (f.sharedWith === 'team' ? 'Team' : 'Private') + '</span>' +
         '</div>' +
       '</div>' +
-      '<div class="file-actions">' +
+      (filesViewMode === 'list' ? '<div class="file-actions">' +
         '<button class="file-action-btn" data-act="edit" title="Edit">✎</button>' +
         '<button class="file-action-btn danger" data-act="delete" title="Remove">×</button>' +
-      '</div>' +
+      '</div>' : '') +
+    '</div>';
+    html += '<div class="file-card" data-id="' + escapeHtml(f.id) + '">' +
+      previewHtml + bodyHtml +
     '</div>';
   });
   html += '</div>';
   cont.innerHTML = html;
+  // Lazy-load thumbnails to avoid spamming requests + handle errors gracefully
+  cont.querySelectorAll('img.file-thumb[data-thumb]').forEach(img => {
+    const src = img.dataset.thumb;
+    img.onload = () => img.classList.add('loaded');
+    img.onerror = () => img.remove();   // fall back to the SVG icon already in DOM
+    img.src = src;
+  });
   // Wire up
   cont.querySelectorAll('.file-card').forEach(card => {
     const id = card.dataset.id;
@@ -6494,6 +6609,24 @@ document.getElementById('filesSearch').addEventListener('input', e => {
   filesSearchQ = e.target.value;
   if (currentView === 'files') renderFilesPage();
 });
+// View mode toggle (grid vs list)
+const filesViewToggle = document.getElementById('filesViewToggle');
+if (filesViewToggle) {
+  function syncFilesViewToggle() {
+    filesViewToggle.querySelectorAll('button').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === filesViewMode);
+    });
+  }
+  syncFilesViewToggle();
+  filesViewToggle.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      filesViewMode = btn.dataset.mode;
+      localStorage.setItem("bn-files-view-mode", filesViewMode);
+      syncFilesViewToggle();
+      if (currentView === 'files') renderFilesPage();
+    });
+  });
+}
 
 // Initial badge + boot
 bnUpdateFilesBadge();
