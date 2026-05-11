@@ -488,13 +488,23 @@
   .members-section-heading {
     font-size: 14px; font-weight: 700; color: #6b6b6b;
     margin: 24px 0 10px; padding-top: 14px; border-top: 1px solid #ececea;
-  }
-  .members-section-heading.members-section-bookline {
-    color: #0F2A4F;
     display: flex; align-items: center; gap: 8px;
   }
-  .members-section-heading.members-section-bookline .bookline-logo-mark { display: inline-flex; align-items: center; }
-  .members-section-heading.members-section-bookline .bookline-label { font-weight: 800; letter-spacing: -0.01em; }
+  .members-section-heading.members-section-toggle { cursor: pointer; user-select: none; }
+  .members-section-heading.members-section-toggle:hover { color: #1a1a1a; }
+  .members-section-heading .members-section-caret { font-size: 11px; color: #9a9a9a; min-width: 12px; display: inline-block; }
+  .members-grid-collapsed { display: none !important; }
+  .members-section-heading.members-section-bookline {
+    color: #060818;
+    background: #060818;
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border-top: none;
+  }
+  .members-section-heading.members-section-bookline .members-section-caret { color: #b4c6e0; }
+  .members-section-heading.members-section-bookline:hover { color: #fff; background: #0c1230; }
+  .bookline-logo-img { height: 26px; width: auto; display: inline-block; vertical-align: middle; }
   .member-card.member-bookline {
     border-color: #c7d2e0;
     background: #f8fafc;
@@ -4427,29 +4437,48 @@ function renderMembersPage() {
     '</div>';
   }
 
+  // Collapsible section state
+  function getSectionCollapsed(key) {
+    return localStorage.getItem('bn-people-section-collapsed-' + key) === '1';
+  }
+  function makeSectionHtml(key, headingInner, gridInner, gridExtraClass) {
+    const collapsed = getSectionCollapsed(key);
+    const caret = '<span class="members-section-caret">' + (collapsed ? '▸' : '▾') + '</span>';
+    const cls = 'members-section-heading members-section-toggle' + (key === 'bookline' ? ' members-section-bookline' : '');
+    let html = '<h3 class="' + cls + '" data-section="' + key + '">' + caret + headingInner + '</h3>';
+    html += '<div class="members-grid ' + (gridExtraClass || '') + (collapsed ? ' members-grid-collapsed' : '') + '" data-section-grid="' + key + '">' + gridInner + '</div>';
+    return html;
+  }
+
   let html = '';
   if (teamSorted.length > 0) {
-    html += '<h3 class="members-section-heading">Team <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + teamSorted.length + ')</span></h3>';
-    html += '<div class="members-grid">' + teamSorted.map(p => memberCardHtml(p, 'team')).join("") + '</div>';
+    const inner = 'Team <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + teamSorted.length + ')</span>';
+    html += makeSectionHtml('team', inner, teamSorted.map(p => memberCardHtml(p, 'team')).join(""));
   }
   if (bookline.length > 0) {
-    const bookline_logo = '<span class="bookline-logo-mark">' +
-      '<svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-        '<rect width="32" height="32" rx="8" fill="#0F2A4F"/>' +
-        '<text x="16" y="22" text-anchor="middle" font-family="-apple-system, Inter, sans-serif" font-weight="800" font-size="18" fill="#fff">b.</text>' +
-      '</svg>' +
-    '</span>';
-    html += '<h3 class="members-section-heading members-section-bookline">' + bookline_logo +
-      '<span class="bookline-label">Bookline</span> ' +
-      '<span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + bookline.length + ')</span> ' +
-      '<span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— people who proposed tasks but aren\'t on your team</span></h3>';
-    html += '<div class="members-grid">' + bookline.map(p => memberCardHtml(p, 'bookline')).join("") + '</div>';
+    const inner = '<img class="bookline-logo-img" src="https://framerusercontent.com/images/uTJVj3ufTlg1OOblrAuZMyDSHOA.png" alt="Bookline">' +
+      ' <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + bookline.length + ')</span> ' +
+      '<span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— people who proposed tasks but aren\'t on your team</span>';
+    html += makeSectionHtml('bookline', inner, bookline.map(p => memberCardHtml(p, 'bookline')).join(""));
   }
   if (disabled.length > 0) {
-    html += '<h3 class="members-section-heading">Disabled <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + disabled.length + ')</span></h3>';
-    html += '<div class="members-grid members-grid-disabled">' + disabled.map(p => memberCardHtml(p, 'disabled')).join("") + '</div>';
+    const inner = 'Disabled <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + disabled.length + ')</span>';
+    html += makeSectionHtml('disabled', inner, disabled.map(p => memberCardHtml(p, 'disabled')).join(""), 'members-grid-disabled');
   }
   grid.innerHTML = html;
+  // Wire collapse toggles
+  grid.querySelectorAll('.members-section-toggle').forEach(h => {
+    h.addEventListener('click', () => {
+      const key = h.dataset.section;
+      const wasCollapsed = getSectionCollapsed(key);
+      localStorage.setItem('bn-people-section-collapsed-' + key, wasCollapsed ? '0' : '1');
+      // Toggle visually + flip caret
+      const gridEl = grid.querySelector('[data-section-grid="' + key + '"]');
+      if (gridEl) gridEl.classList.toggle('members-grid-collapsed');
+      const caret = h.querySelector('.members-section-caret');
+      if (caret) caret.textContent = !wasCollapsed ? '▸' : '▾';
+    });
+  });
 
   document.querySelectorAll("#membersGrid .member-card").forEach(node => {
     node.addEventListener("click", e => {
