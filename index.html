@@ -1485,7 +1485,8 @@
       </div>
 
       <div class="filters" id="tagFilterBar" style="margin-bottom:8px"></div>
-      <div class="filters" id="taskTagFilterBar" style="margin-bottom:14px"></div>
+      <div class="filters" id="taskTagFilterBar" style="margin-bottom:8px"></div>
+      <div class="filters" id="roadmapFilterBar" style="margin-bottom:14px"></div>
 
       <!-- Mode-specific bodies -->
       <div id="view-tasks-byperson">
@@ -1973,7 +1974,7 @@ function loadStore() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) 
 function saveStore(st) { localStorage.setItem(STORE_KEY, JSON.stringify(st)); }
 
 let STORE = loadStore();
-let statusInclude = new Set(), statusExclude = new Set(), prioInclude = new Set(), prioExclude = new Set(), personInclude = new Set(), personExclude = new Set(), tagInclude = new Set(), tagExclude = new Set(), taskTagInclude = new Set(), taskTagExclude = new Set(), sortMembers = "default", sortTasks = "default", searchQuery = "", editingId = null;
+let statusInclude = new Set(), statusExclude = new Set(), prioInclude = new Set(), prioExclude = new Set(), personInclude = new Set(), personExclude = new Set(), tagInclude = new Set(), tagExclude = new Set(), taskTagInclude = new Set(), taskTagExclude = new Set(), roadmapInclude = new Set(), roadmapExclude = new Set(), sortMembers = "default", sortTasks = "default", searchQuery = "", editingId = null;
 // Backwards-compat shim — older code still references currentPersonIds.
 // Treat it as the include set so existing reads "just work".
 const currentPersonIds = personInclude;
@@ -1991,6 +1992,8 @@ function saveFilterState() {
     tagExclude: [...tagExclude],
     taskTagInclude: [...taskTagInclude],
     taskTagExclude: [...taskTagExclude],
+    roadmapInclude: [...roadmapInclude],
+    roadmapExclude: [...roadmapExclude],
     currentPersonIds: [...currentPersonIds],
     sortMembers, sortTasks, searchQuery
   };
@@ -2009,6 +2012,8 @@ function loadFilterState() {
     tagExclude = new Set(s.tagExclude || []);
     taskTagInclude = new Set(s.taskTagInclude || []);
     taskTagExclude = new Set(s.taskTagExclude || []);
+    roadmapInclude = new Set(s.roadmapInclude || []);
+    roadmapExclude = new Set(s.roadmapExclude || []);
     currentPersonIds = new Set(s.currentPersonIds || []);
     sortMembers = s.sortMembers || "default";
     sortTasks = s.sortTasks || "default";
@@ -2328,6 +2333,8 @@ function taskMatchesFilters(t) {
     if (!hasAny) return false;
   }
   for (const tag of taskTagExclude) if (tt.includes(tag)) return false;
+  // Roadmap include/exclude
+  if (!taskMatchesRoadmapFilter(t)) return false;
   return true;
 }
 
@@ -2337,6 +2344,37 @@ function cycleTaskTagFilter(name) {
   else taskTagExclude.delete(name);
 }
 function clearTaskTagFilter() { taskTagInclude.clear(); taskTagExclude.clear(); }
+
+function cycleRoadmapFilter(rmId) {
+  if (!roadmapInclude.has(rmId) && !roadmapExclude.has(rmId)) roadmapInclude.add(rmId);
+  else if (roadmapInclude.has(rmId)) { roadmapInclude.delete(rmId); roadmapExclude.add(rmId); }
+  else roadmapExclude.delete(rmId);
+}
+function clearRoadmapFilter() { roadmapInclude.clear(); roadmapExclude.clear(); }
+
+// Get the set of roadmap IDs a task belongs to
+function taskRoadmapIds(taskId) {
+  const set = new Set();
+  const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : [];
+  rms.forEach(rm => {
+    if ((rm.tasks || []).some(e => e.taskId === taskId)) set.add(rm.id);
+  });
+  return set;
+}
+function taskMatchesRoadmapFilter(t) {
+  if (roadmapInclude.size === 0 && roadmapExclude.size === 0) return true;
+  const rmIds = taskRoadmapIds(t.id);
+  // Special "__none" key means "tasks not in any roadmap"
+  if (roadmapInclude.has("__none")) { if (rmIds.size !== 0) return false; }
+  else if (roadmapInclude.size > 0) {
+    let hasAny = false;
+    for (const id of roadmapInclude) if (rmIds.has(id)) { hasAny = true; break; }
+    if (!hasAny) return false;
+  }
+  if (roadmapExclude.has("__none") && rmIds.size === 0) return false;
+  for (const id of roadmapExclude) if (rmIds.has(id)) return false;
+  return true;
+}
 
 function cycleStatusFilter(name) {
   if (!statusInclude.has(name) && !statusExclude.has(name)) statusInclude.add(name);
@@ -2483,6 +2521,9 @@ function countTasksMatchingExcept(dim, optKey) {
       }
       for (const tag of taskTagExclude) if (tt.includes(tag)) return false;
     }
+    if (dim !== "roadmap") {
+      if (!taskMatchesRoadmapFilter(t)) return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const hay = (t.subject + " " + (t.extraComments||"") + " " + (t.slackStatus||"")).toLowerCase();
@@ -2501,6 +2542,12 @@ function countTasksMatchingExcept(dim, optKey) {
       const tt = Array.isArray(t.taskTags) ? t.taskTags : [];
       if (optKey === "__none") return tt.length === 0;
       return tt.includes(optKey);
+    }
+    if (dim === "roadmap") {
+      if (optKey === "__all") return true;
+      const rmIds = taskRoadmapIds(t.id);
+      if (optKey === "__none") return rmIds.size === 0;
+      return rmIds.has(optKey);
     }
     return true;
   }).length;
@@ -2602,6 +2649,39 @@ function renderTaskTagFilter() {
       const name = b.dataset.ttFilter;
       if (name === "__all") clearTaskTagFilter();
       else cycleTaskTagFilter(name);
+      render();
+    });
+  });
+}
+
+function renderRoadmapFilter() {
+  const bar = document.getElementById("roadmapFilterBar");
+  if (!bar) return;
+  const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : [];
+  if (rms.length === 0) { bar.style.display = "none"; return; }
+  bar.style.display = "flex";
+  const anyActive = roadmapInclude.size > 0 || roadmapExclude.size > 0;
+  let inner = '<div class="filter-group">';
+  inner += '<span class="label">Roadmap:</span>';
+  inner += '<button class="pill ' + (!anyActive ? 'active' : '') + '" data-rm-filter="__all">All' + countBadgePair(visibleTasksCount(), STORE.tasks.length) + '</button>';
+  rms.forEach(r => {
+    const incl = roadmapInclude.has(r.id);
+    const excl = roadmapExclude.has(r.id);
+    let cls = 'pill';
+    let prefix = '';
+    if (incl) cls += ' active';
+    else if (excl) { cls += ' excluded'; prefix = '− '; }
+    inner += '<button class="' + cls + '" data-rm-filter="' + escapeHtml(r.id) + '" title="Click cycles: include &rarr; exclude &rarr; off">📍 ' + prefix + escapeHtml(r.name || '(unnamed)') + countBadge(countTasksMatchingExcept("roadmap", r.id)) + '</button>';
+  });
+  inner += '<button class="pill ' + (roadmapInclude.has("__none") ? 'active' : '') + '" data-rm-filter="__none" title="Tasks not in any roadmap">No roadmap' + countBadge(countTasksMatchingExcept("roadmap", "__none")) + '</button>';
+  inner += '</div>';
+  bar.innerHTML = inner;
+  bar.querySelectorAll("button[data-rm-filter]").forEach(b => {
+    b.addEventListener("click", () => {
+      const v = b.dataset.rmFilter;
+      if (v === "__all") clearRoadmapFilter();
+      else cycleRoadmapFilter(v);
+      saveFilterState();
       render();
     });
   });
@@ -2750,6 +2830,7 @@ function render() {
   renderTeamStrip();
   renderTagFilter();
   renderTaskTagFilter();
+  renderRoadmapFilter();
   if (tasksViewMode === "list") {
     renderFlatTasks();
     // We still render team strip + filters above (shared), but skip the per-person grid.
@@ -4344,6 +4425,7 @@ document.getElementById("resetFiltersBtn").addEventListener("click", () => {
   prioInclude.clear(); prioExclude.clear();
   tagInclude.clear(); tagExclude.clear();
   taskTagInclude.clear(); taskTagExclude.clear();
+  roadmapInclude.clear(); roadmapExclude.clear();
   currentPersonIds.clear();
   searchQuery = "";
   document.getElementById("searchInput").value = "";
