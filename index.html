@@ -1456,6 +1456,7 @@
 
       <div class="filters">
         <label class="show-counts-toggle" title="Show task/member counts on each filter button"><input type="checkbox" id="showCountsChk"> <span>Counts</span></label>
+        <label class="show-counts-toggle" title="Show only tasks assigned to people on your active Team"><input type="checkbox" id="teamOnlyChk"> <span>Team only</span></label>
         <input class="search-input" id="searchInput" placeholder="Search titles and comments...">
         <div id="statusFilterContainer" class="filter-group"></div>
         <div id="prioFilterContainer" class="filter-group"></div>
@@ -1952,6 +1953,7 @@ let statusInclude = new Set(), statusExclude = new Set(), prioInclude = new Set(
 // Treat it as the include set so existing reads "just work".
 const currentPersonIds = personInclude;
 let showCounts = localStorage.getItem("bookline-showCounts") !== "false";  // default ON
+let teamOnly = localStorage.getItem("bookline-teamOnly") === "true";  // default OFF
 
 const FILTER_STATE_KEY = "bookline-filter-state-v1";
 function saveFilterState() {
@@ -2270,6 +2272,12 @@ function taskMatchesFilters(t) {
   if (t.isGroup) return false;
   // Tasks page hides tasks owned by disabled persons
   if (t.responsibleId && isDeactivated(t.responsibleId)) return false;
+  // Team-only mode: only show tasks owned by an active Team member
+  if (teamOnly) {
+    if (!t.responsibleId) return false;
+    if (!isTeamMember(t.responsibleId)) return false;
+    if (isDeactivated(t.responsibleId)) return false;
+  }
   // Person tristate: include & exclude
   if (personInclude.size > 0 && !personInclude.has(t.responsibleId)) return false;
   if (personExclude.has(t.responsibleId)) return false;
@@ -4305,6 +4313,7 @@ renderRoadmapsTimelinePage = function() {
 };
 
 document.getElementById("showCountsChk").checked = showCounts;
+document.getElementById("teamOnlyChk").checked = teamOnly;
 
 // Reset filters button
 document.getElementById("resetFiltersBtn").addEventListener("click", () => {
@@ -6402,6 +6411,11 @@ document.getElementById("bulkSetRoadmap").addEventListener("change", e => {
 document.getElementById("showCountsChk").addEventListener("change", e => {
   showCounts = e.target.checked;
   localStorage.setItem("bookline-showCounts", showCounts ? "true" : "false");
+  render();
+});
+document.getElementById("teamOnlyChk").addEventListener("change", e => {
+  teamOnly = e.target.checked;
+  localStorage.setItem("bookline-teamOnly", teamOnly ? "true" : "false");
   render();
 });
 
