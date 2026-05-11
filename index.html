@@ -1126,6 +1126,28 @@
   .bulk-bar select, .bulk-bar button { appearance: none; -webkit-appearance: none; background: #2d2d2d; color: #fff; border: 1px solid #444; border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
   .bulk-bar button.danger { background: #b42318; border-color: #b42318; color: #fff; }
   .bulk-bar .sep { width: 1px; height: 20px; background: #444; }
+  .bulk-bar .bulk-rm-btn { background: #2d2d2d; color: #fff; border: 1px solid #444; border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .bulk-bar .bulk-rm-btn:hover { background: #3a3a3a; }
+  .bulk-rm-popover {
+    position: absolute; bottom: calc(100% + 6px); left: 0; min-width: 280px; max-width: 340px; max-height: 320px; overflow-y: auto;
+    background: #fff; color: #1a1a1a; border: 1px solid #d8d6d1; border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18); z-index: 100; padding: 8px;
+  }
+  .bulk-rm-popover .bulk-rm-empty { padding: 14px; text-align: center; color: #9a9a9a; font-size: 12px; }
+  .bulk-rm-row { display: flex; align-items: center; gap: 8px; padding: 7px 8px; cursor: pointer; border-radius: 6px; user-select: none; font-size: 13px; }
+  .bulk-rm-row:hover { background: #f7f6f2; }
+  .bulk-rm-row .bulk-rm-cb {
+    width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #d8d6d1;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    background: #fff; font-size: 11px; color: #fff; line-height: 1; font-weight: 700;
+  }
+  .bulk-rm-row.checked .bulk-rm-cb { background: #1a1a1a; border-color: #1a1a1a; }
+  .bulk-rm-row.checked .bulk-rm-cb::before { content: "\2713"; }
+  .bulk-rm-row.partial .bulk-rm-cb { background: #fff; border-color: #1a1a1a; }
+  .bulk-rm-row.partial .bulk-rm-cb::before { content: "−"; color: #1a1a1a; }
+  .bulk-rm-row .bulk-rm-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bulk-rm-row .bulk-rm-counter { font-size: 11px; color: #9a9a9a; flex-shrink: 0; }
+  .bulk-rm-popover .bulk-rm-header { font-size: 11px; color: #6b6b6b; padding: 4px 8px 8px; border-bottom: 1px solid #f0efeb; margin-bottom: 4px; }
 
   /* Person tags */
   .tag { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; margin-right: 3px; }
@@ -1583,7 +1605,10 @@
     <span class="sep"></span>
     <select id="bulkSetStatus" title="Set panel status on selected"><option value="">Set status…</option><option value="pending">Pending</option><option value="in_progress">In Progress</option><option value="completed">Completed</option><option value="archived">Archived</option><option value="discarded">Discarded</option></select>
     <select id="bulkSetResponsible" title="Set responsible on selected"><option value="">Set responsible…</option></select>
-    <select id="bulkSetRoadmap" title="Add selected to a roadmap"><option value="">+ Add to roadmap…</option></select>
+    <div class="bulk-rm-wrap" style="position:relative; display:inline-block">
+      <button class="bulk-rm-btn" id="bulkRoadmapsBtn" type="button" title="Add/remove selected tasks to/from roadmaps">📍 Roadmaps…</button>
+      <div id="bulkRoadmapsPopover" class="bulk-rm-popover" style="display:none"></div>
+    </div>
     <span class="sep"></span>
     <button id="bulkOpenTaskTagsBtn">Manage Task Tags</button>
     <button class="danger" id="bulkClearSel">Clear selection</button>
@@ -2245,12 +2270,10 @@ function updateBulkBar() {
     const respOpts = active.map(p => '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name) + '</option>').join("");
     respSel.innerHTML = '<option value="">Set responsible…</option>' + respOpts;
   }
-  // Roadmap selector
-  const rmSel = document.getElementById("bulkSetRoadmap");
-  if (rmSel) {
-    const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : [];
-    const rmOpts = rms.map(r => '<option value="' + escapeHtml(r.id) + '">' + escapeHtml(r.name || '(unnamed)') + '</option>').join("");
-    rmSel.innerHTML = '<option value="">+ Add to roadmap…</option>' + rmOpts;
+  // Roadmap popover: refresh contents if open
+  const pop = document.getElementById("bulkRoadmapsPopover");
+  if (pop && pop.style.display !== "none" && typeof renderBulkRoadmapsPopover === 'function') {
+    renderBulkRoadmapsPopover();
   }
 }
 
@@ -6388,24 +6411,73 @@ document.getElementById("bulkSetResponsible").addEventListener("change", e => {
   render();
 });
 
-// Bulk: add selected tasks to a roadmap
-document.getElementById("bulkSetRoadmap").addEventListener("change", e => {
-  const rmId = e.target.value;
-  if (!rmId || selectedTaskIds.size === 0) { e.target.value = ""; return; }
-  const rm = (typeof findRoadmap === 'function') ? findRoadmap(rmId) : null;
-  if (!rm) { e.target.value = ""; return; }
-  if (!confirm("Add " + selectedTaskIds.size + " task(s) to roadmap '" + (rm.name || '(unnamed)') + "'?")) { e.target.value = ""; return; }
-  if (!Array.isArray(rm.tasks)) rm.tasks = [];
-  let added = 0, skipped = 0;
-  selectedTaskIds.forEach(tid => {
-    if (rm.tasks.some(entry => entry.taskId === tid)) { skipped++; return; }
-    rm.tasks.push({ taskId: tid });
-    added++;
+// Bulk: manage roadmap membership of selected tasks (multi-select popover with add/remove)
+function renderBulkRoadmapsPopover() {
+  const pop = document.getElementById("bulkRoadmapsPopover");
+  if (!pop) return;
+  const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : [];
+  const N = selectedTaskIds.size;
+  if (N === 0) { pop.style.display = "none"; return; }
+  if (rms.length === 0) {
+    pop.innerHTML = '<div class="bulk-rm-empty">No roadmaps yet. Create one from the Roadmaps page.</div>';
+    return;
+  }
+  let html = '<div class="bulk-rm-header">Click to add or remove all <strong>' + N + '</strong> selected task(s) from a roadmap. <span style="color:#dc2626">−</span> = some, <span style="color:#1a1a1a">✓</span> = all, empty = none.</div>';
+  rms.forEach(rm => {
+    const inRm = (rm.tasks || []).filter(e => selectedTaskIds.has(e.taskId)).length;
+    let state = 'none';
+    if (inRm === N) state = 'all';
+    else if (inRm > 0) state = 'partial';
+    const cls = state === 'all' ? 'checked' : (state === 'partial' ? 'partial' : '');
+    html += '<div class="bulk-rm-row ' + cls + '" data-rmid="' + escapeHtml(rm.id) + '" data-state="' + state + '">' +
+      '<span class="bulk-rm-cb"></span>' +
+      '<span class="bulk-rm-name">' + escapeHtml(rm.name || '(unnamed)') + '</span>' +
+      '<span class="bulk-rm-counter">' + inRm + '/' + N + '</span>' +
+    '</div>';
   });
-  saveStore(STORE);
-  e.target.value = "";
-  render();
-  console.log('Added ' + added + ' task(s) to roadmap, ' + skipped + ' already there.');
+  pop.innerHTML = html;
+  pop.querySelectorAll(".bulk-rm-row").forEach(row => {
+    row.addEventListener("click", () => {
+      const rmId = row.dataset.rmid;
+      const rm = findRoadmap(rmId);
+      if (!rm) return;
+      if (!Array.isArray(rm.tasks)) rm.tasks = [];
+      const state = row.dataset.state;
+      if (state === 'all') {
+        // Remove all selected tasks from this roadmap
+        rm.tasks = rm.tasks.filter(e => !selectedTaskIds.has(e.taskId));
+      } else {
+        // Add any missing selected tasks (partial or none → all)
+        selectedTaskIds.forEach(tid => {
+          if (!rm.tasks.some(e => e.taskId === tid)) rm.tasks.push({ taskId: tid });
+        });
+      }
+      saveStore(STORE);
+      renderBulkRoadmapsPopover();   // refresh state on same popover
+      render();
+    });
+  });
+}
+function toggleBulkRoadmapsPopover(forceOpen) {
+  const pop = document.getElementById("bulkRoadmapsPopover");
+  if (!pop) return;
+  const isOpen = pop.style.display !== "none";
+  if (forceOpen === false || (forceOpen === undefined && isOpen)) { pop.style.display = "none"; return; }
+  renderBulkRoadmapsPopover();
+  pop.style.display = "";
+}
+document.getElementById("bulkRoadmapsBtn").addEventListener("click", e => {
+  e.stopPropagation();
+  toggleBulkRoadmapsPopover();
+});
+// Close on outside click
+document.addEventListener("click", e => {
+  const pop = document.getElementById("bulkRoadmapsPopover");
+  const btn = document.getElementById("bulkRoadmapsBtn");
+  if (!pop || !btn) return;
+  if (pop.style.display === "none") return;
+  if (pop.contains(e.target) || btn.contains(e.target)) return;
+  pop.style.display = "none";
 });
 
 document.getElementById("showCountsChk").addEventListener("change", e => {
