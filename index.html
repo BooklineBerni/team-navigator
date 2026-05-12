@@ -376,7 +376,7 @@
   body.view-roadmaps-active { overflow: hidden !important; height: 100vh; }
   body.view-roadmaps-active .main-content {
     height: 100vh; min-height: 0 !important;
-    padding-top: 0 !important; padding-bottom: 0 !important;
+    padding-top: 0 !important; padding-bottom: 16px !important;
     display: flex; flex-direction: column; overflow: hidden;
   }
   body.view-roadmaps-active footer.bot { display: none; }
@@ -413,9 +413,12 @@
     display: flex; flex-direction: column; gap: 6px;
   }
   .rm-side-area .rm-unscheduled .rm-unscheduled-head {
-    position: sticky; top: 0; background: #fffbeb;
-    margin: -12px -12px 8px; padding: 12px 12px 8px;
-    border-bottom: 1px solid #fde68a; z-index: 2;
+    position: sticky; top: -12px;
+    background: #fffbeb !important;
+    margin: -12px -12px 8px; padding: 14px 12px 10px;
+    border-bottom: 1px solid #fde68a;
+    box-shadow: 0 6px 8px -6px rgba(0,0,0,0.18);
+    z-index: 10;
   }
 
 
