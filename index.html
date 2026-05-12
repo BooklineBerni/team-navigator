@@ -286,6 +286,14 @@
   .cal-event:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.18); z-index: 10; }
   .cal-event.continues-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
   .cal-event.continues-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  /* Group event bar: a bit taller, dashed outline that visually says "container" */
+  .cal-event.cal-event-group {
+    font-weight: 700;
+    border: 1.5px dashed rgba(255,255,255,0.7);
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.18);
+    padding: 4px 8px;
+    letter-spacing: 0.01em;
+  }
   .cal-more-events {
     position: absolute; font-size: 10px; color: #6b6b6b; cursor: pointer;
     padding: 2px 6px; pointer-events: auto;
@@ -1934,7 +1942,7 @@
       <div class="checkbox-field"><input type="checkbox" id="f_sharing"><label for="f_sharing" style="margin:0">Sharing on</label></div>
     </div>
     <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
-    <div class="field f_taskOnlyRow">
+    <div class="field">
       <label>Roadmaps</label>
       <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
       <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
@@ -4316,13 +4324,22 @@ function renderRoadmapCalendar(roadmapId) {
         const left = (s.startCol / nDays) * 100;
         const width = (s.span / nDays) * 100;
         const top = s.lane * 22;
-        const color = statusColors[s.event.task.panelStatus] || '#1a1a1a';
+        const isGroupEvent = !!s.event.task.isGroup;
+        // Groups: a darker amber bar with a folder icon — distinguishes a container from a task
+        const color = isGroupEvent ? '#d97706' : (statusColors[s.event.task.panelStatus] || '#1a1a1a');
         const cls = ['cal-event'];
+        if (isGroupEvent) cls.push('cal-event-group');
         if (s.continuesLeft) cls.push('continues-left');
         if (s.continuesRight) cls.push('continues-right');
-        const tooltipText = s.event.task.subject + ' — ' + (s.event.entry.startDate||'?') + ' → ' + (s.event.entry.endDate||'?');
+        // For groups, append a count of child tasks if any
+        let label = escapeHtml(s.event.task.subject);
+        if (isGroupEvent) {
+          const childCount = (STORE.tasks||[]).filter(x => x.groupId === s.event.task.id).length;
+          label = '📁 ' + label + (childCount > 0 ? ' (' + childCount + ')' : '');
+        }
+        const tooltipText = s.event.task.subject + (isGroupEvent ? ' [Group]' : '') + ' — ' + (s.event.entry.startDate||'?') + ' → ' + (s.event.entry.endDate||'?');
         html += '<div class="' + cls.join(' ') + '" data-tid="' + s.event.task.id + '" title="' + escapeHtml(tooltipText) + '" style="left:calc(' + left + '% + 4px); width:calc(' + width + '% - 8px); top:' + top + 'px; background:' + color + '">' +
-          (s.continuesLeft ? '◂ ' : '') + escapeHtml(s.event.task.subject) + (s.continuesRight ? ' ▸' : '') +
+          (s.continuesLeft ? '◂ ' : '') + label + (s.continuesRight ? ' ▸' : '') +
         '</div>';
       });
       // "X more" indicator if exceeds maxLanesShown
@@ -6118,8 +6135,11 @@ function renderRoadmapDetailInline(id) {
       if (matches.length === 0) { searchResults.innerHTML = '<div style="color:#9a9a9a; font-size:12px; padding:6px">No matches</div>'; return; }
       searchResults.innerHTML = matches.map(t => {
         const p = findPerson(t.responsibleId);
-        return '<div class="rm-task-row" data-tid="' + t.id + '" style="cursor:pointer; border-color:#cbd5e1">' +
-          '<span><strong>' + escapeHtml(t.subject.slice(0, 60)) + (t.subject.length > 60 ? "..." : "") + '</strong> <span style="color:#6b6b6b">&middot; ' + escapeHtml(p ? p.name : "?") + '</span></span>' +
+        const isG = !!t.isGroup;
+        const childCount = isG ? (STORE.tasks||[]).filter(x => x.groupId === t.id).length : 0;
+        const meta = isG ? ('📁 Group · ' + childCount + ' child' + (childCount === 1 ? '' : 'ren')) : (p ? p.name : '?');
+        return '<div class="rm-task-row" data-tid="' + t.id + '" style="cursor:pointer; border-color:' + (isG ? '#fde68a' : '#cbd5e1') + (isG ? '; background:#fffbeb' : '') + '">' +
+          '<span><strong>' + (isG ? '📁 ' : '') + escapeHtml(t.subject.slice(0, 60)) + (t.subject.length > 60 ? "..." : "") + '</strong> <span style="color:#6b6b6b">&middot; ' + escapeHtml(meta) + '</span></span>' +
           '<button class="btn primary" style="font-size:11px; padding:3px 10px">+ Add</button>' +
         '</div>';
       }).join("");
