@@ -301,16 +301,18 @@
   .cal-event.cal-event-group.expanded { background: rgba(217,119,6,0.10) !important; border-style: solid; }
   /* When the group bar hosts children, only the title strip area should catch clicks/hover for the bar itself;
      the body below is "open" so children inside receive pointer events directly */
-  /* Chevron toggle button inside group bar */
+  /* Chevron toggle button inline with the group title — appears on every week the group spans */
   .cal-event-group .cal-group-toggle {
-    position: absolute; top: 1px; right: 4px;
-    width: 18px; height: 18px;
     display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px;
+    margin-left: 4px;
+    vertical-align: middle;
     border: none; background: rgba(255,255,255,0.55);
-    color: #92400e; font-size: 11px; line-height: 1;
-    border-radius: 4px; cursor: pointer; padding: 0;
-    z-index: 15;
+    color: #92400e; font-size: 10px; line-height: 1; font-weight: 700;
+    border-radius: 3px; cursor: pointer; padding: 0;
+    font-family: inherit;
     transition: background .12s;
+    pointer-events: auto;
   }
   .cal-event-group .cal-group-toggle:hover { background: rgba(255,255,255,0.95); }
   /* Nested child inside a group */
@@ -353,6 +355,29 @@
     padding: 4px 10px; border-radius: 6px; font-size: 11.5px; cursor: pointer;
   }
   .cal-event-edit-popover button.danger:hover { background: #fee2e2; }
+  .cal-event-edit-popover .cep-pin {
+    flex-shrink: 0;
+    width: 22px; height: 22px;
+    border-radius: 5px; border: 1px solid #d8d6d1;
+    background: #fff;
+    cursor: pointer; padding: 0; font-size: 11px; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    filter: grayscale(1); opacity: .5;
+    transition: opacity .12s, filter .12s, background .12s, border-color .12s;
+  }
+  .cal-event-edit-popover .cep-pin:hover { opacity: .85; filter: grayscale(0.3); }
+  .cal-event-edit-popover .cep-pin.active {
+    background: #fef3c7; border-color: #f59e0b;
+    filter: none; opacity: 1;
+  }
+  .cal-event-edit-popover .cep-anchor-hint {
+    font-size: 10.5px; color: #92400e;
+    padding: 0 0 6px 44px;
+    margin-top: -4px;
+    line-height: 1.4;
+  }
+  .cal-event-edit-popover .cep-anchor-hint:empty { display: none; }
+  .cal-event-edit-popover .cep-anchor-hint strong { color: #1a1a1a; font-weight: 700; }
   .cal-more-events {
     position: absolute; font-size: 10px; color: #6b6b6b; cursor: pointer;
     padding: 2px 6px; pointer-events: auto;
@@ -4884,7 +4909,6 @@ function renderRoadmapCalendar(roadmapId) {
         } else if (isGroupEvent) {
           // Group container bar (transparent)
           const gid = s.event.task.id;
-          const childCount = (STORE.tasks||[]).filter(x => x.groupId === gid).length;
           top = laneTop[s.lane];
           const hasKids = (subLanesByParent[gid] && subLanesByParent[gid].length > 0);
           // Match the lane's height when the group hosts kids; otherwise 22 like a normal task bar
@@ -4896,12 +4920,12 @@ function renderRoadmapCalendar(roadmapId) {
           const canExpand = totalSubLanes > MAX_SUB_LANES_COLLAPSED;
           const isExpanded = expandedSet.has(gid);
           if (isExpanded) cls.push('expanded');
-          label = '📁 ' + escapeHtml(s.event.task.subject) + (childCount > 0 ? ' (' + childCount + ')' : '');
-          if (canExpand && !s.continuesLeft) {
-            // Chevron toggle button on the leading edge of the group bar
+          label = '📁 ' + escapeHtml(s.event.task.subject);
+          if (canExpand) {
+            // Chevron toggle inline with the title — appears on every week the group spans
             const chev = isExpanded ? '▾' : '▸';
             const ttl = isExpanded ? 'Collapse group' : 'Expand group (show all ' + totalSubLanes + ' rows)';
-            extraHtml = '<button type="button" class="cal-group-toggle" data-group-toggle="' + gid + '" title="' + ttl + '">' + chev + '</button>';
+            label += ' <button type="button" class="cal-group-toggle" data-group-toggle="' + gid + '" title="' + ttl + '">' + chev + '</button>';
           }
         } else {
           // Normal task bar
@@ -5111,29 +5135,39 @@ function renderRoadmapCalendar(roadmapId) {
       const isG = !!task.isGroup;
       const sAnchor = entry.startAnchor || '';
       const eAnchor = entry.endAnchor || '';
-      const sAnchorNorm = normalizeAnchorForSelect(entry, sAnchor);
-      const eAnchorNorm = normalizeAnchorForSelect(entry, eAnchor);
-      const anchorItems = buildAnchorItems(entry);
-      const canAnchor = anchorItems.length > 1;   // there is at least one other task in the roadmap
-      function anchorOptions(selected) {
-        return anchorItems.map(it =>
-          '<option value="' + escapeHtml(it.value) + '"' + (it.value === selected ? ' selected' : '') + '>' + escapeHtml(it.label) + '</option>'
-        ).join('');
+      const canAnchor = (r.tasks || []).filter(en => en.taskId !== tid).length > 0;
+      function cepPinHtml(id, isActive, kind, anchorVal) {
+        const ref = parseAnchorRef(entry, anchorVal);
+        let labelHint = '';
+        if (ref) {
+          const tt = STORE.tasks.find(x => x.id === ref.taskId);
+          if (tt) labelHint = (tt.subject || '(unnamed)') + ' — ' + ref.side;
+        }
+        const tooltip = isActive
+          ? 'Anchored to ' + (labelHint || 'another task') + ' — click to change/unlock'
+          : 'Click to anchor ' + kind + ' to another task on this roadmap';
+        return '<button type="button" id="' + id + '" class="cep-pin' + (isActive ? ' active' : '') + '" title="' + escapeHtml(tooltip) + '" data-kind="' + kind + '">📌</button>';
+      }
+      function cepAnchorHint(anchorVal, kind) {
+        const ref = parseAnchorRef(entry, anchorVal);
+        if (!ref) return '';
+        const tt = STORE.tasks.find(x => x.id === ref.taskId);
+        if (!tt) return '';
+        const icon = tt.isGroup ? '📁 ' : '';
+        return '<div class="cep-anchor-hint">Linked to <strong>' + icon + escapeHtml(tt.subject || '(unnamed)') + '</strong> — ' + ref.side + '</div>';
       }
       pop.innerHTML =
         '<h4>' + (isG ? '📁 ' : '') + escapeHtml(task.subject) + '</h4>' +
         '<div class="cep-row"><label>Start</label>' +
+          (canAnchor ? cepPinHtml('cepStartPin', !!sAnchor, 'start', sAnchor) : '') +
           '<input type="date" id="cepStart" value="' + escapeHtml(entry.startDate || '') + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + (sAnchor ? ' disabled' : '') + '>' +
         '</div>' +
-        (canAnchor ?
-          '<div class="cep-row"><label></label><select id="cepStartAnchor" style="flex:1" title="Anchor start to another task">' + anchorOptions(sAnchorNorm) + '</select></div>'
-          : '') +
+        '<div id="cepStartHint">' + cepAnchorHint(sAnchor, 'start') + '</div>' +
         '<div class="cep-row"><label>End</label>' +
+          (canAnchor ? cepPinHtml('cepEndPin', !!eAnchor, 'end', eAnchor) : '') +
           '<input type="date" id="cepEnd" value="' + escapeHtml(entry.endDate || '') + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + (eAnchor ? ' disabled' : '') + '>' +
         '</div>' +
-        (canAnchor ?
-          '<div class="cep-row"><label></label><select id="cepEndAnchor" style="flex:1" title="Anchor end to another task">' + anchorOptions(eAnchorNorm) + '</select></div>'
-          : '') +
+        '<div id="cepEndHint">' + cepAnchorHint(eAnchor, 'end') + '</div>' +
         '<div class="cep-actions">' +
           '<button type="button" class="cep-link" id="cepOpenTask">Open task →</button>' +
           '<button type="button" class="danger" id="cepRemove">Remove from roadmap</button>' +
@@ -5157,31 +5191,59 @@ function renderRoadmapCalendar(roadmapId) {
       pop.querySelector('#cepStart').addEventListener('change', ev => {
         entry.startDate = ev.target.value;
         entry.startAnchor = '';   // setting a custom date clears the anchor
+        const pin = pop.querySelector('#cepStartPin');
+        if (pin) pin.classList.remove('active');
+        const hintEl = pop.querySelector('#cepStartHint');
+        if (hintEl) hintEl.innerHTML = '';
         saveStore(STORE);
         renderRoadmapCalendar(roadmapId);
       });
       pop.querySelector('#cepEnd').addEventListener('change', ev => {
         entry.endDate = ev.target.value;
         entry.endAnchor = '';
+        const pin = pop.querySelector('#cepEndPin');
+        if (pin) pin.classList.remove('active');
+        const hintEl = pop.querySelector('#cepEndHint');
+        if (hintEl) hintEl.innerHTML = '';
         saveStore(STORE);
         renderRoadmapCalendar(roadmapId);
       });
-      const sAnchorSel = pop.querySelector('#cepStartAnchor');
-      if (sAnchorSel) sAnchorSel.addEventListener('change', ev => {
-        entry.startAnchor = ev.target.value || '';
-        const inp = pop.querySelector('#cepStart');
-        if (inp) inp.disabled = !!entry.startAnchor;
-        saveStore(STORE);
-        renderRoadmapCalendar(roadmapId);
-      });
-      const eAnchorSel = pop.querySelector('#cepEndAnchor');
-      if (eAnchorSel) eAnchorSel.addEventListener('change', ev => {
-        entry.endAnchor = ev.target.value || '';
-        const inp = pop.querySelector('#cepEnd');
-        if (inp) inp.disabled = !!entry.endAnchor;
-        saveStore(STORE);
-        renderRoadmapCalendar(roadmapId);
-      });
+      function wireCepPin(pinId, kind) {
+        const pin = pop.querySelector('#' + pinId);
+        if (!pin) return;
+        pin.addEventListener('click', ev => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const currentRaw = (kind === 'start' ? entry.startAnchor : entry.endAnchor) || '';
+          const current = normalizeAnchorForSelect(entry, currentRaw);
+          openAnchorPicker(pin, entry, kind, current, (newVal) => {
+            if (kind === 'start') entry.startAnchor = newVal || '';
+            else                  entry.endAnchor   = newVal || '';
+            // Update pin appearance
+            pin.classList.toggle('active', !!newVal);
+            // Update date input disabled state
+            const inp = pop.querySelector(kind === 'start' ? '#cepStart' : '#cepEnd');
+            if (inp) inp.disabled = !!newVal;
+            // Update hint line
+            const hintEl = pop.querySelector(kind === 'start' ? '#cepStartHint' : '#cepEndHint');
+            if (hintEl) hintEl.innerHTML = cepAnchorHint(newVal, kind);
+            // Update tooltip
+            const ref = parseAnchorRef(entry, newVal);
+            let labelHint = '';
+            if (ref) {
+              const tt = STORE.tasks.find(x => x.id === ref.taskId);
+              if (tt) labelHint = (tt.subject || '(unnamed)') + ' — ' + ref.side;
+            }
+            pin.title = newVal
+              ? 'Anchored to ' + (labelHint || 'another task') + ' — click to change/unlock'
+              : 'Click to anchor ' + kind + ' to another task on this roadmap';
+            saveStore(STORE);
+            renderRoadmapCalendar(roadmapId);
+          });
+        });
+      }
+      wireCepPin('cepStartPin', 'start');
+      wireCepPin('cepEndPin', 'end');
       pop.querySelector('#cepRemove').addEventListener('click', () => {
         if (!confirm('Remove "' + (task.subject||'this task') + '" from this roadmap?')) return;
         r.tasks = (r.tasks || []).filter(en => en.taskId !== tid);
@@ -5200,6 +5262,8 @@ function renderRoadmapCalendar(roadmapId) {
     const pop = document.querySelector('.cal-event-edit-popover');
     if (!pop) return;
     if (pop.contains(e.target) || e.target.closest('.cal-event')) return;
+    // Don't close when interacting with the anchor picker menu (lives in body)
+    if (e.target.closest('.bn-anchor-menu')) return;
     pop.remove();
   });
   // Hide-weekends toggle
