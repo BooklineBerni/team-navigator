@@ -373,10 +373,18 @@
 
 
   /* Roadmap page — full viewport, no outer scroll */
+  body.view-roadmaps-active { overflow: hidden !important; height: 100vh; }
+  body.view-roadmaps-active .main-content {
+    height: 100vh; min-height: 0 !important;
+    padding-top: 0 !important; padding-bottom: 0 !important;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  body.view-roadmaps-active footer.bot { display: none; }
+  body.view-roadmaps-active #view-roadmaps {
+    flex: 1; min-height: 0; padding-top: 8px !important;
+  }
   #view-roadmaps {
-    display: flex; flex-direction: column;
-    height: calc(100vh - 24px);   /* leaves room for top padding */
-    overflow: hidden;
+    display: flex; flex-direction: column; overflow: hidden;
   }
   #view-roadmaps .page-header,
   #view-roadmaps .rm-toolbar { flex-shrink: 0; }
@@ -5776,6 +5784,7 @@ function switchView(view) {
   if (!["home","tasks","members","profile","roadmaps","requests","files"].includes(view)) view = "home";
   currentView = view;
   localStorage.setItem("bookline-currentView", view);
+  document.body.classList.toggle("view-roadmaps-active", view === "roadmaps");
   document.querySelectorAll(".nav-item").forEach(t => t.classList.toggle("active", t.dataset.view === view));
   document.getElementById("view-home").style.display     = view === "home"     ? "" : "none";
   document.getElementById("view-members").style.display  = view === "members"  ? "" : "none";
