@@ -529,11 +529,35 @@
   .rm-side-area .rm-task-row .rmt-pair {
     display: flex; flex-direction: column; gap: 3px; min-width: 0;
   }
-  .rm-side-area .rm-task-row .rmt-pair select {
-    width: 100%; max-width: none; font-size: 10.5px; padding: 1px 4px;
-  }
   .rm-side-area .rm-task-row .rmt-pair .rmt-label {
     font-size: 10px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.04em; padding-left: 2px;
+  }
+  .rm-side-area .rm-task-row .rmt-input-wrap {
+    display: flex; align-items: center; gap: 3px; min-width: 0;
+  }
+  .rm-side-area .rm-task-row .rmt-input-wrap input[type="date"] {
+    flex: 1; min-width: 0; max-width: none;
+    font-size: 10.5px; padding: 2px 18px 2px 4px;
+  }
+  .rm-side-area .rm-task-row .rmt-input-wrap input[type="date"]:disabled {
+    background: #fff7e6; color: #92400e; opacity: 0.7;
+  }
+  .rm-side-area .rm-task-row .rmt-pin {
+    flex-shrink: 0;
+    width: 22px; height: 22px;
+    border-radius: 5px; border: 1px solid #d8d6d1;
+    background: #fff;
+    cursor: pointer; padding: 0; font-size: 11px; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    filter: grayscale(1); opacity: .5;
+    transition: opacity .12s, filter .12s, background .12s, border-color .12s;
+  }
+  .rm-side-area .rm-task-row .rmt-pin:hover {
+    opacity: .85; filter: grayscale(0.3);
+  }
+  .rm-side-area .rm-task-row .rmt-pin.active {
+    background: #fef3c7; border-color: #f59e0b;
+    filter: none; opacity: 1;
   }
   .rm-side-area .rm-task-row .rm-task-del {
     background: transparent; color: #dc2626;
@@ -4505,7 +4529,7 @@ function renderRoadmapCalendar(roadmapId) {
   if (hasSide) {
     html += '<div class="rm-side-area">';
     // "Ready" = at least a start date (end date optional → open-ended task)
-    const pendingCount = unscheduled.filter(e => parseDate(e.startDate)).length;
+    const pendingCount = unscheduled.filter(e => parseDate(effectiveDatesFor(e).startStr)).length;
     html += '<div class="rm-unscheduled" style="margin-top:14px; padding:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px">' +
       '<div class="rm-unscheduled-head">' +
         '<strong style="font-size:13px">Unscheduled (' + unscheduled.length + ')</strong>' +
@@ -4520,17 +4544,16 @@ function renderRoadmapCalendar(roadmapId) {
       const eff = effectiveDatesFor(entry);
       const ready = !!parseDate(eff.startStr);
       const isThisAGroup = !!task.isGroup;
-      // Show anchor selectors only when this task's parent group is on the roadmap
+      // Show anchor pin buttons only when this task's parent group is on the roadmap
       const parentEntry = (!isThisAGroup && task.groupId) ? (r.tasks || []).find(en => en.taskId === task.groupId) : null;
       const canAnchor = !!parentEntry;
       const sA = entry.startAnchor || '';
       const eA = entry.endAnchor   || '';
-      function anchorSelHtml(cls, selected) {
-        return '<select class="' + cls + '" title="Anchor this date to the group">' +
-          '<option value=""' + (selected === '' ? ' selected' : '') + '>Custom</option>' +
-          '<option value="group-start"' + (selected === 'group-start' ? ' selected' : '') + '>📌 Group start</option>' +
-          '<option value="group-end"'   + (selected === 'group-end' ? ' selected' : '') + '>📌 Group end</option>' +
-        '</select>';
+      function pinBtnHtml(cls, isActive, kind) {
+        const tooltip = kind === 'start'
+          ? (isActive ? 'Anchored to group start — click to unlock' : 'Click to anchor start to group start')
+          : (isActive ? 'Anchored to group end — click to unlock'   : 'Click to anchor end to group end');
+        return '<button type="button" class="rmt-pin ' + cls + (isActive ? ' active' : '') + '" title="' + tooltip + '" data-kind="' + kind + '">📌</button>';
       }
       // Group assignment picker (only for non-group tasks)
       const groupPickerHtml = isThisAGroup ? '' : (
@@ -4547,12 +4570,18 @@ function renderRoadmapCalendar(roadmapId) {
         (groupPickerHtml ? '<div class="rmt-group-row">' + groupPickerHtml + '</div>' : '') +
         '<div class="rmt-dates-grid">' +
           '<div class="rmt-pair">' +
-            (canAnchor ? anchorSelHtml('rmt-start-anchor', sA) : '<span class="rmt-label">Start</span>') +
-            '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (sA ? ' disabled' : '') + ' title="Start">' +
+            '<span class="rmt-label">Start</span>' +
+            '<div class="rmt-input-wrap">' +
+              '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (sA ? ' disabled' : '') + ' title="Start">' +
+              (canAnchor ? pinBtnHtml('rmt-pin-start', sA === 'group-start', 'start') : '') +
+            '</div>' +
           '</div>' +
           '<div class="rmt-pair">' +
-            (canAnchor ? anchorSelHtml('rmt-end-anchor', eA) : '<span class="rmt-label">End</span>') +
-            '<input type="date" class="rmt-end" value="' + escapeHtml(entry.endDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (eA ? ' disabled' : '') + ' title="End">' +
+            '<span class="rmt-label">End</span>' +
+            '<div class="rmt-input-wrap">' +
+              '<input type="date" class="rmt-end" value="' + escapeHtml(entry.endDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (eA ? ' disabled' : '') + ' title="End">' +
+              (canAnchor ? pinBtnHtml('rmt-pin-end', eA === 'group-end', 'end') : '') +
+            '</div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -4786,25 +4815,31 @@ function renderRoadmapCalendar(roadmapId) {
         refreshRowReadyState();
       }
     });
-    // Anchor selectors (only present when parent group is on the roadmap)
-    const sAnchorSel = node.querySelector('.rmt-start-anchor');
-    if (sAnchorSel) sAnchorSel.addEventListener('change', e => {
-      if (idx >= 0) {
-        r.tasks[idx].startAnchor = e.target.value || '';
-        // If anchored, mark as ready (effective date comes from group) and pin
-        if (r.tasks[idx].startAnchor) window.__rmPendingApply.add(tid);
+    // Anchor pin buttons (only when parent group is on the roadmap).
+    // Toggle in-place — no full re-render so scroll position is preserved.
+    node.querySelectorAll('.rmt-pin').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        if (idx < 0) return;
+        const kind = btn.dataset.kind;
+        if (kind === 'start') {
+          const nowActive = !btn.classList.contains('active');
+          btn.classList.toggle('active', nowActive);
+          r.tasks[idx].startAnchor = nowActive ? 'group-start' : '';
+          const inp = node.querySelector('.rmt-start');
+          if (inp) inp.disabled = nowActive;
+          if (nowActive) window.__rmPendingApply.add(tid);
+        } else if (kind === 'end') {
+          const nowActive = !btn.classList.contains('active');
+          btn.classList.toggle('active', nowActive);
+          r.tasks[idx].endAnchor = nowActive ? 'group-end' : '';
+          const inp = node.querySelector('.rmt-end');
+          if (inp) inp.disabled = nowActive;
+          if (nowActive) window.__rmPendingApply.add(tid);
+        }
         saveStore(STORE);
-        renderRoadmapCalendar(roadmapId);   // redraw so the date input toggles disabled
-      }
-    });
-    const eAnchorSel = node.querySelector('.rmt-end-anchor');
-    if (eAnchorSel) eAnchorSel.addEventListener('change', e => {
-      if (idx >= 0) {
-        r.tasks[idx].endAnchor = e.target.value || '';
-        if (r.tasks[idx].endAnchor) window.__rmPendingApply.add(tid);
-        saveStore(STORE);
-        renderRoadmapCalendar(roadmapId);
-      }
+        refreshRowReadyState();   // updates Apply count + row "ready" class without full re-render
+      });
     });
     // Group assignment picker — sets task.groupId on the task itself
     const groupPick = node.querySelector('.rmt-group-pick');
