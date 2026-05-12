@@ -301,8 +301,16 @@
   .cal-event.cal-event-child {
     box-shadow: 0 1px 2px rgba(0,0,0,0.15);
     z-index: 4;
+    padding: 0 4px;
+    font-weight: 500;
   }
   .cal-event.cal-event-child:hover { z-index: 12; }
+  .cal-event-child-overflow {
+    position: absolute; height: 12px;
+    background: rgba(217,119,6,0.45); color: #fff; font-weight: 700;
+    font-size: 9.5px; line-height: 12px; text-align: center;
+    border-radius: 3px; pointer-events: none; z-index: 5;
+  }
   .cal-event-edit-popover {
     position: absolute; min-width: 240px; background: #fff;
     border: 1px solid #d8d6d1; border-radius: 10px; padding: 10px;
@@ -4393,12 +4401,23 @@ function renderRoadmapCalendar(roadmapId) {
           c.lane = lane;
         }
       });
-      // Determine each lane's height: 22 by default, larger if a parent in that lane has children
-      const groupLaneHeight = 56;
+      // Determine each lane's height. For a lane containing a group with N nested sub-lanes,
+      // expand it so children fit INSIDE the group's bar (capped to MAX_SUB_LANES).
+      const SUB_H = 12;
+      const SUB_GAP = 2;
+      const TITLE_STRIP = 22;
+      const MAX_SUB_LANES = 3;       // beyond this we show "+N more" inside the group
       const normalLaneHeight = 22;
       const laneHeights = lanes.map(laneSegs => {
-        const hasChildren = laneSegs.some(s => s.event.task.isGroup && subLanesByParent[s.event.task.id] && subLanesByParent[s.event.task.id].length > 0);
-        return hasChildren ? groupLaneHeight : normalLaneHeight;
+        let maxSub = 0;
+        laneSegs.forEach(s => {
+          if (!s.event.task.isGroup) return;
+          const subLanes = subLanesByParent[s.event.task.id] || [];
+          if (subLanes.length > maxSub) maxSub = subLanes.length;
+        });
+        if (maxSub === 0) return normalLaneHeight;
+        const visibleSub = Math.min(maxSub, MAX_SUB_LANES);
+        return TITLE_STRIP + visibleSub * (SUB_H + SUB_GAP) + 4;
       });
       // Pre-compute Y offset for each lane
       const laneTop = [];
@@ -4461,13 +4480,14 @@ function renderRoadmapCalendar(roadmapId) {
         const cls = ['cal-event'];
         let top, height, color, fontSize, label;
         if (isNested) {
+          // Hide overflow children — they'll be summarized by a "+N more" pill
+          if (s.subLane >= MAX_SUB_LANES) return;
           // Mini chip inside the parent group's expanded lane
-          const baseTop = laneTop[s.lane] + 22;          // first 22px = the group title strip
-          const SUB_H = 14;
-          top = baseTop + (s.subLane * (SUB_H + 2));
+          const baseTop = laneTop[s.lane] + TITLE_STRIP;          // first 22px = the group title strip
+          top = baseTop + (s.subLane * (SUB_H + SUB_GAP));
           height = SUB_H;
           color = statusColors[s.event.task.panelStatus] || '#1a1a1a';
-          fontSize = 10.5;
+          fontSize = 9.5;
           cls.push('cal-event-child');
           label = escapeHtml(s.event.task.subject);
         } else if (isGroupEvent) {
@@ -4475,7 +4495,8 @@ function renderRoadmapCalendar(roadmapId) {
           const childCount = (STORE.tasks||[]).filter(x => x.groupId === s.event.task.id).length;
           top = laneTop[s.lane];
           const hasKids = (subLanesByParent[s.event.task.id] && subLanesByParent[s.event.task.id].length > 0);
-          height = hasKids ? groupLaneHeight - 4 : 22;
+          // Match the lane's height when the group hosts kids; otherwise 22 like a normal task bar
+          height = hasKids ? (laneHeights[s.lane] - 4) : 22;
           color = 'rgba(217,119,6,0.18)';   // amber 18% transparent so calendar shows through
           fontSize = 11;
           cls.push('cal-event-group');
@@ -4502,6 +4523,17 @@ function renderRoadmapCalendar(roadmapId) {
       // Render parents first (so children draw on top)
       parentSegs.forEach(s => renderSeg(s, { nested: false }));
       childSegs.forEach(s => renderSeg(s, { nested: !!parentSegByTaskId[s.event.task.groupId] }));
+      // "+N more" indicator inside groups with too many nested children
+      Object.entries(subLanesByParent).forEach(([groupId, subLanes]) => {
+        if (subLanes.length <= MAX_SUB_LANES) return;
+        const parentSeg = parentSegByTaskId[groupId];
+        if (!parentSeg) return;
+        const extra = subLanes.length - MAX_SUB_LANES;
+        const left = (parentSeg.startCol / nDays) * 100;
+        const width = (parentSeg.span / nDays) * 100;
+        const top = laneTop[parentSeg.lane] + TITLE_STRIP + MAX_SUB_LANES * (SUB_H + SUB_GAP);
+        html += '<div class="cal-event-child-overflow" style="left:calc(' + left + '% + 8px); width:calc(' + width + '% - 16px); top:' + top + 'px">+' + extra + ' more</div>';
+      });
       // "X more" indicator if exceeds maxLanesShown
       const overflowCount = lanes.length - maxLanesShown;
       if (overflowCount > 0) {
@@ -4572,8 +4604,8 @@ function renderRoadmapCalendar(roadmapId) {
           '<div class="rmt-pair">' +
             '<span class="rmt-label">Start</span>' +
             '<div class="rmt-input-wrap">' +
-              '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (sA ? ' disabled' : '') + ' title="Start">' +
               (canAnchor ? pinBtnHtml('rmt-pin-start', sA === 'group-start', 'start') : '') +
+              '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (sA ? ' disabled' : '') + ' title="Start">' +
             '</div>' +
           '</div>' +
           '<div class="rmt-pair">' +
