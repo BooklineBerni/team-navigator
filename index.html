@@ -100,20 +100,24 @@
   .stats { display: flex; gap: 8px; font-size: 11px; color: #6b6b6b; flex-wrap: wrap; padding: 4px 0; }
   .stats .stat { display: inline-flex; gap: 4px; align-items: center; }
   .stats .dot { width: 6px; height: 6px; border-radius: 50%; }
-  .dot.pending { background: #d1a300; } .dot.progress { background: #2563eb; } .dot.done { background: #16a34a; }
+  .dot.proposed { background: #d1a300; } .dot.under-review { background: #b45309; } .dot.in-progress { background: #2563eb; }
+  .dot.waiting { background: #ea580c; } .dot.later-next { background: #7c3aed; } .dot.completed { background: #16a34a; }
   .dot.archived { background: #92400e; } .dot.discarded { background: #9a9a9a; }
 
   .tasks { display: flex; flex-direction: column; gap: 4px; max-height: 540px; overflow-y: auto; padding-right: 2px; }
   .tasks:empty::before { content: "No tasks match these filters"; display: block; font-size: 12px; color: #9a9a9a; padding: 6px 2px; }
   .task { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 8px; padding: 6px 8px; border-radius: 8px; background: #faf9f7; border: 1px solid #efeeea; align-items: center; }
-  .task[data-pstatus="pending"]     { background: #fffbeb; border-color: #fde68a; }
-  .task[data-pstatus="in_progress"] { background: #eff6ff; border-color: #bfdbfe; }
-  .task[data-pstatus="completed"]   { background: #ecfdf3; border-color: #a7f3d0; }
-  .task[data-pstatus="completed"] .text { text-decoration: line-through; color: #047857; opacity: 0.85; }
-  .task[data-pstatus="archived"]    { background: #f5efe6; border-color: #d6c5a8; opacity: 0.85; }
-  .task[data-pstatus="archived"] .text { color: #78350f; }
-  .task[data-pstatus="discarded"]   { background: #f5f5f4; border-color: #d8d6d1; opacity: 0.75; }
-  .task[data-pstatus="discarded"] .text { text-decoration: line-through; color: #64748b; }
+  .task[data-pstatus="Proposed"]      { background: #fffbeb; border-color: #fde68a; }
+  .task[data-pstatus="Under Review"]  { background: #fef3c7; border-color: #fcd34d; }
+  .task[data-pstatus="In Progress"]   { background: #eff6ff; border-color: #bfdbfe; }
+  .task[data-pstatus="Waiting"]       { background: #fff7ed; border-color: #fed7aa; }
+  .task[data-pstatus="Later / Next"]  { background: #f5f3ff; border-color: #ddd6fe; }
+  .task[data-pstatus="Completed"]     { background: #ecfdf3; border-color: #a7f3d0; }
+  .task[data-pstatus="Completed"] .text { text-decoration: line-through; color: #047857; opacity: 0.85; }
+  .task[data-pstatus="Archived"]      { background: #f5efe6; border-color: #d6c5a8; opacity: 0.85; }
+  .task[data-pstatus="Archived"] .text { color: #78350f; }
+  .task[data-pstatus="Discarded"]     { background: #f5f5f4; border-color: #d8d6d1; opacity: 0.75; }
+  .task[data-pstatus="Discarded"] .text { text-decoration: line-through; color: #64748b; }
   .task[data-selected="true"] { outline: 2px solid #1a1a1a; outline-offset: -1px; }
   .task .text { font-size: 13px; word-break: break-word; line-height: 1.3; font-weight: 500; cursor: pointer; }
   .task .checkbox { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #d8d6d1; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; background: #fff; flex-shrink: 0; font-size: 11px; line-height: 1; }
@@ -146,11 +150,14 @@
   /* Flat tasks */
   .flat-tasks { display: flex; flex-direction: column; gap: 4px; }
   .flat-task { display: grid; grid-template-columns: 16px 32px 1fr auto auto; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 8px; background: #faf9f7; border: 1px solid #efeeea; }
-  .flat-task[data-pstatus="pending"]     { background: #fffbeb; border-color: #fde68a; }
-  .flat-task[data-pstatus="in_progress"] { background: #eff6ff; border-color: #bfdbfe; }
-  .flat-task[data-pstatus="completed"]   { background: #ecfdf3; border-color: #a7f3d0; }
-  .flat-task[data-pstatus="archived"]    { background: #f5efe6; border-color: #d6c5a8; opacity: 0.85; }
-  .flat-task[data-pstatus="discarded"]   { background: #f5f5f4; border-color: #d8d6d1; opacity: 0.75; }
+  .flat-task[data-pstatus="Proposed"]      { background: #fffbeb; border-color: #fde68a; }
+  .flat-task[data-pstatus="Under Review"]  { background: #fef3c7; border-color: #fcd34d; }
+  .flat-task[data-pstatus="In Progress"]   { background: #eff6ff; border-color: #bfdbfe; }
+  .flat-task[data-pstatus="Waiting"]       { background: #fff7ed; border-color: #fed7aa; }
+  .flat-task[data-pstatus="Later / Next"]  { background: #f5f3ff; border-color: #ddd6fe; }
+  .flat-task[data-pstatus="Completed"]     { background: #ecfdf3; border-color: #a7f3d0; }
+  .flat-task[data-pstatus="Archived"]      { background: #f5efe6; border-color: #d6c5a8; opacity: 0.85; }
+  .flat-task[data-pstatus="Discarded"]     { background: #f5f5f4; border-color: #d8d6d1; opacity: 0.75; }
   .flat-task .text { font-size: 13px; cursor: pointer; }
   .flat-task .av-mini { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; position: relative; color: #fff; font-weight: 600; font-size: 11px; display: inline-flex; }
   .flat-task .av-mini .ini { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 0; }
@@ -189,6 +196,55 @@
   .rm-tab.drop-before { box-shadow: -3px 0 0 0 #1a1a1a; }
   .rm-tab.drop-after { box-shadow: 3px 0 0 0 #1a1a1a; }
   .rm-tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .rm-selector-dropdown {
+    padding: 7px 32px 7px 12px;
+    border: 1px solid #d8d6d1;
+    background: #fff;
+    color: #1a1a1a;
+    border-radius: 8px;
+    font-size: 13px; font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    min-width: 240px;
+    max-width: 480px;
+    transition: border-color .12s, box-shadow .12s;
+  }
+  .rm-selector-dropdown:hover { border-color: #a8a39a; }
+  .rm-selector-dropdown:focus { outline: none; border-color: #1a1a1a; box-shadow: 0 0 0 3px rgba(26,26,26,0.08); }
+  /* Task modal — per-roadmap rows with dates + jump link */
+  .rm-modal-list { display: flex; flex-direction: column; gap: 4px; }
+  .rm-modal-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 8px;
+    background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;
+    font-size: 12px;
+  }
+  .rm-modal-link {
+    appearance: none; border: none; background: transparent;
+    color: #92400e; font-weight: 700; cursor: pointer;
+    padding: 0; font-family: inherit; font-size: 12px;
+    text-align: left; flex: 1 1 auto; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .rm-modal-link:hover { text-decoration: underline; color: #78350f; }
+  .rm-modal-dates {
+    flex-shrink: 0;
+    color: #92400e; font-weight: 600;
+    background: #fff; border: 1px solid #fde68a;
+    padding: 2px 8px; border-radius: 6px;
+    font-size: 11px; white-space: nowrap;
+  }
+  .rm-modal-dates.empty { color: #b8a672; font-weight: 500; font-style: italic; }
+  .rm-modal-x {
+    appearance: none; border: none; background: transparent;
+    color: #92400e; cursor: pointer;
+    padding: 0; font-size: 16px; line-height: 1;
+    width: 18px; height: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .rm-modal-x:hover { background: rgba(146,64,14,0.15); }
   .rm-summary-card { padding: 14px 18px; background: #fff; border: 1px solid #ececea; border-radius: 12px; margin-bottom: 14px; display: flex; align-items: center; gap: 16px; }
   .rm-summary-name { font-size: 18px; font-weight: 700; flex-shrink: 0; }
   .rm-summary-meta {
@@ -1558,14 +1614,17 @@
     display: grid; grid-template-columns: 16px 32px 1fr auto auto; gap: 8px; align-items: center;
     padding: 8px 12px; border-radius: 8px; background: #faf9f7; border: 1px solid #efeeea;
   }
-  .flat-task[data-pstatus="pending"]     { background: #fffbeb; border-color: #fde68a; }
-  .flat-task[data-pstatus="in_progress"] { background: #eff6ff; border-color: #bfdbfe; }
-  .flat-task[data-pstatus="completed"]   { background: #ecfdf3; border-color: #a7f3d0; }
-  .flat-task[data-pstatus="completed"] .text { text-decoration: line-through; color: #047857; opacity: 0.85; }
-  .flat-task[data-pstatus="archived"]    { background: #f5efe6; border-color: #d6c5a8; opacity: 0.85; }
-  .flat-task[data-pstatus="archived"] .text { color: #78350f; }
-  .flat-task[data-pstatus="discarded"]   { background: #f5f5f4; border-color: #d8d6d1; opacity: 0.75; }
-  .flat-task[data-pstatus="discarded"] .text { text-decoration: line-through; color: #64748b; }
+  .flat-task[data-pstatus="Proposed"]      { background: #fffbeb; border-color: #fde68a; }
+  .flat-task[data-pstatus="Under Review"]  { background: #fef3c7; border-color: #fcd34d; }
+  .flat-task[data-pstatus="In Progress"]   { background: #eff6ff; border-color: #bfdbfe; }
+  .flat-task[data-pstatus="Waiting"]       { background: #fff7ed; border-color: #fed7aa; }
+  .flat-task[data-pstatus="Later / Next"]  { background: #f5f3ff; border-color: #ddd6fe; }
+  .flat-task[data-pstatus="Completed"]     { background: #ecfdf3; border-color: #a7f3d0; }
+  .flat-task[data-pstatus="Completed"] .text { text-decoration: line-through; color: #047857; opacity: 0.85; }
+  .flat-task[data-pstatus="Archived"]      { background: #f5efe6; border-color: #d6c5a8; opacity: 0.85; }
+  .flat-task[data-pstatus="Archived"] .text { color: #78350f; }
+  .flat-task[data-pstatus="Discarded"]     { background: #f5f5f4; border-color: #d8d6d1; opacity: 0.75; }
+  .flat-task[data-pstatus="Discarded"] .text { text-decoration: line-through; color: #64748b; }
   .flat-task[data-selected="true"] { outline: 2px solid #1a1a1a; outline-offset: -1px; }
   .flat-task .av-mini { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; position: relative; color: #fff; font-weight: 600; font-size: 11px; display: inline-flex; }
   .flat-task .av-mini .ini { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 0; }
@@ -1928,7 +1987,7 @@
     <select id="bulkAddTagSel" title="Add a task tag to selected"><option value="">+ Add task tag…</option></select>
     <select id="bulkRemoveTagSel" title="Remove a task tag from selected"><option value="">− Remove task tag…</option></select>
     <span class="sep"></span>
-    <select id="bulkSetStatus" title="Set panel status on selected"><option value="">Set status…</option><option value="pending">Pending</option><option value="in_progress">In Progress</option><option value="completed">Completed</option><option value="archived">Archived</option><option value="discarded">Discarded</option></select>
+    <select id="bulkSetStatus" title="Set status on selected"><option value="">Set status…</option><option value="Proposed">Proposed</option><option value="Under Review">Under Review</option><option value="In Progress">In Progress</option><option value="Waiting">Waiting</option><option value="Later / Next">Later / Next</option><option value="Completed">Completed</option><option value="Archived">Archived</option><option value="Discarded">Discarded</option></select>
     <select id="bulkSetResponsible" title="Set responsible on selected"><option value="">Set responsible…</option></select>
     <div class="bulk-rm-wrap" style="position:relative; display:inline-block">
       <button class="bulk-rm-btn" id="bulkRoadmapsBtn" type="button" title="Add/remove selected tasks to/from roadmaps">📍 Roadmaps…</button>
@@ -1993,11 +2052,14 @@
         <input type="text" id="rmf_addSearch" class="search-input" placeholder="Search by title or comments...">
         <select id="rmf_addStatus">
           <option value="all">Status: All</option>
-          <option value="pending">Pending</option>
-          <option value="in_progress">In Progress</option>
-          <option value="completed">Completed</option>
-          <option value="archived">Archived</option>
-          <option value="discarded">Discarded</option>
+          <option value="Proposed">Proposed</option>
+          <option value="Under Review">Under Review</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Waiting">Waiting</option>
+          <option value="Later / Next">Later / Next</option>
+          <option value="Completed">Completed</option>
+          <option value="Archived">Archived</option>
+          <option value="Discarded">Discarded</option>
         </select>
         <select id="rmf_addPrio">
           <option value="all">Priority: All</option>
@@ -2152,18 +2214,14 @@
       <select id="f_groupId"><option value="">— No group —</option></select>
       <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Assign this task to a group to nest it under a parent.</div>
     </div>
-    <div class="field-row f_taskOnlyRow" id="f_statusRow">
-      <div class="field"><label>Panel status <span style="color:#dc2626">*</span></label><select id="f_panelStatus">
-        <option value="pending">Pending</option><option value="in_progress">In Progress</option>
-        <option value="completed">Completed</option><option value="archived">Archived</option><option value="discarded">Discarded</option>
-      </select></div>
-      <div class="field"><label>Slack status <span style="color:#dc2626">*</span></label><select id="f_slackStatus">
-        <option value="">(empty)</option><option value="Empty">Empty</option>
+    <div class="field f_taskOnlyRow" id="f_statusRow">
+      <label>Status <span style="color:#dc2626">*</span></label><select id="f_slackStatus">
+        <option value="">(empty)</option>
         <option value="Proposed">Proposed</option><option value="Under Review">Under Review</option>
         <option value="In Progress">In Progress</option><option value="Waiting">Waiting</option>
         <option value="Later / Next">Later / Next</option><option value="Completed">Completed</option>
         <option value="Archived">Archived</option><option value="Discarded">Discarded</option>
-      </select></div>
+      </select>
     </div>
     <div class="field-row-3 f_taskOnlyRow">
       <div class="field"><label>Priority <span style="color:#dc2626">*</span></label><select id="f_priority">
@@ -2373,6 +2431,22 @@ STORE.tasks.forEach(t => {
   }
 });
 if (migrated > 0) saveStore(STORE);
+// One-time migration: derive slackStatus from legacy panelStatus when missing/empty.
+const PANEL_TO_SLACK = {
+  pending: "Proposed",
+  in_progress: "In Progress",
+  completed: "Completed",
+  archived: "Archived",
+  discarded: "Discarded"
+};
+let migratedStatus = 0;
+STORE.tasks.forEach(t => {
+  if (!t.slackStatus || t.slackStatus === "" || t.slackStatus === "Empty") {
+    const mapped = PANEL_TO_SLACK[t.panelStatus];
+    if (mapped) { t.slackStatus = mapped; migratedStatus++; }
+  }
+});
+if (migratedStatus > 0) saveStore(STORE);
 // Sync aggregated task.startDate/endDate from all roadmap entries (one-time after load).
 // Safe to call here — function declarations hoist within this same <script> tag.
 try { recomputeAllTaskDates(); saveStore(STORE); } catch (_) {}
@@ -2659,8 +2733,8 @@ function taskMatchesFilters(t) {
   if (personInclude.size > 0 && !personInclude.has(t.responsibleId)) return false;
   if (personExclude.has(t.responsibleId)) return false;
   // Status include/exclude
-  if (statusInclude.size > 0 && !statusInclude.has(t.panelStatus)) return false;
-  if (statusExclude.has(t.panelStatus)) return false;
+  if (statusInclude.size > 0 && !statusInclude.has(t.slackStatus)) return false;
+  if (statusExclude.has(t.slackStatus)) return false;
   // Priority include/exclude (treat empty string as "(none)")
   const prioKey = t.priority || "__none";
   if (prioInclude.size > 0 && !prioInclude.has(prioKey)) return false;
@@ -2681,7 +2755,8 @@ function taskMatchesFilters(t) {
     for (const tag of taskTagInclude) if (tt.includes(tag)) { hasAny = true; break; }
     if (!hasAny) return false;
   }
-  for (const tag of taskTagExclude) if (tt.includes(tag)) return false;
+  if (taskTagExclude.has("__none") && tt.length === 0) return false;
+  for (const tag of taskTagExclude) if (tag !== "__none" && tt.includes(tag)) return false;
   // Roadmap include/exclude
   if (!taskMatchesRoadmapFilter(t)) return false;
   return true;
@@ -2744,8 +2819,8 @@ function renderTeamStrip() {
   const html = [];
   const totalContextual = STORE.tasks.filter(t => {
     if (!personMatchesTagFilter(t.responsibleId)) return false;
-    if (statusInclude.size > 0 && !statusInclude.has(t.panelStatus)) return false;
-    if (statusExclude.has(t.panelStatus)) return false;
+    if (statusInclude.size > 0 && !statusInclude.has(t.slackStatus)) return false;
+    if (statusExclude.has(t.slackStatus)) return false;
     const pk = t.priority || "__none";
     if (prioInclude.size > 0 && !prioInclude.has(pk)) return false;
     if (prioExclude.has(pk)) return false;
@@ -2756,7 +2831,8 @@ function renderTeamStrip() {
       for (const tag of taskTagInclude) if (tt.includes(tag)) { hasAny = true; break; }
       if (!hasAny) return false;
     }
-    for (const tag of taskTagExclude) if (tt.includes(tag)) return false;
+    if (taskTagExclude.has("__none") && tt.length === 0) return false;
+    for (const tag of taskTagExclude) if (tag !== "__none" && tt.includes(tag)) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const hay = (t.subject + " " + (t.extraComments||"") + " " + (t.slackStatus||"")).toLowerCase();
@@ -2814,11 +2890,14 @@ function renderTeamStrip() {
 }
 
 const STATUSES = [
-  { key: "pending",     label: "Pending",     bg: "#fffbeb", color: "#92400e" },
-  { key: "in_progress", label: "In Progress", bg: "#eff6ff", color: "#1e40af" },
-  { key: "completed",   label: "Completed",   bg: "#ecfdf3", color: "#027a48" },
-  { key: "archived",    label: "Archived",    bg: "#f5efe6", color: "#78350f" },
-  { key: "discarded",   label: "Discarded",   bg: "#f1f5f9", color: "#64748b" }
+  { key: "Proposed",     label: "Proposed",     bg: "#fffbeb", color: "#92400e" },
+  { key: "Under Review", label: "Under Review", bg: "#fef3c7", color: "#92400e" },
+  { key: "In Progress",  label: "In Progress",  bg: "#eff6ff", color: "#1e40af" },
+  { key: "Waiting",      label: "Waiting",      bg: "#fff7ed", color: "#9a3412" },
+  { key: "Later / Next", label: "Later / Next", bg: "#f5f3ff", color: "#5b21b6" },
+  { key: "Completed",    label: "Completed",    bg: "#ecfdf3", color: "#027a48" },
+  { key: "Archived",     label: "Archived",     bg: "#f5efe6", color: "#78350f" },
+  { key: "Discarded",    label: "Discarded",    bg: "#f1f5f9", color: "#64748b" }
 ];
 const PRIORITIES = [
   { key: "Critical", label: "Critical", bg: "#fee4e2", color: "#b42318" },
@@ -2833,8 +2912,8 @@ function countTasksForPersonContextual(personId) {
   return STORE.tasks.filter(t => {
     if (t.responsibleId !== personId) return false;
     if (!personMatchesTagFilter(t.responsibleId)) return false;
-    if (statusInclude.size > 0 && !statusInclude.has(t.panelStatus)) return false;
-    if (statusExclude.has(t.panelStatus)) return false;
+    if (statusInclude.size > 0 && !statusInclude.has(t.slackStatus)) return false;
+    if (statusExclude.has(t.slackStatus)) return false;
     const pk = t.priority || "__none";
     if (prioInclude.size > 0 && !prioInclude.has(pk)) return false;
     if (prioExclude.has(pk)) return false;
@@ -2845,7 +2924,8 @@ function countTasksForPersonContextual(personId) {
       for (const tag of taskTagInclude) if (tt.includes(tag)) { hasAny = true; break; }
       if (!hasAny) return false;
     }
-    for (const tag of taskTagExclude) if (tt.includes(tag)) return false;
+    if (taskTagExclude.has("__none") && tt.length === 0) return false;
+    for (const tag of taskTagExclude) if (tag !== "__none" && tt.includes(tag)) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const hay = (t.subject + " " + (t.extraComments||"") + " " + (t.slackStatus||"")).toLowerCase();
@@ -2872,8 +2952,8 @@ function countTasksMatchingExcept(dim, optKey) {
       if (!personMatchesTagFilter(t.responsibleId)) return false;
     }
     if (dim !== "status") {
-      if (statusInclude.size > 0 && !statusInclude.has(t.panelStatus)) return false;
-      if (statusExclude.has(t.panelStatus)) return false;
+      if (statusInclude.size > 0 && !statusInclude.has(t.slackStatus)) return false;
+      if (statusExclude.has(t.slackStatus)) return false;
     }
     if (dim !== "priority") {
       const pk = t.priority || "__none";
@@ -2889,7 +2969,8 @@ function countTasksMatchingExcept(dim, optKey) {
         for (const tag of taskTagInclude) if (tt.includes(tag)) { hasAny = true; break; }
         if (!hasAny) return false;
       }
-      for (const tag of taskTagExclude) if (tt.includes(tag)) return false;
+      if (taskTagExclude.has("__none") && tt.length === 0) return false;
+      for (const tag of taskTagExclude) if (tag !== "__none" && tt.includes(tag)) return false;
     }
     if (dim !== "roadmap") {
       if (!taskMatchesRoadmapFilter(t)) return false;
@@ -2901,7 +2982,7 @@ function countTasksMatchingExcept(dim, optKey) {
     }
     if (dim === "status") {
       if (optKey === "__all") return true;
-      return t.panelStatus === optKey;
+      return t.slackStatus === optKey;
     }
     if (dim === "priority") {
       if (optKey === "__all") return true;
@@ -3011,7 +3092,15 @@ function renderTaskTagFilter() {
     else styleAttr = 'style="background:' + t.bg + ';color:' + t.fg + ';border-color:' + t.bg + '"';
     inner += '<button class="' + cls + '" data-tt-filter="' + escapeHtml(t.name) + '" ' + styleAttr + ' title="Click cycles: include &rarr; exclude &rarr; off">' + prefix + escapeHtml(t.name) + countBadge(countTasksMatchingExcept("taskTag", t.name)) + '</button>';
   });
-  inner += '<button class="pill ' + (taskTagInclude.has("__none") ? 'active' : '') + '" data-tt-filter="__none" title="Tasks with no task tags">Untagged' + countBadge(countTasksMatchingExcept("taskTag", "__none")) + '</button>';
+  {
+    const ni = taskTagInclude.has("__none");
+    const ne = taskTagExclude.has("__none");
+    let cls = 'pill';
+    let prefix = '';
+    if (ni) cls += ' active';
+    else if (ne) { cls += ' excluded'; prefix = '− '; }
+    inner += '<button class="' + cls + '" data-tt-filter="__none" title="Click cycles: include → exclude → off">' + prefix + 'Untagged' + countBadge(countTasksMatchingExcept("taskTag", "__none")) + '</button>';
+  }
   inner += '</div>';
   bar.innerHTML = inner;
   bar.querySelectorAll("button[data-tt-filter]").forEach(b => {
@@ -3043,7 +3132,15 @@ function renderRoadmapFilter() {
     else if (excl) { cls += ' excluded'; prefix = '− '; }
     inner += '<button class="' + cls + '" data-rm-filter="' + escapeHtml(r.id) + '" title="Click cycles: include &rarr; exclude &rarr; off">📍 ' + prefix + escapeHtml(r.name || '(unnamed)') + countBadge(countTasksMatchingExcept("roadmap", r.id)) + '</button>';
   });
-  inner += '<button class="pill ' + (roadmapInclude.has("__none") ? 'active' : '') + '" data-rm-filter="__none" title="Tasks not in any roadmap">No roadmap' + countBadge(countTasksMatchingExcept("roadmap", "__none")) + '</button>';
+  {
+    const ni = roadmapInclude.has("__none");
+    const ne = roadmapExclude.has("__none");
+    let cls = 'pill';
+    let prefix = '';
+    if (ni) cls += ' active';
+    else if (ne) { cls += ' excluded'; prefix = '− '; }
+    inner += '<button class="' + cls + '" data-rm-filter="__none" title="Click cycles: include → exclude → off">' + prefix + 'No roadmap' + countBadge(countTasksMatchingExcept("roadmap", "__none")) + '</button>';
+  }
   inner += '</div>';
   bar.innerHTML = inner;
   bar.querySelectorAll("button[data-rm-filter]").forEach(b => {
@@ -3141,7 +3238,7 @@ function clearTagFilter() {
 }
 
 const PRIORITY_ORDER = { "Critical": 0, "Alta": 1, "Media": 2, "Baja": 3, "Muy Baja": 4, "": 5 };
-const PANEL_STATUS_ORDER = { "in_progress": 0, "pending": 1, "completed": 2, "archived": 3, "discarded": 4 };
+const STATUS_ORDER = { "Proposed": 1, "Under Review": 2, "In Progress": 3, "Waiting": 4, "Later / Next": 5, "Completed": 6, "Archived": 7, "Discarded": 8 };
 function sortPersons(ids, allTasks) {
   const arr = [...ids];
   if (sortMembers === "name-asc") arr.sort((a,b) => (findPerson(a)?.name||"").localeCompare(findPerson(b)?.name||""));
@@ -3161,7 +3258,7 @@ function sortTaskList(tasks) {
     if (!b.dueDate) return -1;
     return a.dueDate.localeCompare(b.dueDate);
   });
-  else if (sortTasks === "status") arr.sort((a,b) => (PANEL_STATUS_ORDER[a.panelStatus]??99) - (PANEL_STATUS_ORDER[b.panelStatus]??99));
+  else if (sortTasks === "status") arr.sort((a,b) => (STATUS_ORDER[a.slackStatus]??99) - (STATUS_ORDER[b.slackStatus]??99));
   return arr;
 }
 
@@ -3254,11 +3351,14 @@ function render() {
     });
     // Status dot counts: derive from visibleTasks (all filters applied — including status)
     const counts = {
-      pending: visibleTasks.filter(t=>t.panelStatus==="pending").length,
-      in_progress: visibleTasks.filter(t=>t.panelStatus==="in_progress").length,
-      completed: visibleTasks.filter(t=>t.panelStatus==="completed").length,
-      archived: visibleTasks.filter(t=>t.panelStatus==="archived").length,
-      discarded: visibleTasks.filter(t=>t.panelStatus==="discarded").length
+      proposed:     visibleTasks.filter(t=>t.slackStatus === "Proposed").length,
+      under_review: visibleTasks.filter(t=>t.slackStatus === "Under Review").length,
+      in_progress:  visibleTasks.filter(t=>t.slackStatus === "In Progress").length,
+      waiting:      visibleTasks.filter(t=>t.slackStatus === "Waiting").length,
+      later_next:   visibleTasks.filter(t=>t.slackStatus === "Later / Next").length,
+      completed:    visibleTasks.filter(t=>t.slackStatus === "Completed").length,
+      archived:     visibleTasks.filter(t=>t.slackStatus === "Archived").length,
+      discarded:    visibleTasks.filter(t=>t.slackStatus === "Discarded").length
     };
     const personTags = getTagsFor(pid);
     const tagsLine = personTags.length
@@ -3280,9 +3380,12 @@ function render() {
         </div>
       </div>
       <div class="stats">
-        ${counts.pending > 0 ? '<span class="stat" title="Pending"><span class="dot pending"></span>'+counts.pending+'</span>' : ''}
-        ${counts.in_progress > 0 ? '<span class="stat" title="In Progress"><span class="dot progress"></span>'+counts.in_progress+'</span>' : ''}
-        ${counts.completed > 0 ? '<span class="stat" title="Completed"><span class="dot done"></span>'+counts.completed+'</span>' : ''}
+        ${counts.proposed > 0 ? '<span class="stat" title="Proposed"><span class="dot proposed"></span>'+counts.proposed+'</span>' : ''}
+        ${counts.under_review > 0 ? '<span class="stat" title="Under Review"><span class="dot under-review"></span>'+counts.under_review+'</span>' : ''}
+        ${counts.in_progress > 0 ? '<span class="stat" title="In Progress"><span class="dot in-progress"></span>'+counts.in_progress+'</span>' : ''}
+        ${counts.waiting > 0 ? '<span class="stat" title="Waiting"><span class="dot waiting"></span>'+counts.waiting+'</span>' : ''}
+        ${counts.later_next > 0 ? '<span class="stat" title="Later / Next"><span class="dot later-next"></span>'+counts.later_next+'</span>' : ''}
+        ${counts.completed > 0 ? '<span class="stat" title="Completed"><span class="dot completed"></span>'+counts.completed+'</span>' : ''}
         ${counts.archived > 0 ? '<span class="stat" title="Archived"><span class="dot archived"></span>'+counts.archived+'</span>' : ''}
         ${counts.discarded > 0 ? '<span class="stat" title="Discarded"><span class="dot discarded"></span>'+counts.discarded+'</span>' : ''}
         <span class="stat" style="margin-left:auto"><strong>${visibleTasks.length}</strong> of ${personTasksMatchingNonStatus.length}</span>
@@ -3302,11 +3405,14 @@ function render() {
     {
       const unassignedVisible = unassignedAll.filter(taskMatchesFilters);
       const u_counts = {
-        pending:     unassignedVisible.filter(t => t.panelStatus === "pending").length,
-        in_progress: unassignedVisible.filter(t => t.panelStatus === "in_progress").length,
-        completed:   unassignedVisible.filter(t => t.panelStatus === "completed").length,
-        archived:    unassignedVisible.filter(t => t.panelStatus === "archived").length,
-        discarded:   unassignedVisible.filter(t => t.panelStatus === "discarded").length
+        proposed:     unassignedVisible.filter(t => t.slackStatus === "Proposed").length,
+        under_review: unassignedVisible.filter(t => t.slackStatus === "Under Review").length,
+        in_progress:  unassignedVisible.filter(t => t.slackStatus === "In Progress").length,
+        waiting:      unassignedVisible.filter(t => t.slackStatus === "Waiting").length,
+        later_next:   unassignedVisible.filter(t => t.slackStatus === "Later / Next").length,
+        completed:    unassignedVisible.filter(t => t.slackStatus === "Completed").length,
+        archived:     unassignedVisible.filter(t => t.slackStatus === "Archived").length,
+        discarded:    unassignedVisible.filter(t => t.slackStatus === "Discarded").length
       };
       const ucard = document.createElement("div");
       ucard.className = "card card-unassigned";
@@ -3319,9 +3425,12 @@ function render() {
           </div>
         </div>
         <div class="stats">
-          ${u_counts.pending > 0 ? '<span class="stat" title="Pending"><span class="dot pending"></span>'+u_counts.pending+'</span>' : ''}
-          ${u_counts.in_progress > 0 ? '<span class="stat" title="In Progress"><span class="dot progress"></span>'+u_counts.in_progress+'</span>' : ''}
-          ${u_counts.completed > 0 ? '<span class="stat" title="Completed"><span class="dot done"></span>'+u_counts.completed+'</span>' : ''}
+          ${u_counts.proposed > 0 ? '<span class="stat" title="Proposed"><span class="dot proposed"></span>'+u_counts.proposed+'</span>' : ''}
+          ${u_counts.under_review > 0 ? '<span class="stat" title="Under Review"><span class="dot under-review"></span>'+u_counts.under_review+'</span>' : ''}
+          ${u_counts.in_progress > 0 ? '<span class="stat" title="In Progress"><span class="dot in-progress"></span>'+u_counts.in_progress+'</span>' : ''}
+          ${u_counts.waiting > 0 ? '<span class="stat" title="Waiting"><span class="dot waiting"></span>'+u_counts.waiting+'</span>' : ''}
+          ${u_counts.later_next > 0 ? '<span class="stat" title="Later / Next"><span class="dot later-next"></span>'+u_counts.later_next+'</span>' : ''}
+          ${u_counts.completed > 0 ? '<span class="stat" title="Completed"><span class="dot completed"></span>'+u_counts.completed+'</span>' : ''}
           ${u_counts.archived > 0 ? '<span class="stat" title="Archived"><span class="dot archived"></span>'+u_counts.archived+'</span>' : ''}
           ${u_counts.discarded > 0 ? '<span class="stat" title="Discarded"><span class="dot discarded"></span>'+u_counts.discarded+'</span>' : ''}
           <span class="stat" style="margin-left:auto"><strong>${unassignedVisible.length}</strong> of ${unassignedAll.length}</span>
@@ -3349,7 +3458,7 @@ function render() {
         responsibleId: isUnassigned ? "" : pid, responsibleRaw: respPerson ? respPerson.email : "",
         proposedById: "U07E6NHMLBV", proposedByRaw: "bernat@bookline.ai",
         priority: "Media", type: "", dueDate: "",
-        slackStatus: "Proposed", slackStatusRaw: "Proposed", panelStatus: "pending",
+        slackStatus: "Proposed",
         dedicatedHours: 0, estimatedHours: 0, shareWith: "", extraComments: "", sharing: false,
         _pendingSync: true, _createdLocal: Date.now()
       });
@@ -3410,7 +3519,7 @@ function taskHtml(t) {
   const allTaskTags = [...orderedTags, ...extraTags];
   const taskTagsHtml = allTaskTags.map(n => taskTagBadgeHtml(n, false)).join("");
   const sel = isSelected(t.id);
-  return '<div class="task" data-pstatus="' + t.panelStatus + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
+  return '<div class="task" data-pstatus="' + escapeHtml(t.slackStatus||'') + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
     '<span class="checkbox ' + (sel?'checked':'') + '" title="Select task (use modal to mark completed)"></span>' +
     '<span class="text" title="Click to edit all fields">' + escapeHtml(t.subject) + '</span>' +
     '<button class="edit-btn" title="Edit">&#9998;</button>' +
@@ -3552,7 +3661,7 @@ function applyGroupModeToModal(isGroup) {
 function openModal(tid, overrides) {
   let t;
   if (tid === "new") {
-    t = { id: uid(), subject: "", completed: false, responsibleId: currentPersonIds.size === 1 ? Array.from(currentPersonIds)[0] : "U07E6NHMLBV", responsibleRaw: "", proposedById: "U07E6NHMLBV", proposedByRaw: "bernat@bookline.ai", priority: "", type: "", dueDate: "", slackStatus: "Proposed", slackStatusRaw: "Proposed", panelStatus: "pending", dedicatedHours: "", estimatedHours: "", shareWith: "", extraComments: "", sharing: false, isGroup: false, groupId: "", _pendingSync: true, _createdLocal: Date.now(), _isNew: true };
+    t = { id: uid(), subject: "", completed: false, responsibleId: currentPersonIds.size === 1 ? Array.from(currentPersonIds)[0] : "U07E6NHMLBV", responsibleRaw: "", proposedById: "U07E6NHMLBV", proposedByRaw: "bernat@bookline.ai", priority: "", type: "", dueDate: "", slackStatus: "Proposed", dedicatedHours: "", estimatedHours: "", shareWith: "", extraComments: "", sharing: false, isGroup: false, groupId: "", _pendingSync: true, _createdLocal: Date.now(), _isNew: true };
     if (overrides && typeof overrides === 'object') Object.assign(t, overrides);
   } else {
     t = STORE.tasks.find(x => x.id === tid);
@@ -3574,7 +3683,6 @@ function openModal(tid, overrides) {
     isGroupCb.title = '';
   }
   refreshGroupSelectOptions(t.groupId || "", t.id);
-  document.getElementById("f_panelStatus").value = t.panelStatus || "pending";
   document.getElementById("f_slackStatus").value = t.slackStatus || "";
   document.getElementById("f_priority").value = t.priority || "";
   document.getElementById("f_type").value = t.type || "";
@@ -3626,15 +3734,13 @@ document.getElementById("saveBtn").addEventListener("click", () => {
   if (isGroup) {
     if (!subject) { alert("Please fill in: Title"); return; }
   } else {
-    const panelStatus = document.getElementById("f_panelStatus").value;
     const slackStatus = document.getElementById("f_slackStatus").value;
     const priority = document.getElementById("f_priority").value;
     const type = document.getElementById("f_type").value;
     const shareWith = document.getElementById("f_shareWith").value;
     const missing = [];
     if (!subject) missing.push("Title");
-    if (!panelStatus) missing.push("Panel status");
-    if (!slackStatus) missing.push("Slack status");
+    if (!slackStatus) missing.push("Status");
     if (!priority) missing.push("Priority");
     if (!type) missing.push("Type");
     if (!shareWith) missing.push("Share with");
@@ -3650,7 +3756,6 @@ document.getElementById("saveBtn").addEventListener("click", () => {
   if (isGroup) {
     // Groups: keep title + description only; clear other fields so they don't appear in lists
     t.groupId = "";
-    t.panelStatus = "";
     t.slackStatus = "";
     t.priority = "";
     t.type = "";
@@ -3665,7 +3770,6 @@ document.getElementById("saveBtn").addEventListener("click", () => {
     t.taskTags = [];
   } else {
     t.groupId = document.getElementById("f_groupId").value || "";
-    t.panelStatus = document.getElementById("f_panelStatus").value;
     t.slackStatus = document.getElementById("f_slackStatus").value;
     t.priority = document.getElementById("f_priority").value;
     t.type = document.getElementById("f_type").value;
@@ -3699,7 +3803,7 @@ document.getElementById("saveBtn").addEventListener("click", () => {
       return p ? (p.email || p.name) : id;
     }).join(', ');
   }
-  if (t.completed) { t.panelStatus = "completed"; if (!(t.slackStatus||"").toLowerCase().includes('complete')) t.slackStatus = "Completed"; }
+  if (t.completed) { t.slackStatus = "Completed"; }
   // If this task came from a Slack request approval, mark the request as handled
   if (t._fromRequestTs) {
     if (!STORE.requestActions) STORE.requestActions = {};
@@ -4071,21 +4175,46 @@ function renderRoadmapsInModal(t) {
   const sel = document.getElementById("f_addRoadmapSel");
   if (!cont || !sel) return;
   const allRoadmaps = (typeof getRoadmaps === 'function') ? getRoadmaps() : [];
-  const assigned = allRoadmaps.filter(r => (r.tasks || []).some(e => e.taskId === t.id));
-  // Render chips of assigned roadmaps
+  const assigned = allRoadmaps.filter(r => (r.tasks || []).some(e => e.taskId === t.id))
+    .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  // Stacked rows: each row shows the roadmap name (clickable to jump to it), its specific dates for this task, and a × to remove.
   if (assigned.length === 0) {
     cont.innerHTML = '<span style="color:#9a9a9a; font-size:12px">Not in any roadmap</span>';
   } else {
-    cont.innerHTML = assigned.map(r =>
-      '<span class="rm-chip" data-rmid="' + escapeHtml(r.id) + '" style="display:inline-flex; align-items:center; gap:6px; background:#fef3c7; border:1px solid #fde68a; padding:3px 8px; border-radius:999px; font-size:12px; color:#92400e; font-weight:600">' +
-        '📍 ' + escapeHtml(r.name || '(unnamed)') +
-        '<button type="button" class="rm-chip-x" style="appearance:none; border:none; background:transparent; cursor:pointer; color:#92400e; padding:0 0 0 2px; font-size:14px; line-height:1" title="Remove from this roadmap">×</button>' +
-      '</span>'
-    ).join('');
-    cont.querySelectorAll(".rm-chip-x").forEach(btn => {
-      btn.addEventListener("click", e => {
+    cont.innerHTML = '<div class="rm-modal-list">' + assigned.map(r => {
+      const entry = (r.tasks || []).find(e => e.taskId === t.id);
+      const eff = (entry && typeof effectiveDatesForInRoadmap === 'function')
+        ? effectiveDatesForInRoadmap(entry, r)
+        : { startStr: (entry && entry.startDate) || '', endStr: (entry && entry.endDate) || '' };
+      const startTxt = eff.startStr || '—';
+      const endTxt   = eff.endStr   || '—';
+      const datesEmpty = !eff.startStr && !eff.endStr;
+      return '<div class="rm-modal-row" data-rmid="' + escapeHtml(r.id) + '">' +
+        '<button type="button" class="rm-modal-link" data-rmid="' + escapeHtml(r.id) + '" title="Open this roadmap">' +
+          '📍 ' + escapeHtml(r.name || '(unnamed)') +
+        '</button>' +
+        '<span class="rm-modal-dates' + (datesEmpty ? ' empty' : '') + '">' +
+          escapeHtml(startTxt) + '&nbsp;→&nbsp;' + escapeHtml(endTxt) +
+        '</span>' +
+        '<button type="button" class="rm-modal-x" data-rmid="' + escapeHtml(r.id) + '" title="Remove from this roadmap">×</button>' +
+      '</div>';
+    }).join('') + '</div>';
+    // Click on roadmap name → navigate to roadmaps page with that roadmap selected
+    cont.querySelectorAll('.rm-modal-link').forEach(btn => {
+      btn.addEventListener('click', e => {
         e.stopPropagation();
-        const rmId = btn.closest(".rm-chip").dataset.rmid;
+        const rmId = btn.dataset.rmid;
+        if (!rmId) return;
+        if (typeof closeModal === 'function') closeModal();
+        selectedRoadmapTimelineId = rmId;
+        localStorage.setItem("bookline-selectedRoadmap", rmId);
+        if (typeof switchView === 'function') switchView('roadmaps');
+      });
+    });
+    cont.querySelectorAll('.rm-modal-x').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const rmId = btn.dataset.rmid;
         const rm = findRoadmap(rmId);
         if (!rm) return;
         rm.tasks = (rm.tasks || []).filter(entry => entry.taskId !== t.id);
@@ -4094,8 +4223,9 @@ function renderRoadmapsInModal(t) {
       });
     });
   }
-  // Fill dropdown with un-assigned roadmaps
-  const unassigned = allRoadmaps.filter(r => !assigned.some(a => a.id === r.id));
+  // Fill dropdown with un-assigned roadmaps (alphabetical)
+  const unassigned = allRoadmaps.filter(r => !assigned.some(a => a.id === r.id))
+    .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   sel.innerHTML = '<option value="">+ Add to roadmap…</option>' +
     unassigned.map(r => '<option value="' + escapeHtml(r.id) + '">' + escapeHtml(r.name || '(unnamed)') + '</option>').join("");
   sel.disabled = unassigned.length === 0;
@@ -4800,8 +4930,9 @@ function renderRoadmapCalendar(roadmapId) {
 
   // Status color map
   const statusColors = {
-    pending: '#fbbf24', in_progress: '#60a5fa', completed: '#34d399',
-    archived: '#a98c5a', discarded: '#9a9a9a'
+    "Proposed": "#fbbf24", "Under Review": "#f59e0b", "In Progress": "#60a5fa",
+    "Waiting": "#fb923c", "Later / Next": "#a78bfa", "Completed": "#34d399",
+    "Archived": "#a98c5a", "Discarded": "#9a9a9a"
   };
 
   // Compute calendar range: first day of grid (Monday) to last day
@@ -4815,7 +4946,7 @@ function renderRoadmapCalendar(roadmapId) {
   const totalWeeks = totalGridDays / 7;
 
   // Build summary
-  const completedCount = events.filter(e => e.task.panelStatus === 'completed').length;
+  const completedCount = events.filter(e => e.task.slackStatus === 'Completed').length;
   const dateRange = (r.startDate || r.endDate) ? (escapeHtml(r.startDate||'?') + ' → ' + escapeHtml(r.endDate||'?')) : 'no dates';
   const ownerHtml = owner
     ? '<div class="rm-owner-chip" data-owner="' + owner.id + '" title="Open ' + escapeHtml(owner.displayName) + ' in Team">' +
@@ -5060,7 +5191,7 @@ function renderRoadmapCalendar(roadmapId) {
           const baseTop = laneTop[s.lane] + TITLE_STRIP;          // first 22px = the group title strip
           top = baseTop + (s.subLane * (SUB_H + SUB_GAP));
           height = SUB_H;
-          color = statusColors[s.event.task.panelStatus] || '#1a1a1a';
+          color = statusColors[s.event.task.slackStatus] || '#1a1a1a';
           fontSize = 9.5;
           cls.push('cal-event-child');
           label = escapeHtml(s.event.task.subject);
@@ -5089,7 +5220,7 @@ function renderRoadmapCalendar(roadmapId) {
           // Normal task bar
           top = laneTop[s.lane];
           height = 20;
-          color = statusColors[s.event.task.panelStatus] || '#1a1a1a';
+          color = statusColors[s.event.task.slackStatus] || '#1a1a1a';
           fontSize = 11;
           label = escapeHtml(s.event.task.subject);
         }
@@ -5584,7 +5715,7 @@ const _origRenderRoadmapsTimelinePage = renderRoadmapsTimelinePage;
 renderRoadmapsTimelinePage = function() {
   const sel = document.getElementById("rmSelector");
   const cont = document.getElementById("rmPageContent");
-  const rms = getRoadmaps();
+  const rms = getRoadmaps().slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   if (rms.length === 0) {
     sel.innerHTML = "";
     cont.innerHTML = '<div class="rm-empty">No roadmaps yet. Click "+ New roadmap" to create one.</div>';
@@ -5594,50 +5725,19 @@ renderRoadmapsTimelinePage = function() {
     selectedRoadmapTimelineId = rms[0].id;
     localStorage.setItem("bookline-selectedRoadmap", selectedRoadmapTimelineId);
   }
-  sel.innerHTML = rms.map(r => {
-    const cnt = (r.tasks || []).length;
-    return '<div class="rm-tab ' + (selectedRoadmapTimelineId === r.id ? "active" : "") + '" data-rm="' + r.id + '" draggable="true" title="Drag to reorder · click to select" role="button" tabindex="0">' + escapeHtml(r.name||"(unnamed)") + ' <span style="opacity:.7">(' + cnt + ')</span></div>';
-  }).join("");
-  sel.querySelectorAll(".rm-tab").forEach(node => {
-    node.addEventListener("click", () => {
-      if (node.dataset.justDragged === "1") { delete node.dataset.justDragged; return; }
-      selectedRoadmapTimelineId = node.dataset.rm;
-      localStorage.setItem("bookline-selectedRoadmap", selectedRoadmapTimelineId);
-      // Reset month state when switching roadmap so it jumps to the new roadmap's start
-      roadmapCalState.yearMonth = null;
-      renderRoadmapsTimelinePage();
-    });
-    // Drag-to-reorder
-    node.addEventListener("dragstart", e => {
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", node.dataset.rm);
-      node.classList.add("dragging");
-    });
-    node.addEventListener("dragend", () => {
-      node.classList.remove("dragging");
-      node.dataset.justDragged = "1";
-      setTimeout(() => { delete node.dataset.justDragged; }, 100);
-      sel.querySelectorAll(".rm-tab").forEach(n => n.classList.remove("drop-before","drop-after"));
-    });
-    node.addEventListener("dragover", e => {
-      e.preventDefault();
-      const rect = node.getBoundingClientRect();
-      const isAfter = (e.clientX - rect.left) > rect.width / 2;
-      sel.querySelectorAll(".rm-tab").forEach(n => n.classList.remove("drop-before","drop-after"));
-      node.classList.add(isAfter ? "drop-after" : "drop-before");
-    });
-    node.addEventListener("dragleave", () => {
-      node.classList.remove("drop-before","drop-after");
-    });
-    node.addEventListener("drop", e => {
-      e.preventDefault();
-      const draggedId = e.dataTransfer.getData("text/plain");
-      const targetId = node.dataset.rm;
-      if (!draggedId || draggedId === targetId) return;
-      const rect = node.getBoundingClientRect();
-      const isAfter = (e.clientX - rect.left) > rect.width / 2;
-      reorderRoadmap(draggedId, targetId, isAfter);
-    });
+  // Dropdown selector (alphabetical) — replaces the drag-reorder tab strip
+  sel.innerHTML = '<select id="rmSelectorDropdown" class="rm-selector-dropdown" title="Select roadmap">' +
+    rms.map(r => {
+      const cnt = (r.tasks || []).length;
+      return '<option value="' + escapeHtml(r.id) + '"' + (selectedRoadmapTimelineId === r.id ? ' selected' : '') + '>' + escapeHtml(r.name || '(unnamed)') + ' (' + cnt + ')</option>';
+    }).join('') +
+  '</select>';
+  const dd = document.getElementById("rmSelectorDropdown");
+  if (dd) dd.addEventListener("change", () => {
+    selectedRoadmapTimelineId = dd.value;
+    localStorage.setItem("bookline-selectedRoadmap", selectedRoadmapTimelineId);
+    roadmapCalState.yearMonth = null;
+    renderRoadmapsTimelinePage();
   });
   renderRoadmapCalendar(selectedRoadmapTimelineId);
 };
@@ -5680,8 +5780,7 @@ function exportToCsv() {
     {h: "ID", g: t => t.id},
     {h: "Subject", g: t => t.subject},
     {h: "Completed", g: t => t.completed ? "true" : "false"},
-    {h: "Panel Status", g: t => t.panelStatus},
-    {h: "Slack Status", g: t => t.slackStatus},
+    {h: "Status", g: t => t.slackStatus},
     {h: "Priority", g: t => t.priority},
     {h: "Type", g: t => t.type},
     {h: "Responsible", g: t => { const p = findPerson(t.responsibleId); return p ? p.name : (t.responsibleRaw||t.responsibleId); }},
@@ -5709,7 +5808,6 @@ function exportToCsv() {
       return g ? (g.subject || "") : "";
     }},
     {h: "Task Tags", g: t => Array.isArray(t.taskTags) ? t.taskTags.join("; ") : ""},
-    {h: "Pending Sync", g: t => t._pendingSync ? "true" : "false"},
     {h: "Tags of Responsible", g: t => getTagsFor(t.responsibleId).join("; ")},
     {h: "Extra Comments", g: t => t.extraComments}
   ];
@@ -5735,10 +5833,10 @@ document.getElementById("exportCsvBtn").addEventListener("click", exportToCsv);
 function renderHomePage() {
   const tasks = STORE.tasks;
   const total = tasks.length;
-  const open = tasks.filter(t => t.panelStatus === "pending" || t.panelStatus === "in_progress").length;
-  const completed = tasks.filter(t => t.panelStatus === "completed").length;
-  const archived = tasks.filter(t => t.panelStatus === "archived").length;
-  const discarded = tasks.filter(t => t.panelStatus === "discarded").length;
+  const open = tasks.filter(t => t.slackStatus === "Proposed" || t.slackStatus === "In Progress").length;
+  const completed = tasks.filter(t => t.slackStatus === "Completed").length;
+  const archived = tasks.filter(t => t.slackStatus === "Archived").length;
+  const discarded = tasks.filter(t => t.slackStatus === "Discarded").length;
 
   // Donut: open / total ratio
   const circumference = 2 * Math.PI * 80;
@@ -5747,15 +5845,18 @@ function renderHomePage() {
   if (arc) arc.setAttribute("stroke-dasharray", (openPct * circumference).toFixed(1) + " " + circumference.toFixed(1));
   document.getElementById("dashOpenValue").textContent = open;
   document.getElementById("dashOpenSub").textContent = "/ " + total + " total";
-  document.getElementById("dashOpenPct").textContent = Math.round(openPct * 100) + "% open (pending or in progress)";
+  document.getElementById("dashOpenPct").textContent = Math.round(openPct * 100) + "% open (proposed or in progress)";
 
-  // Pipeline bars by panelStatus
+  // Pipeline bars by status
   const buckets = [
-    { key: "pending", label: "Pending", color: "#fbbf24", count: tasks.filter(t => t.panelStatus === "pending").length },
-    { key: "in_progress", label: "In Progress", color: "#60a5fa", count: tasks.filter(t => t.panelStatus === "in_progress").length },
-    { key: "completed", label: "Completed", color: "#34d399", count: completed },
-    { key: "archived", label: "Archived", color: "#a98c5a", count: archived },
-    { key: "discarded", label: "Discarded", color: "#9a9a9a", count: discarded }
+    { key: "Proposed",     label: "Proposed",     color: "#fbbf24", count: tasks.filter(t => t.slackStatus === "Proposed").length },
+    { key: "Under Review", label: "Under Review", color: "#f59e0b", count: tasks.filter(t => t.slackStatus === "Under Review").length },
+    { key: "In Progress",  label: "In Progress",  color: "#60a5fa", count: tasks.filter(t => t.slackStatus === "In Progress").length },
+    { key: "Waiting",      label: "Waiting",      color: "#fb923c", count: tasks.filter(t => t.slackStatus === "Waiting").length },
+    { key: "Later / Next", label: "Later / Next", color: "#a78bfa", count: tasks.filter(t => t.slackStatus === "Later / Next").length },
+    { key: "Completed",    label: "Completed",    color: "#34d399", count: completed },
+    { key: "Archived",     label: "Archived",     color: "#a98c5a", count: archived },
+    { key: "Discarded",    label: "Discarded",    color: "#9a9a9a", count: discarded }
   ];
   const maxCount = Math.max(1, ...buckets.map(b => b.count));
   const barsCont = document.getElementById("dashPipelineBars");
@@ -5776,7 +5877,7 @@ function renderHomePage() {
   document.getElementById("dashTopContributors").innerHTML = counts.length === 0
     ? '<div style="color:#6b6b6b; font-size:13px">No task assignments yet.</div>'
     : counts.map(({p, n}) => {
-      const open = tasks.filter(t => t.responsibleId === p.id && (t.panelStatus === "pending" || t.panelStatus === "in_progress")).length;
+      const open = tasks.filter(t => t.responsibleId === p.id && (t.slackStatus === "Proposed" || t.slackStatus === "In Progress")).length;
       return '<div style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:#faf9f7; border:1px solid #ececea; border-radius:10px; min-width:200px">' +
         '<span class="avatar" style="width:36px; height:36px; flex-shrink:0; background:' + p.color + '; font-size:13px">' +
           '<img src="' + p.photo + '" alt="" onerror="this.remove()">' +
@@ -5895,8 +5996,8 @@ function renderMembersPage() {
     let roadmapsHtml = '';
     if (mode === 'team') {
       const taskCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id).length;
-      const pendingCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id && t.panelStatus === "pending").length;
-      const inProgressCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id && t.panelStatus === "in_progress").length;
+      const pendingCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id && t.slackStatus === "Proposed").length;
+      const inProgressCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id && t.slackStatus === "In Progress").length;
       // Roadmaps shown on People cards: only the ones this person OWNS (is responsible for).
       const personRoadmaps = getRoadmapsForPerson(p.id);
       roadmapsHtml = personRoadmaps.length
@@ -5905,25 +6006,31 @@ function renderMembersPage() {
           '</div>'
         : '';
       statsHtml = '<span class="stat" title="Total tasks">' + taskCount + ' tasks</span>' +
-        (pendingCount > 0 ? '<span class="stat" title="Pending"><span class="dot pending"></span>' + pendingCount + '</span>' : '') +
-        (inProgressCount > 0 ? '<span class="stat" title="In Progress"><span class="dot progress"></span>' + inProgressCount + '</span>' : '');
+        (pendingCount > 0 ? '<span class="stat" title="Proposed"><span class="dot proposed"></span>' + pendingCount + '</span>' : '') +
+        (inProgressCount > 0 ? '<span class="stat" title="In Progress"><span class="dot in-progress"></span>' + inProgressCount + '</span>' : '');
     } else {
       // Bookline / disabled-non-team: show task phase counts (where they are proposer)
       const isProposer = (t) => Array.isArray(t.proposedByIds) ? t.proposedByIds.includes(p.id) : t.proposedById === p.id;
       const all = STORE.tasks.filter(t => !t.isGroup && isProposer(t));
       const counts = {
-        pending:     all.filter(t => t.panelStatus === "pending").length,
-        in_progress: all.filter(t => t.panelStatus === "in_progress").length,
-        completed:   all.filter(t => t.panelStatus === "completed").length,
-        archived:    all.filter(t => t.panelStatus === "archived").length,
-        discarded:   all.filter(t => t.panelStatus === "discarded").length
+        proposed:     all.filter(t => t.slackStatus === "Proposed").length,
+        under_review: all.filter(t => t.slackStatus === "Under Review").length,
+        in_progress:  all.filter(t => t.slackStatus === "In Progress").length,
+        waiting:      all.filter(t => t.slackStatus === "Waiting").length,
+        later_next:   all.filter(t => t.slackStatus === "Later / Next").length,
+        completed:    all.filter(t => t.slackStatus === "Completed").length,
+        archived:     all.filter(t => t.slackStatus === "Archived").length,
+        discarded:    all.filter(t => t.slackStatus === "Discarded").length
       };
       statsHtml = '<span class="stat" title="Tasks where they are a proposer"><strong>' + all.length + '</strong> proposed</span>';
-      if (counts.pending > 0)     statsHtml += '<span class="stat" title="Pending"><span class="dot pending"></span>' + counts.pending + '</span>';
-      if (counts.in_progress > 0) statsHtml += '<span class="stat" title="In Progress"><span class="dot progress"></span>' + counts.in_progress + '</span>';
-      if (counts.completed > 0)   statsHtml += '<span class="stat" title="Completed"><span class="dot done"></span>' + counts.completed + '</span>';
-      if (counts.archived > 0)    statsHtml += '<span class="stat" title="Archived"><span class="dot archived"></span>' + counts.archived + '</span>';
-      if (counts.discarded > 0)   statsHtml += '<span class="stat" title="Discarded"><span class="dot discarded"></span>' + counts.discarded + '</span>';
+      if (counts.proposed > 0)     statsHtml += '<span class="stat" title="Proposed"><span class="dot proposed"></span>' + counts.proposed + '</span>';
+      if (counts.under_review > 0) statsHtml += '<span class="stat" title="Under Review"><span class="dot under-review"></span>' + counts.under_review + '</span>';
+      if (counts.in_progress > 0)  statsHtml += '<span class="stat" title="In Progress"><span class="dot in-progress"></span>' + counts.in_progress + '</span>';
+      if (counts.waiting > 0)      statsHtml += '<span class="stat" title="Waiting"><span class="dot waiting"></span>' + counts.waiting + '</span>';
+      if (counts.later_next > 0)   statsHtml += '<span class="stat" title="Later / Next"><span class="dot later-next"></span>' + counts.later_next + '</span>';
+      if (counts.completed > 0)    statsHtml += '<span class="stat" title="Completed"><span class="dot completed"></span>' + counts.completed + '</span>';
+      if (counts.archived > 0)     statsHtml += '<span class="stat" title="Archived"><span class="dot archived"></span>' + counts.archived + '</span>';
+      if (counts.discarded > 0)    statsHtml += '<span class="stat" title="Discarded"><span class="dot discarded"></span>' + counts.discarded + '</span>';
     }
 
     const cls = 'member-card' +
@@ -6090,12 +6197,15 @@ function renderProfilePage() {
   const tagLib = getTagLibrary();
   const personTasks = STORE.tasks.filter(t => t.responsibleId === person.id);
   const counts = {
-    total: personTasks.length,
-    in_progress: personTasks.filter(t=>t.panelStatus==="in_progress").length,
-    pending: personTasks.filter(t=>t.panelStatus==="pending").length,
-    completed: personTasks.filter(t=>t.panelStatus==="completed").length,
-    archived: personTasks.filter(t=>t.panelStatus==="archived").length,
-    discarded: personTasks.filter(t=>t.panelStatus==="discarded").length,
+    total:        personTasks.length,
+    proposed:     personTasks.filter(t=>t.slackStatus === "Proposed").length,
+    under_review: personTasks.filter(t=>t.slackStatus === "Under Review").length,
+    in_progress:  personTasks.filter(t=>t.slackStatus === "In Progress").length,
+    waiting:      personTasks.filter(t=>t.slackStatus === "Waiting").length,
+    later_next:   personTasks.filter(t=>t.slackStatus === "Later / Next").length,
+    completed:    personTasks.filter(t=>t.slackStatus === "Completed").length,
+    archived:     personTasks.filter(t=>t.slackStatus === "Archived").length,
+    discarded:    personTasks.filter(t=>t.slackStatus === "Discarded").length,
   };
   const personRoadmaps = getRoadmapsForPerson(person.id);
   const ini = initials(person.name);
@@ -6397,8 +6507,9 @@ function renderProfileRoadmapCard(rm, personId) {
   for (let i = 0; i < 7; i++) days.push(addDays(today, i));
 
   const statusColors = {
-    pending: '#fbbf24', in_progress: '#60a5fa', completed: '#34d399',
-    archived: '#a98c5a', discarded: '#9a9a9a'
+    "Proposed": "#fbbf24", "Under Review": "#f59e0b", "In Progress": "#60a5fa",
+    "Waiting": "#fb923c", "Later / Next": "#a78bfa", "Completed": "#34d399",
+    "Archived": "#a98c5a", "Discarded": "#9a9a9a"
   };
   const wdLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
@@ -6438,7 +6549,7 @@ function renderProfileRoadmapCard(rm, personId) {
       if (d >= start && d <= end) {
         const t = STORE.tasks.find(x => x.id === entry.taskId);
         if (!t) return;
-        const color = statusColors[t.panelStatus] || '#94a3b8';
+        const color = statusColors[t.slackStatus] || '#94a3b8';
         html += '<div class="mini-event" style="background:' + color + '" title="' + escapeHtml(t.subject) + '" data-tid="' + t.id + '">' + escapeHtml(t.subject) + '</div>';
       }
     });
@@ -6456,8 +6567,11 @@ function renderProfileTasks(tasks, groupBy) {
   // Build groups
   const groups = new Map(); // key -> {label, tasks, sortKey}
   const ungrouped = [];
-  const STATUS_LABELS = {in_progress:'In progress',pending:'Pending',completed:'Completed',archived:'Archived',discarded:'Discarded'};
-  const STATUS_ORDER = {in_progress:0,pending:1,completed:2,archived:3,discarded:4};
+  const STATUS_LABELS = {
+    "Proposed":"Proposed","Under Review":"Under Review","In Progress":"In Progress",
+    "Waiting":"Waiting","Later / Next":"Later / Next","Completed":"Completed",
+    "Archived":"Archived","Discarded":"Discarded"
+  };
 
   function pushGroup(key, label, t, sortKey) {
     if (!groups.has(key)) groups.set(key, { label, tasks: [], sortKey });
@@ -6470,7 +6584,7 @@ function renderProfileTasks(tasks, groupBy) {
   } else {
     tasks.forEach(t => {
       if (groupBy === 'status') {
-        const k = t.panelStatus || 'pending';
+        const k = t.slackStatus || 'Proposed';
         pushGroup(k, STATUS_LABELS[k] || k, t, STATUS_ORDER[k] != null ? STATUS_ORDER[k] : 99);
       } else if (groupBy === 'priority') {
         const k = t.priority || '__none';
@@ -6521,8 +6635,8 @@ function renderProfileTasks(tasks, groupBy) {
       if (t.priority) badges.push('<span class="badge ' + prioCls + '">' + escapeHtml(t.priority) + '</span>');
       if (t.type) badges.push('<span class="badge ' + typeCls + '">' + escapeHtml(t.type) + '</span>');
       if (t.dueDate) badges.push('<span class="badge due">' + escapeHtml(t.dueDate) + '</span>');
-      const statusColors = { pending: '#fbbf24', in_progress: '#60a5fa', completed: '#34d399', archived: '#a98c5a', discarded: '#9a9a9a' };
-      const dotColor = statusColors[t.panelStatus] || '#94a3b8';
+      const statusColors = { "Proposed": "#fbbf24", "Under Review": "#f59e0b", "In Progress": "#60a5fa", "Waiting": "#fb923c", "Later / Next": "#a78bfa", "Completed": "#34d399", "Archived": "#a98c5a", "Discarded": "#9a9a9a" };
+      const dotColor = statusColors[t.slackStatus] || '#94a3b8';
       html += '<div class="profile-task-row" data-tid="' + t.id + '">';
       html += '<span style="width:8px;height:8px;border-radius:50%;background:' + dotColor + '"></span>';
       html += '<span class="text">' + escapeHtml(t.subject) + '</span>';
@@ -6723,7 +6837,7 @@ function renderGantt(roadmapId) {
 
   // Summary card
   const dateRange = (r.startDate || r.endDate) ? (escapeHtml(r.startDate||"?") + " → " + escapeHtml(r.endDate||"?")) : "no dates";
-  const completedCount = tasks.filter(({task}) => task.panelStatus === "completed").length;
+  const completedCount = tasks.filter(({task}) => task.slackStatus === "Completed").length;
   const pct = tasks.length > 0 ? Math.round(100 * completedCount / tasks.length) : 0;
   let html = '<div class="rm-summary-card">';
   html += '<div><div class="rm-summary-name">' + escapeHtml(r.name||"(unnamed)") + '</div>' +
@@ -6759,11 +6873,14 @@ function renderGantt(roadmapId) {
 
   // Status colors for bars
   const statusColors = {
-    pending: "#d1a300",
-    in_progress: "#2563eb",
-    completed: "#16a34a",
-    archived: "#92400e",
-    discarded: "#64748b"
+    "Proposed": "#d1a300",
+    "Under Review": "#b45309",
+    "In Progress": "#2563eb",
+    "Waiting": "#ea580c",
+    "Later / Next": "#7c3aed",
+    "Completed": "#16a34a",
+    "Archived": "#92400e",
+    "Discarded": "#64748b"
   };
 
   if (scheduled.length === 0 && unscheduled.length === 0) {
@@ -6780,7 +6897,7 @@ function renderGantt(roadmapId) {
         const e = parseDate(entry.endDate);
         const left = Math.max(0, Math.round((s - rangeStart) / DAY_MS) * pxPerDay);
         const width = Math.max(pxPerDay, Math.round(((e - s)/DAY_MS + 1) * pxPerDay));
-        const color = statusColors[task.panelStatus] || "#1a1a1a";
+        const color = statusColors[task.slackStatus] || "#1a1a1a";
         const owner = findPerson(task.responsibleId);
         const tooltipText = task.subject + " — " + (entry.startDate||"?") + " to " + (entry.endDate||"?") + (owner ? " ("+owner.displayName+")" : "");
         html += '<div class="gantt-row" data-tid="' + task.id + '" style="grid-template-columns: 220px ' + totalWidth + 'px">' +
@@ -6924,7 +7041,7 @@ function findGroup(groupId) {
 }
 function groupProgress(groupId) {
   const kids = groupChildrenOf(groupId);
-  const done = kids.filter(t => t.panelStatus === "completed" || t.completed).length;
+  const done = kids.filter(t => t.slackStatus === "Completed" || t.completed).length;
   const total = kids.length;
   const pct = total > 0 ? Math.round(100 * done / total) : 0;
   return { done, total, pct };
@@ -7061,7 +7178,7 @@ function flatTaskHtml(t) {
   const respName = p ? p.displayName : (t.responsibleRaw || "?");
   const avClickAttr = p ? (' data-go-profile="' + p.id + '" title="Open ' + escapeHtml(respName) + '\'s profile" style="cursor:pointer; background:' + color + '"') : (' style="background:' + color + '"');
   const nameClickAttr = p ? (' data-go-profile="' + p.id + '" style="font-size:11px; color:#6b6b6b; max-width:140px; text-align:right; cursor:pointer; text-decoration:underline; text-decoration-color:transparent" onmouseover="this.style.textDecorationColor=\'#6b6b6b\'" onmouseout="this.style.textDecorationColor=\'transparent\'"') : ' style="font-size:11px; color:#6b6b6b; max-width:140px; text-align:right"';
-  return '<div class="flat-task" data-pstatus="' + t.panelStatus + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
+  return '<div class="flat-task" data-pstatus="' + escapeHtml(t.slackStatus||'') + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
     '<span class="checkbox ' + (sel ? 'checked' : '') + '" title="Select"></span>' +
     '<span class="av-mini"' + avClickAttr + '><img src="' + photo + '" alt="" onerror="this.remove()"><span class="ini">' + escapeHtml(ini) + '</span></span>' +
     '<div>' +
@@ -7089,7 +7206,7 @@ function renderRoadmapsPage() {
     const taskCount = (r.tasks || []).length;
     const completedCount = (r.tasks || []).filter(entry => {
       const t = STORE.tasks.find(x => x.id === entry.taskId);
-      return t && (t.panelStatus === "completed");
+      return t && (t.slackStatus === "Completed");
     }).length;
     const pct = taskCount > 0 ? Math.round(100 * completedCount / taskCount) : 0;
     const dateRange = (r.startDate || r.endDate) ? (escapeHtml(r.startDate || "?") + " &rarr; " + escapeHtml(r.endDate || "?")) : "no dates";
@@ -7446,7 +7563,7 @@ function renderRmAddPanel() {
   const personF = document.getElementById('rmf_addPerson').value;
   const matches = STORE.tasks.filter(t => {
     if (assignedIds.has(t.id)) return false;
-    if (statusF !== 'all' && t.panelStatus !== statusF) return false;
+    if (statusF !== 'all' && t.slackStatus !== statusF) return false;
     if (prioF !== 'all' && t.priority !== prioF) return false;
     if (personF !== 'all' && t.responsibleId !== personF) return false;
     if (q) {
@@ -7467,7 +7584,7 @@ function renderRmAddPanel() {
       return '<div class="rm-add-task-row ' + (sel?'selected':'') + '" data-tid="' + t.id + '">' +
         '<input type="checkbox" ' + (sel?'checked':'') + '>' +
         '<div><div>' + escapeHtml(t.subject.slice(0,80)) + (t.subject.length>80?'…':'') + '</div>' +
-          '<div class="task-resp">' + escapeHtml(p ? p.displayName : (t.responsibleRaw||'?')) + ' · ' + escapeHtml(t.slackStatus||t.panelStatus) + '</div>' +
+          '<div class="task-resp">' + escapeHtml(p ? p.displayName : (t.responsibleRaw||'?')) + ' · ' + escapeHtml(t.slackStatus||'') + '</div>' +
         '</div>' +
         (t.priority ? '<span class="task-prio" style="background:' + prioStyle + '">' + escapeHtml(t.priority) + '</span>' : '<span></span>') +
         (t.dueDate ? '<span style="font-size:10.5px;color:#c2410c">' + escapeHtml(t.dueDate) + '</span>' : '<span></span>') +
@@ -7729,12 +7846,9 @@ document.getElementById("bulkSetStatus").addEventListener("change", e => {
   selectedTaskIds.forEach(tid => {
     const t = STORE.tasks.find(x => x.id === tid);
     if (!t) return;
-    t.panelStatus = ps;
-    if (ps === "completed") { t.completed = true; t.slackStatus = "Completed"; }
-    else if (ps === "discarded") { t.slackStatus = "Discarded"; t.completed = false; }
-    else if (ps === "archived") { t.slackStatus = "Archived"; t.completed = false; }
-    else if (ps === "in_progress") { t.slackStatus = "In Progress"; t.completed = false; }
-    else if (ps === "pending") { t.slackStatus = "Proposed"; t.completed = false; }
+    t.slackStatus = ps;
+    if (ps === "Completed") { t.completed = true; }
+    else { t.completed = false; }
     t._pendingSync = true;
   });
   saveStore(STORE);
@@ -8783,7 +8897,6 @@ function renderRequestsPage() {
             priority: '',
             type: '',
             slackStatus: 'Proposed',
-            panelStatus: 'pending',
             shareWith: r.privacyLevel || '',
             taskTags: [],
             _fromRequestTs: ts             // backlink — saveBtn marks request approved
