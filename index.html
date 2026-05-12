@@ -4420,20 +4420,32 @@ function renderRoadmapCalendar(roadmapId) {
     return null;
   }
   // Resolve effective dates for an entry, walking anchor chains so we always land on a concrete date.
-  // Cycles are protected by a visited-set; missing targets fall back to the entry's own date.
+  // Crossing anchors apply a day offset for predecessor/successor semantics:
+  //   start anchored to end  → result = target_end + 1 day  (starts right after)
+  //   end   anchored to start → result = target_start − 1 day (ends right before)
+  // Cycles are protected by a visited-set; missing targets fall back to '' (no date).
   function effectiveDatesFor(entry) {
     function resolveSide(startEntry, sideField /* 'start' | 'end' */) {
       const visited = new Set();
       let curEntry = startEntry;
       let curSide = sideField;
+      let dayOffset = 0;
       while (curEntry && !visited.has(curEntry.taskId + '|' + curSide)) {
         visited.add(curEntry.taskId + '|' + curSide);
         const anchorVal = curSide === 'start' ? curEntry.startAnchor : curEntry.endAnchor;
         const ref = parseAnchorRef(curEntry, anchorVal);
         if (!ref) {
-          // No anchor on this side — return the literal date
-          return (curSide === 'start' ? curEntry.startDate : curEntry.endDate) || '';
+          // No anchor — return the literal date with cumulative offset applied
+          const baseStr = (curSide === 'start' ? curEntry.startDate : curEntry.endDate) || '';
+          if (!baseStr) return '';
+          if (dayOffset === 0) return baseStr;
+          const d = parseDate(baseStr);
+          if (!d) return baseStr;
+          return dateKey(addDays(d, dayOffset));
         }
+        // Crossing types accumulate an offset
+        if (curSide === 'start' && ref.side === 'end') dayOffset += 1;
+        else if (curSide === 'end' && ref.side === 'start') dayOffset -= 1;
         const next = (r.tasks || []).find(e => e.taskId === ref.taskId);
         if (!next) return '';   // target not on roadmap → no effective date
         curEntry = next;
@@ -4739,11 +4751,15 @@ function renderRoadmapCalendar(roadmapId) {
         return idx <= 4 ? idx : null;
       }
       const segments = [];
+      // Clip each segment to the current month bounds so events don't bleed into other-month days
+      const monthStartMs = firstOfMonth.getTime();
+      const monthEndMs = lastOfMonth.getTime();
       visibleEvents.forEach(e => {
-        const segStart = e.start < weekStart ? new Date(weekStart) : new Date(e.start);
-        segStart.setHours(0,0,0,0);
-        const segEnd = e.end > weekEnd ? new Date(weekEnd) : new Date(e.end);
-        segEnd.setHours(0,0,0,0);
+        const startMs = Math.max(e.start.getTime(), weekStart.getTime(), monthStartMs);
+        const endMs   = Math.min(e.end.getTime(),   weekEnd.getTime(),   monthEndMs);
+        if (endMs < startMs) return;   // segment is entirely outside the current month
+        const segStart = new Date(startMs); segStart.setHours(0,0,0,0);
+        const segEnd   = new Date(endMs);   segEnd.setHours(0,0,0,0);
         const rawStart = Math.round((segStart - weekStart) / DAY_MS);
         const rawEnd = Math.round((segEnd - weekStart) / DAY_MS);
         // Clamp to visible day range and translate to column
@@ -4757,8 +4773,9 @@ function renderRoadmapCalendar(roadmapId) {
         const span = visEnd - visStart + 1;
         segments.push({
           event: e, startCol, span,
-          continuesLeft: e.start < weekStart,
-          continuesRight: e.end > weekEnd
+          // Show arrow if the original event extends past the (clipped) segment on either side
+          continuesLeft:  e.start < segStart,
+          continuesRight: e.end   > segEnd
         });
       });
       // Group containment: build a map "groupId on this roadmap" so child events
