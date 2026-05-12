@@ -100,18 +100,19 @@
   .stats { display: flex; gap: 8px; font-size: 11px; color: #6b6b6b; flex-wrap: wrap; padding: 4px 0; }
   .stats .stat { display: inline-flex; gap: 4px; align-items: center; }
   .stats .dot { width: 6px; height: 6px; border-radius: 50%; }
-  .dot.proposed { background: #d1a300; } .dot.under-review { background: #b45309; } .dot.in-progress { background: #2563eb; }
-  .dot.waiting { background: #ea580c; } .dot.later-next { background: #7c3aed; } .dot.completed { background: #16a34a; }
-  .dot.archived { background: #92400e; } .dot.discarded { background: #9a9a9a; }
+  .dot.empty { background: #cbd5e1; } .dot.waiting { background: #60a5fa; } .dot.proposed { background: #1d4ed8; }
+  .dot.later-next { background: #dc2626; } .dot.in-progress { background: #f97316; } .dot.under-review { background: #7c3aed; }
+  .dot.completed { background: #16a34a; } .dot.archived { background: #92400e; } .dot.discarded { background: #9a9a9a; }
 
   .tasks { display: flex; flex-direction: column; gap: 4px; max-height: 540px; overflow-y: auto; padding-right: 2px; }
   .tasks:empty::before { content: "No tasks match these filters"; display: block; font-size: 12px; color: #9a9a9a; padding: 6px 2px; }
   .task { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 8px; padding: 6px 8px; border-radius: 8px; background: #faf9f7; border: 1px solid #efeeea; align-items: center; }
-  .task[data-pstatus="Proposed"]      { background: #fffbeb; border-color: #fde68a; }
-  .task[data-pstatus="Under Review"]  { background: #fef3c7; border-color: #fcd34d; }
-  .task[data-pstatus="In Progress"]   { background: #eff6ff; border-color: #bfdbfe; }
-  .task[data-pstatus="Waiting"]       { background: #fff7ed; border-color: #fed7aa; }
-  .task[data-pstatus="Later / Next"]  { background: #f5f3ff; border-color: #ddd6fe; }
+  .task[data-pstatus=""]              { background: #fff;    border-color: #ececea; }
+  .task[data-pstatus="Waiting"]       { background: #dbeafe; border-color: #93c5fd; }
+  .task[data-pstatus="Proposed"]      { background: #c7d2fe; border-color: #818cf8; }
+  .task[data-pstatus="Later / Next"]  { background: #fee2e2; border-color: #fca5a5; }
+  .task[data-pstatus="In Progress"]   { background: #ffedd5; border-color: #fed7aa; }
+  .task[data-pstatus="Under Review"]  { background: #ede9fe; border-color: #c4b5fd; }
   .task[data-pstatus="Completed"]     { background: #ecfdf3; border-color: #a7f3d0; }
   .task[data-pstatus="Completed"] .text { text-decoration: line-through; color: #047857; opacity: 0.85; }
   .task[data-pstatus="Archived"]      { background: #f5efe6; border-color: #d6c5a8; opacity: 0.85; }
@@ -150,11 +151,12 @@
   /* Flat tasks */
   .flat-tasks { display: flex; flex-direction: column; gap: 4px; }
   .flat-task { display: grid; grid-template-columns: 16px 32px 1fr auto auto; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 8px; background: #faf9f7; border: 1px solid #efeeea; }
-  .flat-task[data-pstatus="Proposed"]      { background: #fffbeb; border-color: #fde68a; }
-  .flat-task[data-pstatus="Under Review"]  { background: #fef3c7; border-color: #fcd34d; }
-  .flat-task[data-pstatus="In Progress"]   { background: #eff6ff; border-color: #bfdbfe; }
-  .flat-task[data-pstatus="Waiting"]       { background: #fff7ed; border-color: #fed7aa; }
-  .flat-task[data-pstatus="Later / Next"]  { background: #f5f3ff; border-color: #ddd6fe; }
+  .flat-task[data-pstatus=""]              { background: #fff;    border-color: #ececea; }
+  .flat-task[data-pstatus="Waiting"]       { background: #dbeafe; border-color: #93c5fd; }
+  .flat-task[data-pstatus="Proposed"]      { background: #c7d2fe; border-color: #818cf8; }
+  .flat-task[data-pstatus="Later / Next"]  { background: #fee2e2; border-color: #fca5a5; }
+  .flat-task[data-pstatus="In Progress"]   { background: #ffedd5; border-color: #fed7aa; }
+  .flat-task[data-pstatus="Under Review"]  { background: #ede9fe; border-color: #c4b5fd; }
   .flat-task[data-pstatus="Completed"]     { background: #ecfdf3; border-color: #a7f3d0; }
   .flat-task[data-pstatus="Archived"]      { background: #f5efe6; border-color: #d6c5a8; opacity: 0.85; }
   .flat-task[data-pstatus="Discarded"]     { background: #f5f5f4; border-color: #d8d6d1; opacity: 0.75; }
@@ -196,21 +198,41 @@
   .rm-tab.drop-before { box-shadow: -3px 0 0 0 #1a1a1a; }
   .rm-tab.drop-after { box-shadow: 3px 0 0 0 #1a1a1a; }
   .rm-tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-  .rm-selector-dropdown {
-    padding: 7px 32px 7px 12px;
-    border: 1px solid #d8d6d1;
-    background: #fff;
-    color: #1a1a1a;
-    border-radius: 8px;
-    font-size: 13px; font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    min-width: 240px;
-    max-width: 480px;
-    transition: border-color .12s, box-shadow .12s;
+  /* Roadmap title picker — same pattern as Profile name picker */
+  .rm-name-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    cursor: pointer; user-select: none;
+    border-radius: 8px; padding: 2px 8px; margin-left: -8px;
+    transition: background .12s;
   }
-  .rm-selector-dropdown:hover { border-color: #a8a39a; }
-  .rm-selector-dropdown:focus { outline: none; border-color: #1a1a1a; box-shadow: 0 0 0 3px rgba(26,26,26,0.08); }
+  .rm-name-trigger:hover { background: #f7f6f2; }
+  .rm-name-trigger .arrow { font-size: 14px; color: #6b6b6b; transition: transform .12s; }
+  .rm-name-trigger.open .arrow { transform: rotate(180deg); }
+  .rm-name-popover {
+    position: absolute; z-index: 50;
+    top: 100%; left: -8px;
+    margin-top: 4px; min-width: 280px;
+    background: #fff; border: 1px solid #ececea; border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.12);
+    overflow: hidden;
+  }
+  .rm-name-popover .pp-search { padding: 8px; border-bottom: 1px solid #f1efe9; }
+  .rm-name-popover .pp-search input {
+    width: 100%; box-sizing: border-box; padding: 6px 10px;
+    border: 1px solid #ececea; border-radius: 8px;
+    font-size: 13px; font-family: inherit; outline: none;
+  }
+  .rm-name-popover .pp-search input:focus { border-color: #1a1a1a; }
+  .rm-name-popover .pp-list { max-height: 280px; overflow-y: auto; padding: 4px 0; }
+  .rm-name-popover .pp-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 6px 12px; cursor: pointer;
+  }
+  .rm-name-popover .pp-row:hover { background: #f7f6f2; }
+  .rm-name-popover .pp-row.active { background: #1a1a1a; color: #fff; }
+  .rm-name-popover .pp-row .nm { flex: 1; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rm-name-popover .pp-row .cnt { font-size: 11px; opacity: 0.7; }
+  .rm-name-popover .pp-empty { padding: 16px 12px; text-align: center; color: #9a9a9a; font-size: 12px; }
   /* Task modal — per-roadmap rows with dates + jump link */
   .rm-modal-list { display: flex; flex-direction: column; gap: 4px; }
   .rm-modal-row {
@@ -229,12 +251,53 @@
   .rm-modal-link:hover { text-decoration: underline; color: #78350f; }
   .rm-modal-dates {
     flex-shrink: 0;
-    color: #92400e; font-weight: 600;
-    background: #fff; border: 1px solid #fde68a;
-    padding: 2px 8px; border-radius: 6px;
-    font-size: 11px; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 4px;
+    white-space: nowrap;
   }
-  .rm-modal-dates.empty { color: #b8a672; font-weight: 500; font-style: italic; }
+  .rm-modal-date-input {
+    background: #fff; border: 1px solid #fde68a;
+    color: #92400e;
+    padding: 2px 6px; border-radius: 6px;
+    font-size: 11px; font-family: inherit;
+    width: 130px;
+  }
+  .rm-modal-date-input:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
+  .rm-modal-date-input:disabled { background: #fef3c7; color: #92400e; cursor: not-allowed; }
+  .rm-modal-arrow { color: #92400e; font-weight: 600; font-size: 11px; }
+  /* Subtasks panel inside the task modal */
+  .subtasks-list { display: flex; flex-direction: column; gap: 4px; }
+  .subtask-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 8px;
+    background: #f7f5ee; border: 1px solid #ece8d8; border-radius: 8px;
+    font-size: 12px;
+  }
+  .subtask-link {
+    appearance: none; border: none; background: transparent;
+    color: #1a1a1a; font-weight: 600; cursor: pointer;
+    padding: 0; font-family: inherit; font-size: 12px;
+    text-align: left; flex: 1 1 auto; min-width: 0;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .subtask-link:hover { text-decoration: underline; color: #d97706; }
+  .subtask-icon { font-size: 13px; flex-shrink: 0; color: #92400e; }
+  .subtask-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .subtask-status {
+    flex-shrink: 0;
+    font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+    background: #eef2ff; color: #3730a3;
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .subtask-detach {
+    appearance: none; border: none; background: transparent;
+    color: #6b6b6b; cursor: pointer;
+    padding: 0; font-size: 16px; line-height: 1;
+    width: 18px; height: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .subtask-detach:hover { background: rgba(0,0,0,0.06); color: #1a1a1a; }
   .rm-modal-x {
     appearance: none; border: none; background: transparent;
     color: #92400e; cursor: pointer;
@@ -1614,11 +1677,12 @@
     display: grid; grid-template-columns: 16px 32px 1fr auto auto; gap: 8px; align-items: center;
     padding: 8px 12px; border-radius: 8px; background: #faf9f7; border: 1px solid #efeeea;
   }
-  .flat-task[data-pstatus="Proposed"]      { background: #fffbeb; border-color: #fde68a; }
-  .flat-task[data-pstatus="Under Review"]  { background: #fef3c7; border-color: #fcd34d; }
-  .flat-task[data-pstatus="In Progress"]   { background: #eff6ff; border-color: #bfdbfe; }
-  .flat-task[data-pstatus="Waiting"]       { background: #fff7ed; border-color: #fed7aa; }
-  .flat-task[data-pstatus="Later / Next"]  { background: #f5f3ff; border-color: #ddd6fe; }
+  .flat-task[data-pstatus=""]              { background: #fff;    border-color: #ececea; }
+  .flat-task[data-pstatus="Waiting"]       { background: #dbeafe; border-color: #93c5fd; }
+  .flat-task[data-pstatus="Proposed"]      { background: #c7d2fe; border-color: #818cf8; }
+  .flat-task[data-pstatus="Later / Next"]  { background: #fee2e2; border-color: #fca5a5; }
+  .flat-task[data-pstatus="In Progress"]   { background: #ffedd5; border-color: #fed7aa; }
+  .flat-task[data-pstatus="Under Review"]  { background: #ede9fe; border-color: #c4b5fd; }
   .flat-task[data-pstatus="Completed"]     { background: #ecfdf3; border-color: #a7f3d0; }
   .flat-task[data-pstatus="Completed"] .text { text-decoration: line-through; color: #047857; opacity: 0.85; }
   .flat-task[data-pstatus="Archived"]      { background: #f5efe6; border-color: #d6c5a8; opacity: 0.85; }
@@ -2287,6 +2351,12 @@
       <div class="preset-tags" id="f_presetTaskTagsContainer" style="margin-top:6px"></div>
       <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click an assigned tag to remove it. Click a suggested tag to add it. Manage the library from the "Task Tags" button in the header.</div>
     </div>
+    <div class="field" id="f_subtasksField" style="display:none">
+      <label>Subtasks</label>
+      <div id="f_subtasksList" style="margin-bottom:6px"></div>
+      <select id="f_addSubtaskSel" style="max-width:360px"><option value="">+ Add subtask…</option></select>
+      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Pick an existing task to nest under this one. Click × to detach.</div>
+    </div>
     <div class="modal-actions">
       <button class="btn danger" id="deleteBtn">Delete</button>
       <div style="display:flex; gap:8px">
@@ -2889,12 +2959,14 @@ function renderTeamStrip() {
   });
 }
 
+// Order matters — drives the visual order of the filter pills, dropdown, sort.
 const STATUSES = [
-  { key: "Proposed",     label: "Proposed",     bg: "#fffbeb", color: "#92400e" },
-  { key: "Under Review", label: "Under Review", bg: "#fef3c7", color: "#92400e" },
-  { key: "In Progress",  label: "In Progress",  bg: "#eff6ff", color: "#1e40af" },
-  { key: "Waiting",      label: "Waiting",      bg: "#fff7ed", color: "#9a3412" },
-  { key: "Later / Next", label: "Later / Next", bg: "#f5f3ff", color: "#5b21b6" },
+  { key: "",             label: "(empty)",      bg: "#fff",    color: "#9a9a9a" },
+  { key: "Waiting",      label: "Waiting",      bg: "#dbeafe", color: "#1d4ed8" },
+  { key: "Proposed",     label: "Proposed",     bg: "#c7d2fe", color: "#1e3a8a" },
+  { key: "Later / Next", label: "Later / Next", bg: "#fee2e2", color: "#b91c1c" },
+  { key: "In Progress",  label: "In Progress",  bg: "#ffedd5", color: "#9a3412" },
+  { key: "Under Review", label: "Under Review", bg: "#ede9fe", color: "#5b21b6" },
   { key: "Completed",    label: "Completed",    bg: "#ecfdf3", color: "#027a48" },
   { key: "Archived",     label: "Archived",     bg: "#f5efe6", color: "#78350f" },
   { key: "Discarded",    label: "Discarded",    bg: "#f1f5f9", color: "#64748b" }
@@ -3179,7 +3251,15 @@ function renderTagFilter() {
       }
       inner += '<button class="' + cls + '" data-tag-filter="' + escapeHtml(t.name) + '" ' + styleAttr + ' title="Click cycles: include &rarr; exclude &rarr; off">' + (excl ? '−' : '') + escapeHtml(t.name) + countBadge(countMembersWithTag(t.name)) + '</button>';
     });
-    inner += '<button class="pill ' + (tagInclude.has("__none") ? 'active' : '') + '" data-tag-filter="__none" title="People with no tags">Untagged' + countBadge(countMembersWithTag("__none")) + '</button>';
+    {
+      const ni = tagInclude.has("__none");
+      const ne = tagExclude.has("__none");
+      let cls = 'pill';
+      let prefix = '';
+      if (ni) cls += ' active';
+      else if (ne) { cls += ' excluded'; prefix = '− '; }
+      inner += '<button class="' + cls + '" data-tag-filter="__none" title="Click cycles: include → exclude → off">' + prefix + 'Untagged' + countBadge(countMembersWithTag("__none")) + '</button>';
+    }
     inner += '</div>';
   }
   // Sort dropdowns wrapped in their own groups so they don't break mid-group
@@ -3216,8 +3296,10 @@ function personMatchesTagFilter(personId) {
     // Must have ALL included tags
     for (const t of tagInclude) if (!tags.includes(t)) return false;
   }
-  // Must NOT have any excluded tag
-  for (const t of tagExclude) if (tags.includes(t)) return false;
+  // Exclude "untagged" → people WITH no tags are filtered out
+  if (tagExclude.has("__none") && tags.length === 0) return false;
+  // Must NOT have any excluded tag (skip the special __none key)
+  for (const t of tagExclude) if (t !== "__none" && tags.includes(t)) return false;
   return true;
 }
 
@@ -3238,7 +3320,7 @@ function clearTagFilter() {
 }
 
 const PRIORITY_ORDER = { "Critical": 0, "Alta": 1, "Media": 2, "Baja": 3, "Muy Baja": 4, "": 5 };
-const STATUS_ORDER = { "Proposed": 1, "Under Review": 2, "In Progress": 3, "Waiting": 4, "Later / Next": 5, "Completed": 6, "Archived": 7, "Discarded": 8 };
+const STATUS_ORDER = { "": 0, "Waiting": 1, "Proposed": 2, "Later / Next": 3, "In Progress": 4, "Under Review": 5, "Completed": 6, "Archived": 7, "Discarded": 8 };
 function sortPersons(ids, allTasks) {
   const arr = [...ids];
   if (sortMembers === "name-asc") arr.sort((a,b) => (findPerson(a)?.name||"").localeCompare(findPerson(b)?.name||""));
@@ -3646,16 +3728,17 @@ function refreshGroupSelectOptions(currentGroupId, excludeTaskId) {
 }
 
 function applyGroupModeToModal(isGroup) {
-  // When isGroup=true, hide all task-only fields and tweak labels
-  document.querySelectorAll(".f_taskOnlyRow").forEach(el => {
-    el.style.display = isGroup ? "none" : "";
-  });
-  // Group has no parent group itself — hide the group selector when isGroup
-  document.getElementById("f_groupRow").style.display = isGroup ? "none" : "";
-  document.getElementById("f_extraCommentsLabel").textContent = isGroup ? "Description" : "Extra comments";
+  // Tasks now keep ALL their own fields whether or not isGroup is on.
+  // The checkbox just enables the Subtasks panel and shows children.
+  document.querySelectorAll(".f_taskOnlyRow").forEach(el => { el.style.display = ""; });
+  document.getElementById("f_groupRow").style.display = "";
+  document.getElementById("f_extraCommentsLabel").textContent = "Extra comments";
+  // Show/hide the Subtasks panel
+  const subPanel = document.getElementById("f_subtasksField");
+  if (subPanel) subPanel.style.display = isGroup ? "" : "none";
   // Title hint
   const subjInp = document.getElementById("f_subject");
-  if (subjInp) subjInp.placeholder = isGroup ? "e.g. Q4 Redesign Project" : "";
+  if (subjInp) subjInp.placeholder = isGroup ? "e.g. Q4 Redesign Project (acts as a parent)" : "";
 }
 
 function openModal(tid, overrides) {
@@ -3705,6 +3788,7 @@ function openModal(tid, overrides) {
   document.getElementById("f_extraComments").value = t.extraComments || "";
   renderTaskTagsInModal(t);
   renderRoadmapsInModal(t);
+  renderSubtasksInModal(t);
   applyGroupModeToModal(isG);
   // Schedule (synced with roadmaps) — only meaningful when the task is in ≥1 roadmap
   const tStartEl = document.getElementById("f_taskStart");
@@ -3730,10 +3814,8 @@ document.getElementById("saveBtn").addEventListener("click", () => {
   if (!editingId) return;
   const subject = document.getElementById("f_subject").value.trim();
   const isGroup = document.getElementById("f_isGroup").checked;
-  // Groups only require a title
-  if (isGroup) {
-    if (!subject) { alert("Please fill in: Title"); return; }
-  } else {
+  // Tasks (group or not) require the same fields
+  {
     const slackStatus = document.getElementById("f_slackStatus").value;
     const priority = document.getElementById("f_priority").value;
     const type = document.getElementById("f_type").value;
@@ -3753,22 +3835,8 @@ document.getElementById("saveBtn").addEventListener("click", () => {
   if (!t) return;
   t.subject = subject;
   t.isGroup = isGroup;
-  if (isGroup) {
-    // Groups: keep title + description only; clear other fields so they don't appear in lists
-    t.groupId = "";
-    t.slackStatus = "";
-    t.priority = "";
-    t.type = "";
-    t.dueDate = "";
-    t.responsibleId = "";
-    t.proposedById = "";
-    t.dedicatedHours = "";
-    t.estimatedHours = "";
-    t.shareWith = "";
-    t.completed = false;
-    t.sharing = false;
-    t.taskTags = [];
-  } else {
+  // Groups keep all their own task fields now — same save path as regular tasks.
+  {
     t.groupId = document.getElementById("f_groupId").value || "";
     t.slackStatus = document.getElementById("f_slackStatus").value;
     t.priority = document.getElementById("f_priority").value;
@@ -4183,18 +4251,18 @@ function renderRoadmapsInModal(t) {
   } else {
     cont.innerHTML = '<div class="rm-modal-list">' + assigned.map(r => {
       const entry = (r.tasks || []).find(e => e.taskId === t.id);
-      const eff = (entry && typeof effectiveDatesForInRoadmap === 'function')
-        ? effectiveDatesForInRoadmap(entry, r)
-        : { startStr: (entry && entry.startDate) || '', endStr: (entry && entry.endDate) || '' };
-      const startTxt = eff.startStr || '—';
-      const endTxt   = eff.endStr   || '—';
-      const datesEmpty = !eff.startStr && !eff.endStr;
+      const sVal = (entry && entry.startDate) || '';
+      const eVal = (entry && entry.endDate)   || '';
+      const sAnchored = !!(entry && entry.startAnchor);
+      const eAnchored = !!(entry && entry.endAnchor);
       return '<div class="rm-modal-row" data-rmid="' + escapeHtml(r.id) + '">' +
         '<button type="button" class="rm-modal-link" data-rmid="' + escapeHtml(r.id) + '" title="Open this roadmap">' +
           '📍 ' + escapeHtml(r.name || '(unnamed)') +
         '</button>' +
-        '<span class="rm-modal-dates' + (datesEmpty ? ' empty' : '') + '">' +
-          escapeHtml(startTxt) + '&nbsp;→&nbsp;' + escapeHtml(endTxt) +
+        '<span class="rm-modal-dates">' +
+          '<input type="date" class="rm-modal-date-input rm-modal-start" data-rmid="' + escapeHtml(r.id) + '" value="' + escapeHtml(sVal) + '" title="' + (sAnchored ? 'Anchored — edit in roadmap to change' : 'Start in this roadmap') + '"' + (sAnchored ? ' disabled' : '') + '>' +
+          '<span class="rm-modal-arrow">→</span>' +
+          '<input type="date" class="rm-modal-date-input rm-modal-end" data-rmid="' + escapeHtml(r.id) + '" value="' + escapeHtml(eVal) + '" title="' + (eAnchored ? 'Anchored — edit in roadmap to change' : 'End in this roadmap') + '"' + (eAnchored ? ' disabled' : '') + '>' +
         '</span>' +
         '<button type="button" class="rm-modal-x" data-rmid="' + escapeHtml(r.id) + '" title="Remove from this roadmap">×</button>' +
       '</div>';
@@ -4209,6 +4277,46 @@ function renderRoadmapsInModal(t) {
         selectedRoadmapTimelineId = rmId;
         localStorage.setItem("bookline-selectedRoadmap", rmId);
         if (typeof switchView === 'function') switchView('roadmaps');
+      });
+    });
+    // Date inputs — editable per-roadmap; saving an explicit date clears any anchor on that side
+    cont.querySelectorAll('.rm-modal-start').forEach(inp => {
+      inp.addEventListener('change', e => {
+        const rmId = inp.dataset.rmid;
+        const rm = findRoadmap(rmId);
+        if (!rm) return;
+        const entry = (rm.tasks || []).find(en => en.taskId === t.id);
+        if (!entry) return;
+        entry.startDate = inp.value || '';
+        if (entry.startAnchor) entry.startAnchor = '';
+        saveAndSyncTaskDates();
+        renderRoadmapsInModal(t);
+        // Also refresh the aggregate Start/End inputs in the modal
+        if (typeof t.id === 'string') {
+          const fs = document.getElementById('f_taskStart');
+          const fe = document.getElementById('f_taskEnd');
+          if (fs) fs.value = (STORE.tasks.find(x => x.id === t.id) || {}).startDate || '';
+          if (fe) fe.value = (STORE.tasks.find(x => x.id === t.id) || {}).endDate || '';
+        }
+      });
+    });
+    cont.querySelectorAll('.rm-modal-end').forEach(inp => {
+      inp.addEventListener('change', e => {
+        const rmId = inp.dataset.rmid;
+        const rm = findRoadmap(rmId);
+        if (!rm) return;
+        const entry = (rm.tasks || []).find(en => en.taskId === t.id);
+        if (!entry) return;
+        entry.endDate = inp.value || '';
+        if (entry.endAnchor) entry.endAnchor = '';
+        saveAndSyncTaskDates();
+        renderRoadmapsInModal(t);
+        if (typeof t.id === 'string') {
+          const fs = document.getElementById('f_taskStart');
+          const fe = document.getElementById('f_taskEnd');
+          if (fs) fs.value = (STORE.tasks.find(x => x.id === t.id) || {}).startDate || '';
+          if (fe) fe.value = (STORE.tasks.find(x => x.id === t.id) || {}).endDate || '';
+        }
       });
     });
     cont.querySelectorAll('.rm-modal-x').forEach(btn => {
@@ -4245,6 +4353,78 @@ function renderRoadmapsInModal(t) {
     }
     sel.value = "";
     renderRoadmapsInModal(t);
+  };
+}
+
+// ---- Subtasks panel inside the task modal (shown when isGroup=true) ----
+function renderSubtasksInModal(t) {
+  const list = document.getElementById("f_subtasksList");
+  const sel  = document.getElementById("f_addSubtaskSel");
+  if (!list || !sel) return;
+  const children = (STORE.tasks || []).filter(x => x.groupId === t.id && x.id !== t.id);
+  // Render the list of current subtasks
+  if (children.length === 0) {
+    list.innerHTML = '<span style="color:#9a9a9a; font-size:12px">No subtasks yet</span>';
+  } else {
+    list.innerHTML = '<div class="subtasks-list">' + children
+      .slice()
+      .sort((a, b) => (a.subject || '').localeCompare(b.subject || ''))
+      .map(c => {
+        const iconLeft = c.isGroup ? '📁' : '·';
+        const stat = c.slackStatus ? '<span class="subtask-status" data-status="' + escapeHtml(c.slackStatus) + '">' + escapeHtml(c.slackStatus) + '</span>' : '';
+        return '<div class="subtask-row" data-tid="' + escapeHtml(c.id) + '">' +
+          '<button type="button" class="subtask-link" data-tid="' + escapeHtml(c.id) + '" title="Open subtask">' +
+            '<span class="subtask-icon">' + iconLeft + '</span>' +
+            '<span class="subtask-name">' + escapeHtml(c.subject || '(unnamed)') + '</span>' +
+          '</button>' +
+          stat +
+          '<button type="button" class="subtask-detach" data-tid="' + escapeHtml(c.id) + '" title="Detach from this parent">×</button>' +
+        '</div>';
+      }).join('') + '</div>';
+    // Wire link → open the child in the modal
+    list.querySelectorAll('.subtask-link').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const cid = btn.dataset.tid;
+        if (typeof closeModal === 'function') closeModal();
+        setTimeout(() => openModal(cid), 0);
+      });
+    });
+    // Wire detach → clear groupId on child
+    list.querySelectorAll('.subtask-detach').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const cid = btn.dataset.tid;
+        const c = STORE.tasks.find(x => x.id === cid);
+        if (!c) return;
+        c.groupId = '';
+        c._pendingSync = true;
+        saveAndSyncTaskDates();
+        renderSubtasksInModal(t);
+      });
+    });
+  }
+  // Dropdown: every task that's NOT already this task's child, NOT this task itself, and NOT one of this task's ancestors.
+  const ancestors = new Set();
+  let cur = t;
+  while (cur && cur.groupId) {
+    ancestors.add(cur.groupId);
+    cur = STORE.tasks.find(x => x.id === cur.groupId);
+  }
+  const candidates = (STORE.tasks || []).filter(x => x.id !== t.id && x.groupId !== t.id && !ancestors.has(x.id))
+    .slice().sort((a, b) => (a.subject || '').localeCompare(b.subject || ''));
+  sel.innerHTML = '<option value="">+ Add subtask…</option>' +
+    candidates.map(x => '<option value="' + escapeHtml(x.id) + '">' + (x.isGroup ? '📁 ' : '') + escapeHtml(x.subject || '(unnamed)') + '</option>').join("");
+  sel.onchange = () => {
+    const cid = sel.value;
+    if (!cid) return;
+    const c = STORE.tasks.find(x => x.id === cid);
+    if (!c) return;
+    c.groupId = t.id;
+    c._pendingSync = true;
+    saveAndSyncTaskDates();
+    sel.value = "";
+    renderSubtasksInModal(t);
   };
 }
 
@@ -4928,10 +5108,11 @@ function renderRoadmapCalendar(roadmapId) {
   // Also exclude these "pending apply" entries from the calendar events
   const eventsScheduled = events.filter(e => !window.__rmPendingApply.has(e.entry.taskId));
 
-  // Status color map
+  // Status color map (medium saturation for calendar bars)
   const statusColors = {
-    "Proposed": "#fbbf24", "Under Review": "#f59e0b", "In Progress": "#60a5fa",
-    "Waiting": "#fb923c", "Later / Next": "#a78bfa", "Completed": "#34d399",
+    "": "#cbd5e1",
+    "Waiting": "#60a5fa", "Proposed": "#1d4ed8", "Later / Next": "#dc2626",
+    "In Progress": "#f97316", "Under Review": "#7c3aed", "Completed": "#16a34a",
     "Archived": "#a98c5a", "Discarded": "#9a9a9a"
   };
 
@@ -4957,8 +5138,15 @@ function renderRoadmapCalendar(roadmapId) {
         '<span class="rm-owner-name">' + escapeHtml(owner.name) + '</span>' +
       '</div>'
     : '<em>no owner</em>';
+  // Clickable title that opens a roadmap picker popover (alphabetical, with search) — matches the Profile pattern.
+  const rmOpen = !!window.__rmPickerOpen;
   let html = '<div class="rm-summary-card">' +
-    '<div class="rm-summary-name">' + escapeHtml(r.name||'(unnamed)') + '</div>' +
+    '<div class="rm-name-wrapper" style="position:relative; display:inline-block">' +
+      '<div class="rm-name-trigger' + (rmOpen ? ' open' : '') + '" id="rmNameTrigger" title="Switch roadmap">' +
+        '<div class="rm-summary-name">' + escapeHtml(r.name||'(unnamed)') + '</div>' +
+        '<span class="arrow">▾</span>' +
+      '</div>' +
+    '</div>' +
     '<div class="rm-summary-meta">' +
       ownerHtml +
       '<span class="sep">·</span>' +
@@ -5587,6 +5775,8 @@ function renderRoadmapCalendar(roadmapId) {
       renderRoadmapCalendar(roadmapId);
     });
   });
+  // Roadmap picker trigger (alphabetical, with search) — matches the Profile pattern.
+  wireRoadmapNamePicker(roadmapId);
   // Summary buttons
   const editBtn = document.getElementById('rmEditBtn');
   if (editBtn) editBtn.addEventListener('click', () => openRoadmapEdit(roadmapId));
@@ -5710,14 +5900,117 @@ function renderRoadmapCalendar(roadmapId) {
   }
 }
 
-// Replace the existing renderGantt usage with the new calendar
+// Roadmap name picker — clickable title in the summary card that drops down to switch roadmap.
+// Same pattern as the Profile page's name picker.
+window.__rmPickerOpen = window.__rmPickerOpen || false;
+window.__rmPickerSearch = window.__rmPickerSearch || "";
+function wireRoadmapNamePicker(currentRoadmapId) {
+  const trigger = document.getElementById("rmNameTrigger");
+  if (!trigger) return;
+  // Open / close on click
+  trigger.addEventListener("click", e => {
+    e.stopPropagation();
+    window.__rmPickerOpen = !window.__rmPickerOpen;
+    window.__rmPickerSearch = "";
+    renderRoadmapNamePopover(currentRoadmapId);
+  });
+  if (window.__rmPickerOpen) {
+    renderRoadmapNamePopover(currentRoadmapId);
+  } else {
+    closeRoadmapNamePopover();
+  }
+}
+function closeRoadmapNamePopover() {
+  const existing = document.getElementById("rmNamePopover");
+  if (existing) existing.remove();
+  if (window.__rmPickerOutsideHandler) {
+    document.removeEventListener("click", window.__rmPickerOutsideHandler);
+    window.__rmPickerOutsideHandler = null;
+  }
+}
+function renderRoadmapNamePopover(currentRoadmapId) {
+  closeRoadmapNamePopover();
+  const trigger = document.getElementById("rmNameTrigger");
+  const wrap = trigger ? trigger.closest('.rm-name-wrapper') : null;
+  if (!trigger || !wrap) return;
+  const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : (STORE.roadmaps || []);
+  const sorted = rms.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const q = (window.__rmPickerSearch || "").toLowerCase().trim();
+  const list = sorted.filter(r => !q || (r.name || '').toLowerCase().includes(q));
+  let html = '<div class="rm-name-popover" id="rmNamePopover">';
+  html += '<div class="pp-search"><input id="rmNameSearchInput" placeholder="Search roadmaps…" value="' + escapeHtml(window.__rmPickerSearch || "") + '" autocomplete="off"></div>';
+  html += '<div class="pp-list">';
+  if (list.length === 0) {
+    html += '<div class="pp-empty">No roadmaps match.</div>';
+  } else {
+    list.forEach(r => {
+      const cnt = (r.tasks || []).length;
+      const active = (r.id === currentRoadmapId) ? ' active' : '';
+      html += '<div class="pp-row' + active + '" data-rm="' + escapeHtml(r.id) + '">';
+      html += '<span class="nm">📍 ' + escapeHtml(r.name || '(unnamed)') + '</span>';
+      html += '<span class="cnt">' + cnt + '</span>';
+      html += '</div>';
+    });
+  }
+  html += '</div></div>';
+  wrap.insertAdjacentHTML('beforeend', html);
+  trigger.classList.add('open');
+  // Focus search
+  setTimeout(() => {
+    const inp = document.getElementById("rmNameSearchInput");
+    if (inp) inp.focus();
+  }, 0);
+  // Search input
+  const inp = document.getElementById("rmNameSearchInput");
+  if (inp) {
+    inp.addEventListener("input", e => {
+      window.__rmPickerSearch = e.target.value;
+      renderRoadmapNamePopover(currentRoadmapId);
+    });
+    inp.addEventListener("click", e => e.stopPropagation());
+    inp.addEventListener("keydown", e => {
+      if (e.key === "Escape") {
+        window.__rmPickerOpen = false;
+        closeRoadmapNamePopover();
+        const t = document.getElementById("rmNameTrigger");
+        if (t) t.classList.remove('open');
+      }
+    });
+  }
+  // Row click → switch roadmap
+  document.querySelectorAll("#rmNamePopover .pp-row").forEach(row => {
+    row.addEventListener("click", () => {
+      const rmId = row.dataset.rm;
+      window.__rmPickerOpen = false;
+      window.__rmPickerSearch = "";
+      selectedRoadmapTimelineId = rmId;
+      localStorage.setItem("bookline-selectedRoadmap", rmId);
+      roadmapCalState.yearMonth = null;
+      renderRoadmapsTimelinePage();
+    });
+  });
+  // Click outside closes
+  window.__rmPickerOutsideHandler = function(e) {
+    const pop = document.getElementById("rmNamePopover");
+    const trig = document.getElementById("rmNameTrigger");
+    if (pop && !pop.contains(e.target) && trig && !trig.contains(e.target)) {
+      window.__rmPickerOpen = false;
+      closeRoadmapNamePopover();
+      if (trig) trig.classList.remove('open');
+    }
+  };
+  setTimeout(() => document.addEventListener("click", window.__rmPickerOutsideHandler), 0);
+}
+
+// Replace the existing renderGantt usage with the new calendar.
+// The selector is now inline in the summary-card title — see renderRoadmapCalendar.
 const _origRenderRoadmapsTimelinePage = renderRoadmapsTimelinePage;
 renderRoadmapsTimelinePage = function() {
   const sel = document.getElementById("rmSelector");
   const cont = document.getElementById("rmPageContent");
-  const rms = getRoadmaps().slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const rms = getRoadmaps();
   if (rms.length === 0) {
-    sel.innerHTML = "";
+    if (sel) sel.innerHTML = "";
     cont.innerHTML = '<div class="rm-empty">No roadmaps yet. Click "+ New roadmap" to create one.</div>';
     return;
   }
@@ -5725,20 +6018,8 @@ renderRoadmapsTimelinePage = function() {
     selectedRoadmapTimelineId = rms[0].id;
     localStorage.setItem("bookline-selectedRoadmap", selectedRoadmapTimelineId);
   }
-  // Dropdown selector (alphabetical) — replaces the drag-reorder tab strip
-  sel.innerHTML = '<select id="rmSelectorDropdown" class="rm-selector-dropdown" title="Select roadmap">' +
-    rms.map(r => {
-      const cnt = (r.tasks || []).length;
-      return '<option value="' + escapeHtml(r.id) + '"' + (selectedRoadmapTimelineId === r.id ? ' selected' : '') + '>' + escapeHtml(r.name || '(unnamed)') + ' (' + cnt + ')</option>';
-    }).join('') +
-  '</select>';
-  const dd = document.getElementById("rmSelectorDropdown");
-  if (dd) dd.addEventListener("change", () => {
-    selectedRoadmapTimelineId = dd.value;
-    localStorage.setItem("bookline-selectedRoadmap", selectedRoadmapTimelineId);
-    roadmapCalState.yearMonth = null;
-    renderRoadmapsTimelinePage();
-  });
+  // Hide the standalone selector strip — the picker now lives inline with the roadmap title
+  if (sel) sel.innerHTML = "";
   renderRoadmapCalendar(selectedRoadmapTimelineId);
 };
 
@@ -6507,8 +6788,9 @@ function renderProfileRoadmapCard(rm, personId) {
   for (let i = 0; i < 7; i++) days.push(addDays(today, i));
 
   const statusColors = {
-    "Proposed": "#fbbf24", "Under Review": "#f59e0b", "In Progress": "#60a5fa",
-    "Waiting": "#fb923c", "Later / Next": "#a78bfa", "Completed": "#34d399",
+    "": "#cbd5e1",
+    "Waiting": "#60a5fa", "Proposed": "#1d4ed8", "Later / Next": "#dc2626",
+    "In Progress": "#f97316", "Under Review": "#7c3aed", "Completed": "#16a34a",
     "Archived": "#a98c5a", "Discarded": "#9a9a9a"
   };
   const wdLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -6635,7 +6917,7 @@ function renderProfileTasks(tasks, groupBy) {
       if (t.priority) badges.push('<span class="badge ' + prioCls + '">' + escapeHtml(t.priority) + '</span>');
       if (t.type) badges.push('<span class="badge ' + typeCls + '">' + escapeHtml(t.type) + '</span>');
       if (t.dueDate) badges.push('<span class="badge due">' + escapeHtml(t.dueDate) + '</span>');
-      const statusColors = { "Proposed": "#fbbf24", "Under Review": "#f59e0b", "In Progress": "#60a5fa", "Waiting": "#fb923c", "Later / Next": "#a78bfa", "Completed": "#34d399", "Archived": "#a98c5a", "Discarded": "#9a9a9a" };
+      const statusColors = { "": "#cbd5e1", "Waiting": "#60a5fa", "Proposed": "#1d4ed8", "Later / Next": "#dc2626", "In Progress": "#f97316", "Under Review": "#7c3aed", "Completed": "#16a34a", "Archived": "#a98c5a", "Discarded": "#9a9a9a" };
       const dotColor = statusColors[t.slackStatus] || '#94a3b8';
       html += '<div class="profile-task-row" data-tid="' + t.id + '">';
       html += '<span style="width:8px;height:8px;border-radius:50%;background:' + dotColor + '"></span>';
