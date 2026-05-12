@@ -225,6 +225,8 @@
     display: inline-flex; align-items: center; justify-content: center;
   }
   .cal-nav-btn:hover { background: #f0efeb; }
+  .cal-nav-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .cal-nav-btn:disabled:hover { background: transparent; }
   .cal-month-label { font-size: 18px; font-weight: 700; min-width: 180px; text-transform: capitalize; }
   .cal-today-btn {
     appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a;
@@ -4181,9 +4183,13 @@ function renderRoadmapCalendar(roadmapId) {
   html += '<div class="rm-content-row' + (hasSide ? '' : ' no-side') + '"><div class="rm-cal-area">';
   const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const monthLabel = monthNames[ym.month] + ' ' + ym.year;
+  // Compute whether the calendar is at (or before) the roadmap's start month → disable Prev
+  const rmStart = parseDate(r.startDate);
+  const atStart = rmStart ? (ym.year < rmStart.getFullYear() ||
+                             (ym.year === rmStart.getFullYear() && ym.month <= rmStart.getMonth())) : false;
   html += '<div class="cal-toolbar">' +
     '<div class="cal-nav-group">' +
-      '<button class="cal-nav-btn" id="calPrev" title="Previous month">‹</button>' +
+      '<button class="cal-nav-btn" id="calPrev" title="' + (atStart ? "At roadmap start — can't go further back" : "Previous month") + '"' + (atStart ? ' disabled' : '') + '>‹</button>' +
       '<button class="cal-today-btn" id="calToday">Today</button>' +
       '<button class="cal-nav-btn" id="calNext" title="Next month">›</button>' +
     '</div>' +
@@ -4204,8 +4210,18 @@ function renderRoadmapCalendar(roadmapId) {
     // Day list invariant across weeks (depends only on hide-weekends toggle)
     const dayList = roadmapCalState.hideWeekends ? [0,1,2,3,4] : [0,1,2,3,4,5,6];
     const nDays = dayList.length;
+    // If hiding weekends AND the month starts on Sat/Sun, the first row (Mon-Fri) is entirely in
+    // the previous month — skip it. Same idea at the end if the month ends Mon/Tue/etc.
+    let firstWeek = 0;
+    let lastWeek = totalWeeks;
+    if (roadmapCalState.hideWeekends) {
+      // First row empty if startWeekday is Sat (5) or Sun (6): no weekday of this month in it
+      if (startWeekday >= 5) firstWeek = 1;
+      // Last row empty if lastWeekday is Sat (5) or Sun (6): last week only has weekend cells from this month
+      if (lastWeekday >= 5) lastWeek = totalWeeks - 1;
+    }
     // For each week, build day cells + event overlay
-    for (let w = 0; w < totalWeeks; w++) {
+    for (let w = firstWeek; w < lastWeek; w++) {
       const weekStart = addDays(gridStart, w * 7);
       const weekEnd = addDays(weekStart, 6);
       // Find events that intersect this week
@@ -4366,8 +4382,13 @@ function renderRoadmapCalendar(roadmapId) {
 
   // Wire up navigation
   document.getElementById('calPrev').addEventListener('click', () => {
+    if (atStart) return;   // safety: don't go past roadmap start
     let m = ym.month - 1, y = ym.year;
     if (m < 0) { m = 11; y--; }
+    // If new target is still before roadmap start, clamp to start month
+    if (rmStart && (y < rmStart.getFullYear() || (y === rmStart.getFullYear() && m < rmStart.getMonth()))) {
+      y = rmStart.getFullYear(); m = rmStart.getMonth();
+    }
     roadmapCalState.yearMonth = { year: y, month: m };
     renderRoadmapCalendar(roadmapId);
   });
@@ -4814,13 +4835,8 @@ function renderMembersPage() {
       const taskCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id).length;
       const pendingCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id && t.panelStatus === "pending").length;
       const inProgressCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id && t.panelStatus === "in_progress").length;
-      const personRoadmaps = getRoadmaps().filter(r => {
-        if (r.responsibleId === p.id) return true;
-        return (r.tasks || []).some(entry => {
-          const t = STORE.tasks.find(x => x.id === entry.taskId);
-          return t && t.responsibleId === p.id;
-        });
-      });
+      // Roadmaps shown on People cards: only the ones this person OWNS (is responsible for).
+      const personRoadmaps = getRoadmapsForPerson(p.id);
       roadmapsHtml = personRoadmaps.length
         ? '<div class="person-roadmaps-line" data-uid="' + p.id + '">' +
             personRoadmaps.map(r => '<span class="rm-mini-badge" data-rm="' + r.id + '" title="Open ' + escapeHtml(r.name||'') + '">' + escapeHtml((r.name||'').slice(0,22)) + (r.responsibleId === p.id ? ' <span class="rm-mini-owner" title="Owner">●</span>' : '') + '</span>').join('') +
