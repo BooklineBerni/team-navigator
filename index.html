@@ -591,35 +591,155 @@
     background: #fef3c7; border-color: #f59e0b;
     filter: none; opacity: 1;
   }
-  /* Floating anchor picker menu (used by unscheduled-row pin buttons) */
+  /* Floating anchor picker menu — modern UI with search + filter chips + per-task start/end */
   .bn-anchor-menu {
     position: absolute; z-index: 300;
-    background: #fff; border: 1px solid #d8d6d1; border-radius: 10px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.18);
-    min-width: 240px; max-width: 360px;
-    padding: 6px;
-    font-size: 12px; color: #1a1a1a;
+    background: #fff; border: 1px solid #e6e3da; border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.08);
+    width: 340px;
+    padding: 12px;
+    font-size: 12.5px; color: #1a1a1a;
+    box-sizing: border-box;
   }
   .bn-anchor-menu .bam-head {
-    font-weight: 700; font-size: 11.5px; color: #6b6b6b;
-    padding: 4px 8px 6px;
-    border-bottom: 1px solid #f1efe9; margin-bottom: 4px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2px 8px;
+    border-bottom: 1px solid #f1efe9;
+  }
+  .bn-anchor-menu .bam-head strong { font-size: 13px; font-weight: 700; color: #1a1a1a; }
+  .bn-anchor-menu .bam-close {
+    width: 22px; height: 22px;
+    background: transparent; border: none; cursor: pointer;
+    font-size: 13px; color: #999; line-height: 1;
+    border-radius: 6px; padding: 0;
+    font-family: inherit;
+  }
+  .bn-anchor-menu .bam-close:hover { background: #f5f3ed; color: #444; }
+  .bn-anchor-menu .bam-search-wrap {
+    position: relative; margin-top: 10px;
+  }
+  .bn-anchor-menu .bam-search-icon {
+    position: absolute; left: 10px; top: 50%;
+    transform: translateY(-50%); font-size: 12px;
+    pointer-events: none; opacity: 0.55;
+  }
+  .bn-anchor-menu .bam-search {
+    width: 100%; box-sizing: border-box;
+    padding: 7px 10px 7px 30px;
+    background: #f7f5ee;
+    border: 1px solid #ede9dd;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-family: inherit;
+    color: #1a1a1a;
+    outline: none;
+    transition: border-color .12s, background .12s;
+  }
+  .bn-anchor-menu .bam-search:focus {
+    border-color: #d97706; background: #fff;
+    box-shadow: 0 0 0 3px rgba(217,119,6,0.12);
+  }
+  .bn-anchor-menu .bam-filters {
+    display: flex; gap: 6px;
+    margin: 10px 0 6px;
+  }
+  .bn-anchor-menu .bam-chip {
+    flex: 0 0 auto;
+    padding: 4px 10px;
+    background: #f5f3ed;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 11px; font-weight: 600;
+    color: #555;
+    cursor: pointer; font-family: inherit;
+    transition: background .12s, color .12s;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .bn-anchor-menu .bam-chip:hover { background: #ede9dd; }
+  .bn-anchor-menu .bam-chip.active { background: #1a1a1a; color: #fff; }
+  .bn-anchor-menu .bam-count {
+    display: inline-block;
+    padding: 0 5px; min-width: 16px;
+    background: rgba(0,0,0,0.08);
+    border-radius: 999px;
+    font-size: 10px; font-weight: 700;
+    text-align: center; line-height: 14px;
+  }
+  .bn-anchor-menu .bam-chip.active .bam-count {
+    background: rgba(255,255,255,0.25); color: #fff;
   }
   .bn-anchor-menu .bam-list {
     max-height: 280px; overflow-y: auto;
     display: flex; flex-direction: column; gap: 1px;
+    margin-top: 4px;
   }
-  .bn-anchor-menu .bam-item {
-    display: block; width: 100%;
-    text-align: left; padding: 6px 8px;
-    background: transparent; border: none; border-radius: 6px;
-    font-size: 12px; color: #1a1a1a; cursor: pointer;
+  .bn-anchor-menu .bam-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 8px;
+    background: transparent;
+    border-radius: 8px;
+    font-family: inherit; font-size: 12.5px; color: #1a1a1a;
+    gap: 8px;
+    cursor: default;
+  }
+  .bn-anchor-menu .bam-row:hover { background: #fafaf6; }
+  .bn-anchor-menu .bam-row.bam-custom {
+    cursor: pointer;
+    margin-bottom: 4px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #ede9dd;
+    border-radius: 8px 8px 0 0;
+  }
+  .bn-anchor-menu .bam-row.bam-custom.selected { background: #fef3c7; color: #92400e; font-weight: 600; }
+  .bn-anchor-menu .bam-icon-custom { display: inline-block; width: 14px; text-align: center; color: #999; font-weight: 700; }
+  .bn-anchor-menu .bam-row-name {
+    flex: 1 1 auto; min-width: 0;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .bn-anchor-menu .bam-row-label {
+    flex: 1 1 auto; min-width: 0;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    font-family: inherit;
   }
-  .bn-anchor-menu .bam-item:hover { background: #f5f3ed; }
-  .bn-anchor-menu .bam-item.selected {
-    background: #fef3c7; color: #92400e; font-weight: 600;
+  .bn-anchor-menu .bam-icon { font-size: 13px; flex-shrink: 0; }
+  .bn-anchor-menu .bam-icon-task {
+    display: inline-block; width: 14px; text-align: center;
+    color: #999; font-weight: 700; font-size: 13px; flex-shrink: 0;
+  }
+  .bn-anchor-menu .bam-parent-tag {
+    display: inline-block; flex-shrink: 0;
+    font-size: 8.5px; font-weight: 700;
+    padding: 1px 5px;
+    background: #fef3c7; color: #92400e;
+    border: 1px solid #fde68a;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .bn-anchor-menu .bam-row-actions {
+    display: flex; gap: 4px; flex-shrink: 0;
+  }
+  .bn-anchor-menu .bam-side-btn {
+    padding: 3px 10px;
+    background: #fff;
+    border: 1px solid #e6e3da;
+    border-radius: 999px;
+    font-size: 10.5px; font-weight: 700;
+    color: #555;
+    cursor: pointer; font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .bn-anchor-menu .bam-side-btn:hover {
+    background: #fffbeb; border-color: #fbbf24; color: #92400e;
+  }
+  .bn-anchor-menu .bam-side-btn.selected {
+    background: #fbbf24; border-color: #d97706; color: #1a1a1a;
+  }
+  .bn-anchor-menu .bam-empty {
+    text-align: center;
+    padding: 18px 12px;
+    color: #999; font-size: 12px;
   }
   .rm-side-area .rm-task-row .rm-task-del {
     background: transparent; color: #dc2626;
@@ -4331,55 +4451,151 @@ function renderRoadmapCalendar(roadmapId) {
     }
     return val || '';
   }
-  // Floating picker for anchor selection (used by unscheduled-row pin buttons).
+  // Floating picker for anchor selection — modern UI with search + filter chips + per-task start/end buttons.
   // Closes any previous menu, opens a new one positioned near `anchorBtn`.
   function openAnchorPicker(anchorBtn, entry, kind /* 'start'|'end' */, currentValue, onPicked) {
-    // Close any open picker
     document.querySelectorAll('.bn-anchor-menu').forEach(n => n.remove());
-    const items = buildAnchorItems(entry);
-    if (items.length <= 1) return;   // only "Custom date" → nothing to anchor to
+    const ownTask = STORE.tasks.find(x => x.id === entry.taskId);
+    const others = (r.tasks || []).filter(e => e.taskId !== entry.taskId).map(e => ({
+      entry: e, task: STORE.tasks.find(t => t.id === e.taskId)
+    })).filter(x => x.task);
+    if (others.length === 0) return;
+    // Order: parent group first, then groups alpha, then tasks alpha
+    others.sort((a, b) => {
+      const ap = ownTask && ownTask.groupId === a.task.id ? 0 : (a.task.isGroup ? 1 : 2);
+      const bp = ownTask && ownTask.groupId === b.task.id ? 0 : (b.task.isGroup ? 1 : 2);
+      if (ap !== bp) return ap - bp;
+      return (a.task.subject || '').localeCompare(b.task.subject || '');
+    });
+    const groupCount = others.filter(x => x.task.isGroup).length;
+    const taskCount = others.length - groupCount;
     const menu = document.createElement('div');
     menu.className = 'bn-anchor-menu';
-    const head = '<div class="bam-head">Anchor ' + (kind === 'start' ? 'start' : 'end') + ' to…</div>';
-    const list = items.map(it =>
-      '<button type="button" class="bam-item' + (it.value === currentValue ? ' selected' : '') + '" data-val="' + escapeHtml(it.value) + '">' + escapeHtml(it.label) + '</button>'
-    ).join('');
-    menu.innerHTML = head + '<div class="bam-list">' + list + '</div>';
+    menu.innerHTML =
+      '<div class="bam-head">' +
+        '<strong>Anchor ' + (kind === 'start' ? 'start' : 'end') + ' to…</strong>' +
+        '<button type="button" class="bam-close" title="Close">✕</button>' +
+      '</div>' +
+      '<div class="bam-search-wrap">' +
+        '<span class="bam-search-icon">🔍</span>' +
+        '<input type="text" class="bam-search" placeholder="Search tasks…" autocomplete="off">' +
+      '</div>' +
+      '<div class="bam-filters">' +
+        '<button type="button" class="bam-chip active" data-filter="all">All <span class="bam-count">' + others.length + '</span></button>' +
+        '<button type="button" class="bam-chip" data-filter="groups">📁 Groups <span class="bam-count">' + groupCount + '</span></button>' +
+        '<button type="button" class="bam-chip" data-filter="tasks">Tasks <span class="bam-count">' + taskCount + '</span></button>' +
+      '</div>' +
+      '<div class="bam-list">' +
+        '<div class="bam-row bam-custom' + (currentValue === '' ? ' selected' : '') + '" data-val="">' +
+          '<span class="bam-row-name"><span class="bam-icon-custom">○</span> Custom date</span>' +
+        '</div>' +
+        others.map(({ task }) => {
+          const isG = !!task.isGroup;
+          const isParent = ownTask && ownTask.groupId === task.id;
+          const name = task.subject || '(unnamed)';
+          const valS = 'task:' + task.id + ':start';
+          const valE = 'task:' + task.id + ':end';
+          return '<div class="bam-row" data-type="' + (isG ? 'group' : 'task') + '" data-name="' + escapeHtml(name.toLowerCase()) + '">' +
+            '<span class="bam-row-name">' +
+              (isG ? '<span class="bam-icon">📁</span>' : '<span class="bam-icon-task">·</span>') +
+              '<span class="bam-row-label" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span>' +
+              (isParent ? '<span class="bam-parent-tag">parent</span>' : '') +
+            '</span>' +
+            '<span class="bam-row-actions">' +
+              '<button type="button" class="bam-side-btn' + (currentValue === valS ? ' selected' : '') + '" data-val="' + escapeHtml(valS) + '" title="Anchor to this task\'s start date">start</button>' +
+              '<button type="button" class="bam-side-btn' + (currentValue === valE ? ' selected' : '') + '" data-val="' + escapeHtml(valE) + '" title="Anchor to this task\'s end date">end</button>' +
+            '</span>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+      '<div class="bam-empty" style="display:none">No matches</div>';
     document.body.appendChild(menu);
-    // Position near the pin button
+    // Position
     const rect = anchorBtn.getBoundingClientRect();
     menu.style.left = (rect.left + window.scrollX) + 'px';
-    menu.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
-    // Flip if no room below / right
+    menu.style.top  = (rect.bottom + window.scrollY + 6) + 'px';
     setTimeout(() => {
       const mr = menu.getBoundingClientRect();
       if (mr.right > window.innerWidth - 8) {
         menu.style.left = Math.max(8, window.innerWidth - mr.width - 8 + window.scrollX) + 'px';
       }
       if (mr.bottom > window.innerHeight - 8) {
-        const above = rect.top - mr.height - 4;
+        const above = rect.top - mr.height - 6;
         menu.style.top = (Math.max(8, above) + window.scrollY) + 'px';
       }
     }, 0);
-    // Wire click handlers
-    menu.querySelectorAll('.bam-item').forEach(b => {
-      b.addEventListener('click', ev => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const v = b.dataset.val || '';
-        menu.remove();
-        if (typeof onPicked === 'function') onPicked(v);
+    // Filter state
+    let activeFilter = 'all';
+    let activeQuery = '';
+    function applyFilter() {
+      let visibleCount = 0;
+      menu.querySelectorAll('.bam-row').forEach(row => {
+        if (row.classList.contains('bam-custom')) {
+          const show = activeQuery === '';
+          row.style.display = show ? '' : 'none';
+          if (show) visibleCount++;
+          return;
+        }
+        const type = row.dataset.type;
+        const name = row.dataset.name || '';
+        const filterMatch = activeFilter === 'all' || activeFilter === (type === 'group' ? 'groups' : 'tasks');
+        const queryMatch = !activeQuery || name.indexOf(activeQuery) >= 0;
+        const show = filterMatch && queryMatch;
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+      });
+      menu.querySelector('.bam-empty').style.display = visibleCount === 0 ? '' : 'none';
+    }
+    const searchInput = menu.querySelector('.bam-search');
+    searchInput.addEventListener('input', () => {
+      activeQuery = searchInput.value.trim().toLowerCase();
+      applyFilter();
+    });
+    setTimeout(() => searchInput.focus(), 30);
+    menu.querySelectorAll('.bam-chip').forEach(chip => {
+      chip.addEventListener('click', e => {
+        e.stopPropagation();
+        menu.querySelectorAll('.bam-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        activeFilter = chip.dataset.filter;
+        applyFilter();
       });
     });
-    // Click outside closes
+    function pick(v) {
+      menu.remove();
+      if (typeof onPicked === 'function') onPicked(v);
+    }
+    menu.querySelector('.bam-custom').addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
+      pick('');
+    });
+    menu.querySelectorAll('.bam-side-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        pick(btn.dataset.val);
+      });
+    });
+    menu.querySelector('.bam-close').addEventListener('click', e => {
+      e.stopPropagation();
+      menu.remove();
+    });
+    // Escape key
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { menu.remove(); }
+    });
+    // Click outside
     setTimeout(() => {
       const onDoc = (ev) => {
+        if (!document.body.contains(menu)) {
+          document.removeEventListener('mousedown', onDoc, true);
+          return;
+        }
         if (!menu.contains(ev.target) && ev.target !== anchorBtn) {
           menu.remove();
-          document.removeEventListener('click', onDoc, true);
+          document.removeEventListener('mousedown', onDoc, true);
         }
       };
-      document.addEventListener('click', onDoc, true);
+      document.addEventListener('mousedown', onDoc, true);
     }, 0);
   }
   const events = (r.tasks || []).map(entry => {
