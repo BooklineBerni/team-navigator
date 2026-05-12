@@ -515,13 +515,25 @@
   .rm-side-area .rm-task-row .rmt-end {
     width: 100%; font-size: 11px; padding: 3px 22px 3px 6px; min-width: 0;
   }
-  .rm-side-area .rm-task-row .rm-task-dates {
-    display: flex; gap: 6px; align-items: center;
+  .rm-side-area .rm-task-row .rmt-head {
+    display: flex; gap: 6px; align-items: flex-start; justify-content: space-between;
   }
-  .rm-side-area .rm-task-row .rm-task-dates select { font-size: 11px; padding: 1px 4px; max-width: 110px; }
-  .rm-side-area .rm-task-row .rm-task-dates select.rmt-group-pick { max-width: 140px; }
-  .rm-side-area .rm-task-row .rm-task-dates input[type="date"] {
-    flex: 1; min-width: 0; max-width: none;
+  .rm-side-area .rm-task-row .rmt-head > span { flex: 1; min-width: 0; }
+  .rm-side-area .rm-task-row .rmt-group-row { display: flex; }
+  .rm-side-area .rm-task-row .rmt-group-row .rmt-group-pick {
+    width: 100%; max-width: none; font-size: 11px; padding: 3px 6px;
+  }
+  .rm-side-area .rm-task-row .rmt-dates-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  }
+  .rm-side-area .rm-task-row .rmt-pair {
+    display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  }
+  .rm-side-area .rm-task-row .rmt-pair select {
+    width: 100%; max-width: none; font-size: 10.5px; padding: 1px 4px;
+  }
+  .rm-side-area .rm-task-row .rmt-pair .rmt-label {
+    font-size: 10px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.04em; padding-left: 2px;
   }
   .rm-side-area .rm-task-row .rm-task-del {
     background: transparent; color: #dc2626;
@@ -4528,14 +4540,20 @@ function renderRoadmapCalendar(roadmapId) {
         '</select>'
       );
       html += '<div class="rm-task-row ' + (ready ? "ready" : "") + '" data-tid="' + task.id + '">' +
-        '<span title="' + escapeHtml(task.subject) + '">' + (isThisAGroup ? '📁 ' : '') + escapeHtml(task.subject.slice(0,80)) + (task.subject.length>80?'…':'') + '</span>' +
-        '<div class="rm-task-dates">' +
-          groupPickerHtml +
-          (canAnchor ? anchorSelHtml('rmt-start-anchor', sA) : '') +
-          '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (sA ? ' disabled' : '') + ' title="Start">' +
-          (canAnchor ? anchorSelHtml('rmt-end-anchor', eA) : '') +
-          '<input type="date" class="rmt-end" value="' + escapeHtml(entry.endDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (eA ? ' disabled' : '') + ' title="End">' +
+        '<div class="rmt-head">' +
+          '<span title="' + escapeHtml(task.subject) + '">' + (isThisAGroup ? '📁 ' : '') + escapeHtml(task.subject.slice(0,80)) + (task.subject.length>80?'…':'') + '</span>' +
           '<button class="rm-task-del danger" data-tid="' + task.id + '" title="Remove from roadmap">×</button>' +
+        '</div>' +
+        (groupPickerHtml ? '<div class="rmt-group-row">' + groupPickerHtml + '</div>' : '') +
+        '<div class="rmt-dates-grid">' +
+          '<div class="rmt-pair">' +
+            (canAnchor ? anchorSelHtml('rmt-start-anchor', sA) : '<span class="rmt-label">Start</span>') +
+            '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (sA ? ' disabled' : '') + ' title="Start">' +
+          '</div>' +
+          '<div class="rmt-pair">' +
+            (canAnchor ? anchorSelHtml('rmt-end-anchor', eA) : '<span class="rmt-label">End</span>') +
+            '<input type="date" class="rmt-end" value="' + escapeHtml(entry.endDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (eA ? ' disabled' : '') + ' title="End">' +
+          '</div>' +
         '</div>' +
       '</div>';
     });
