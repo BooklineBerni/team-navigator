@@ -296,21 +296,45 @@
     line-height: 22px !important;   /* keep title strip at the top regardless of bar height */
     overflow: visible;
   }
-  .cal-event.cal-event-group:hover { transform: none; background: rgba(217,119,6,0.28) !important; }
+  .cal-event.cal-event-group { z-index: 2; }
+  .cal-event.cal-event-group:hover { transform: none; background: rgba(217,119,6,0.28) !important; z-index: 3; }
+  .cal-event.cal-event-group.expanded { background: rgba(217,119,6,0.10) !important; border-style: solid; }
+  /* When the group bar hosts children, only the title strip area should catch clicks/hover for the bar itself;
+     the body below is "open" so children inside receive pointer events directly */
+  /* Chevron toggle button inside group bar */
+  .cal-event-group .cal-group-toggle {
+    position: absolute; top: 1px; right: 4px;
+    width: 18px; height: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: none; background: rgba(255,255,255,0.55);
+    color: #92400e; font-size: 11px; line-height: 1;
+    border-radius: 4px; cursor: pointer; padding: 0;
+    z-index: 15;
+    transition: background .12s;
+  }
+  .cal-event-group .cal-group-toggle:hover { background: rgba(255,255,255,0.95); }
   /* Nested child inside a group */
   .cal-event.cal-event-child {
     box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-    z-index: 4;
+    z-index: 8;
     padding: 0 4px;
     font-weight: 500;
+    pointer-events: auto;
   }
-  .cal-event.cal-event-child:hover { z-index: 12; }
+  .cal-event.cal-event-child:hover {
+    z-index: 20;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.22);
+    filter: brightness(1.08);
+  }
   .cal-event-child-overflow {
     position: absolute; height: 12px;
     background: rgba(217,119,6,0.45); color: #fff; font-weight: 700;
     font-size: 9.5px; line-height: 12px; text-align: center;
-    border-radius: 3px; pointer-events: none; z-index: 5;
+    border-radius: 3px; cursor: pointer; z-index: 9;
+    transition: background .12s;
   }
+  .cal-event-child-overflow:hover { background: rgba(217,119,6,0.7); }
   .cal-event-edit-popover {
     position: absolute; min-width: 240px; background: #fff;
     border: 1px solid #d8d6d1; border-radius: 10px; padding: 10px;
@@ -4402,22 +4426,31 @@ function renderRoadmapCalendar(roadmapId) {
         }
       });
       // Determine each lane's height. For a lane containing a group with N nested sub-lanes,
-      // expand it so children fit INSIDE the group's bar (capped to MAX_SUB_LANES).
+      // expand it so children fit INSIDE the group's bar (capped to MAX_SUB_LANES_COLLAPSED unless user expanded that group).
       const SUB_H = 12;
       const SUB_GAP = 2;
       const TITLE_STRIP = 22;
-      const MAX_SUB_LANES = 3;       // beyond this we show "+N more" inside the group
+      const MAX_SUB_LANES_COLLAPSED = 3;       // beyond this we show "+N more" inside the group
       const normalLaneHeight = 22;
+      if (!window.__rmGroupExpanded) window.__rmGroupExpanded = {};
+      // Per-roadmap, per-group expansion state, persisted in localStorage
+      const expandedKey = 'bn-rm-expanded-' + r.id;
+      const expandedSet = new Set(window.__rmGroupExpanded[r.id] || JSON.parse(localStorage.getItem(expandedKey) || '[]'));
+      window.__rmGroupExpanded[r.id] = [...expandedSet];
+      function groupVisibleSubLanesCount(groupId) {
+        const all = (subLanesByParent[groupId] || []).length;
+        if (expandedSet.has(groupId)) return all;
+        return Math.min(all, MAX_SUB_LANES_COLLAPSED);
+      }
       const laneHeights = lanes.map(laneSegs => {
         let maxSub = 0;
         laneSegs.forEach(s => {
           if (!s.event.task.isGroup) return;
-          const subLanes = subLanesByParent[s.event.task.id] || [];
-          if (subLanes.length > maxSub) maxSub = subLanes.length;
+          const visibleSub = groupVisibleSubLanesCount(s.event.task.id);
+          if (visibleSub > maxSub) maxSub = visibleSub;
         });
         if (maxSub === 0) return normalLaneHeight;
-        const visibleSub = Math.min(maxSub, MAX_SUB_LANES);
-        return TITLE_STRIP + visibleSub * (SUB_H + SUB_GAP) + 4;
+        return TITLE_STRIP + maxSub * (SUB_H + SUB_GAP) + 4;
       });
       // Pre-compute Y offset for each lane
       const laneTop = [];
@@ -4478,10 +4511,12 @@ function renderRoadmapCalendar(roadmapId) {
         const isGroupEvent = !!s.event.task.isGroup;
         const isNested = opts.nested;
         const cls = ['cal-event'];
-        let top, height, color, fontSize, label;
+        let top, height, color, fontSize, label, extraHtml = '';
         if (isNested) {
-          // Hide overflow children — they'll be summarized by a "+N more" pill
-          if (s.subLane >= MAX_SUB_LANES) return;
+          // Hide overflow children when group is collapsed — they'll be summarized by a "+N more" pill
+          const parentId = s.event.task.groupId;
+          const isParentExpanded = expandedSet.has(parentId);
+          if (!isParentExpanded && s.subLane >= MAX_SUB_LANES_COLLAPSED) return;
           // Mini chip inside the parent group's expanded lane
           const baseTop = laneTop[s.lane] + TITLE_STRIP;          // first 22px = the group title strip
           top = baseTop + (s.subLane * (SUB_H + SUB_GAP));
@@ -4492,15 +4527,26 @@ function renderRoadmapCalendar(roadmapId) {
           label = escapeHtml(s.event.task.subject);
         } else if (isGroupEvent) {
           // Group container bar (transparent)
-          const childCount = (STORE.tasks||[]).filter(x => x.groupId === s.event.task.id).length;
+          const gid = s.event.task.id;
+          const childCount = (STORE.tasks||[]).filter(x => x.groupId === gid).length;
           top = laneTop[s.lane];
-          const hasKids = (subLanesByParent[s.event.task.id] && subLanesByParent[s.event.task.id].length > 0);
+          const hasKids = (subLanesByParent[gid] && subLanesByParent[gid].length > 0);
           // Match the lane's height when the group hosts kids; otherwise 22 like a normal task bar
           height = hasKids ? (laneHeights[s.lane] - 4) : 22;
           color = 'rgba(217,119,6,0.18)';   // amber 18% transparent so calendar shows through
           fontSize = 11;
           cls.push('cal-event-group');
+          const totalSubLanes = (subLanesByParent[gid] || []).length;
+          const canExpand = totalSubLanes > MAX_SUB_LANES_COLLAPSED;
+          const isExpanded = expandedSet.has(gid);
+          if (isExpanded) cls.push('expanded');
           label = '📁 ' + escapeHtml(s.event.task.subject) + (childCount > 0 ? ' (' + childCount + ')' : '');
+          if (canExpand && !s.continuesLeft) {
+            // Chevron toggle button on the leading edge of the group bar
+            const chev = isExpanded ? '▾' : '▸';
+            const ttl = isExpanded ? 'Collapse group' : 'Expand group (show all ' + totalSubLanes + ' rows)';
+            extraHtml = '<button type="button" class="cal-group-toggle" data-group-toggle="' + gid + '" title="' + ttl + '">' + chev + '</button>';
+          }
         } else {
           // Normal task bar
           top = laneTop[s.lane];
@@ -4512,27 +4558,31 @@ function renderRoadmapCalendar(roadmapId) {
         if (s.continuesLeft) cls.push('continues-left');
         if (s.continuesRight) cls.push('continues-right');
         const tooltipText = s.event.task.subject + (isGroupEvent ? ' [Group]' : '') + ' — ' + (s.event.entry.startDate||'?') + ' → ' + (s.event.entry.endDate||'?');
+        // Group bar: align title to left when there's a chevron so they don't collide
+        const lineHeight = isGroupEvent ? 22 : (height - 2);
         html += '<div class="' + cls.join(' ') + '" data-tid="' + s.event.task.id + '"' +
           ' title="' + escapeHtml(tooltipText) + '"' +
           ' style="left:calc(' + left + '% + 4px); width:calc(' + width + '% - 8px);' +
-          ' top:' + top + 'px; height:' + height + 'px; line-height:' + (height - 2) + 'px;' +
+          ' top:' + top + 'px; height:' + height + 'px; line-height:' + lineHeight + 'px;' +
           ' background:' + color + '; font-size:' + fontSize + 'px">' +
           (s.continuesLeft ? '◂ ' : '') + label + (s.continuesRight ? ' ▸' : '') +
+          extraHtml +
         '</div>';
       }
       // Render parents first (so children draw on top)
       parentSegs.forEach(s => renderSeg(s, { nested: false }));
       childSegs.forEach(s => renderSeg(s, { nested: !!parentSegByTaskId[s.event.task.groupId] }));
-      // "+N more" indicator inside groups with too many nested children
+      // "+N more" indicator inside groups with too many nested children (only when collapsed)
       Object.entries(subLanesByParent).forEach(([groupId, subLanes]) => {
-        if (subLanes.length <= MAX_SUB_LANES) return;
+        if (subLanes.length <= MAX_SUB_LANES_COLLAPSED) return;
+        if (expandedSet.has(groupId)) return;   // skip pill when expanded — all rows visible
         const parentSeg = parentSegByTaskId[groupId];
         if (!parentSeg) return;
-        const extra = subLanes.length - MAX_SUB_LANES;
+        const extra = subLanes.length - MAX_SUB_LANES_COLLAPSED;
         const left = (parentSeg.startCol / nDays) * 100;
         const width = (parentSeg.span / nDays) * 100;
-        const top = laneTop[parentSeg.lane] + TITLE_STRIP + MAX_SUB_LANES * (SUB_H + SUB_GAP);
-        html += '<div class="cal-event-child-overflow" style="left:calc(' + left + '% + 8px); width:calc(' + width + '% - 16px); top:' + top + 'px">+' + extra + ' more</div>';
+        const top = laneTop[parentSeg.lane] + TITLE_STRIP + MAX_SUB_LANES_COLLAPSED * (SUB_H + SUB_GAP);
+        html += '<div class="cal-event-child-overflow" data-expand-group="' + groupId + '" title="Click to expand group" style="left:calc(' + left + '% + 8px); width:calc(' + width + '% - 16px); top:' + top + 'px">+' + extra + ' more</div>';
       });
       // "X more" indicator if exceeds maxLanesShown
       const overflowCount = lanes.length - maxLanesShown;
@@ -4653,8 +4703,39 @@ function renderRoadmapCalendar(roadmapId) {
     const old = document.querySelector('.cal-event-edit-popover');
     if (old) old.remove();
   }
+  // Helper to toggle a group's expanded state and persist to localStorage
+  function toggleGroupExpanded(gid) {
+    const key = 'bn-rm-expanded-' + r.id;
+    const cur = new Set(window.__rmGroupExpanded[r.id] || JSON.parse(localStorage.getItem(key) || '[]'));
+    if (cur.has(gid)) cur.delete(gid); else cur.add(gid);
+    const arr = [...cur];
+    window.__rmGroupExpanded[r.id] = arr;
+    localStorage.setItem(key, JSON.stringify(arr));
+    closeCalEventPopover();
+    renderRoadmapCalendar(roadmapId);
+  }
+  // Chevron toggle inside group bars
+  cont.querySelectorAll('.cal-group-toggle').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const gid = btn.dataset.groupToggle;
+      if (gid) toggleGroupExpanded(gid);
+    });
+  });
+  // "+N more" pill — click to expand group
+  cont.querySelectorAll('.cal-event-child-overflow[data-expand-group]').forEach(node => {
+    node.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const gid = node.dataset.expandGroup;
+      if (gid) toggleGroupExpanded(gid);
+    });
+  });
   cont.querySelectorAll('.cal-event').forEach(node => {
     node.addEventListener('click', e => {
+      // Don't open the date popover if the chevron toggle was clicked
+      if (e.target.closest('.cal-group-toggle')) return;
       e.stopPropagation();
       const tid = node.dataset.tid;
       const entry = (r.tasks || []).find(en => en.taskId === tid);
