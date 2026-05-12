@@ -286,13 +286,20 @@
   .cal-event:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.18); z-index: 10; }
   .cal-event.continues-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
   .cal-event.continues-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-  /* Group event bar: a bit taller, dashed outline that visually says "container" */
+  /* Group container bar: transparent amber backdrop with dashed border. Children render on top. */
   .cal-event.cal-event-group {
+    color: #92400e !important;
     font-weight: 700;
-    border: 1.5px dashed rgba(255,255,255,0.7);
-    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.18);
-    padding: 4px 8px;
-    letter-spacing: 0.01em;
+    border: 1.5px dashed #d97706;
+    text-align: left;
+    padding: 2px 8px;
+    line-height: 22px !important;   /* keep title strip at the top regardless of bar height */
+    overflow: visible;
+  }
+  .cal-event.cal-event-group:hover { transform: none; background: rgba(217,119,6,0.28) !important; }
+  /* Nested child inside a group */
+  .cal-event.cal-event-child {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
   }
   .cal-more-events {
     position: absolute; font-size: 10px; color: #6b6b6b; cursor: pointer;
@@ -4263,19 +4270,65 @@ function renderRoadmapCalendar(roadmapId) {
           continuesRight: e.end > weekEnd
         });
       });
-      // Lane assignment
+      // Group containment: build a map "groupId on this roadmap" so child events
+      // (with task.groupId pointing here) sit INSIDE the parent's lane instead of taking new ones.
+      const groupTaskIdsOnRoadmap = new Set();
+      eventsScheduled.forEach(e => { if (e.task.isGroup) groupTaskIdsOnRoadmap.add(e.task.id); });
+      function isNestedChild(seg) {
+        return seg.event.task.groupId && groupTaskIdsOnRoadmap.has(seg.event.task.groupId);
+      }
+
+      // Lane assignment: lanes only for parents/standalones. Each lane gets a height that
+      // expands if there are nested children to fit inside.
       segments.sort((a,b) => a.startCol - b.startCol || b.span - a.span);
+      const parentSegs = segments.filter(s => !isNestedChild(s));
+      const childSegs  = segments.filter(s => isNestedChild(s));
       const lanes = [];
-      segments.forEach(s => {
+      parentSegs.forEach(s => {
         let lane = 0;
         while (lanes[lane] && lanes[lane].some(o => s.startCol < o.startCol + o.span && o.startCol < s.startCol + s.span)) lane++;
         if (!lanes[lane]) lanes[lane] = [];
         lanes[lane].push(s);
         s.lane = lane;
       });
+      // Assign nested children to the same lane as their parent (find parent in this week)
+      const parentSegByTaskId = {};
+      parentSegs.forEach(p => { parentSegByTaskId[p.event.task.id] = p; });
+      // Sub-lanes inside each parent lane (per parent task id this week)
+      const subLanesByParent = {};
+      childSegs.forEach(c => {
+        const parentSeg = parentSegByTaskId[c.event.task.groupId];
+        if (parentSeg) {
+          c.lane = parentSeg.lane;
+          const subLanes = subLanesByParent[c.event.task.groupId] = subLanesByParent[c.event.task.groupId] || [];
+          let sub = 0;
+          while (subLanes[sub] && subLanes[sub].some(o => c.startCol < o.startCol + o.span && o.startCol < c.startCol + c.span)) sub++;
+          if (!subLanes[sub]) subLanes[sub] = [];
+          subLanes[sub].push(c);
+          c.subLane = sub;
+        } else {
+          // Parent isn't visible this week (segment doesn't intersect); treat as a normal segment
+          let lane = 0;
+          while (lanes[lane] && lanes[lane].some(o => c.startCol < o.startCol + o.span && o.startCol < c.startCol + c.span)) lane++;
+          if (!lanes[lane]) lanes[lane] = [];
+          lanes[lane].push(c);
+          c.lane = lane;
+        }
+      });
+      // Determine each lane's height: 22 by default, larger if a parent in that lane has children
+      const groupLaneHeight = 56;
+      const normalLaneHeight = 22;
+      const laneHeights = lanes.map(laneSegs => {
+        const hasChildren = laneSegs.some(s => s.event.task.isGroup && subLanesByParent[s.event.task.id] && subLanesByParent[s.event.task.id].length > 0);
+        return hasChildren ? groupLaneHeight : normalLaneHeight;
+      });
+      // Pre-compute Y offset for each lane
+      const laneTop = [];
+      let acc = 0;
+      laneHeights.forEach((h,i) => { laneTop[i] = acc; acc += h; });
       const maxLanesShown = 3;
       const minHeight = 110;
-      const calculatedHeight = Math.max(minHeight, 36 + lanes.length * 22);
+      const calculatedHeight = Math.max(minHeight, 36 + acc);
 
       html += '<div class="cal-week" style="min-height:' + calculatedHeight + 'px; grid-template-columns: repeat(' + nDays + ', 1fr)">';
       // Day cells loop
@@ -4319,29 +4372,58 @@ function renderRoadmapCalendar(roadmapId) {
         const cls = type === 'time-off' ? 'no-work-stripes time-off' : 'no-work-stripes';
         html += '<div class="' + cls + '" style="left:calc(' + left + '% + 1px); width:calc(' + (100/nDays) + '% - 2px)"></div>';
       });
-      segments.forEach(s => {
+      // Render parents (groups + standalone tasks) first, then nested children on top
+      function renderSeg(s, opts) {
+        opts = opts || {};
         if (s.lane >= maxLanesShown) return;
         const left = (s.startCol / nDays) * 100;
         const width = (s.span / nDays) * 100;
-        const top = s.lane * 22;
         const isGroupEvent = !!s.event.task.isGroup;
-        // Groups: a darker amber bar with a folder icon — distinguishes a container from a task
-        const color = isGroupEvent ? '#d97706' : (statusColors[s.event.task.panelStatus] || '#1a1a1a');
+        const isNested = opts.nested;
         const cls = ['cal-event'];
-        if (isGroupEvent) cls.push('cal-event-group');
+        let top, height, color, fontSize, label;
+        if (isNested) {
+          // Mini chip inside the parent group's expanded lane
+          const baseTop = laneTop[s.lane] + 22;          // first 22px = the group title strip
+          const SUB_H = 14;
+          top = baseTop + (s.subLane * (SUB_H + 2));
+          height = SUB_H;
+          color = statusColors[s.event.task.panelStatus] || '#1a1a1a';
+          fontSize = 10.5;
+          cls.push('cal-event-child');
+          label = escapeHtml(s.event.task.subject);
+        } else if (isGroupEvent) {
+          // Group container bar (transparent)
+          const childCount = (STORE.tasks||[]).filter(x => x.groupId === s.event.task.id).length;
+          top = laneTop[s.lane];
+          const hasKids = (subLanesByParent[s.event.task.id] && subLanesByParent[s.event.task.id].length > 0);
+          height = hasKids ? groupLaneHeight - 4 : 22;
+          color = 'rgba(217,119,6,0.18)';   // amber 18% transparent so calendar shows through
+          fontSize = 11;
+          cls.push('cal-event-group');
+          label = '📁 ' + escapeHtml(s.event.task.subject) + (childCount > 0 ? ' (' + childCount + ')' : '');
+        } else {
+          // Normal task bar
+          top = laneTop[s.lane];
+          height = 20;
+          color = statusColors[s.event.task.panelStatus] || '#1a1a1a';
+          fontSize = 11;
+          label = escapeHtml(s.event.task.subject);
+        }
         if (s.continuesLeft) cls.push('continues-left');
         if (s.continuesRight) cls.push('continues-right');
-        // For groups, append a count of child tasks if any
-        let label = escapeHtml(s.event.task.subject);
-        if (isGroupEvent) {
-          const childCount = (STORE.tasks||[]).filter(x => x.groupId === s.event.task.id).length;
-          label = '📁 ' + label + (childCount > 0 ? ' (' + childCount + ')' : '');
-        }
         const tooltipText = s.event.task.subject + (isGroupEvent ? ' [Group]' : '') + ' — ' + (s.event.entry.startDate||'?') + ' → ' + (s.event.entry.endDate||'?');
-        html += '<div class="' + cls.join(' ') + '" data-tid="' + s.event.task.id + '" title="' + escapeHtml(tooltipText) + '" style="left:calc(' + left + '% + 4px); width:calc(' + width + '% - 8px); top:' + top + 'px; background:' + color + '">' +
+        html += '<div class="' + cls.join(' ') + '" data-tid="' + s.event.task.id + '"' +
+          ' title="' + escapeHtml(tooltipText) + '"' +
+          ' style="left:calc(' + left + '% + 4px); width:calc(' + width + '% - 8px);' +
+          ' top:' + top + 'px; height:' + height + 'px; line-height:' + (height - 2) + 'px;' +
+          ' background:' + color + '; font-size:' + fontSize + 'px">' +
           (s.continuesLeft ? '◂ ' : '') + label + (s.continuesRight ? ' ▸' : '') +
         '</div>';
-      });
+      }
+      // Render parents first (so children draw on top)
+      parentSegs.forEach(s => renderSeg(s, { nested: false }));
+      childSegs.forEach(s => renderSeg(s, { nested: !!parentSegByTaskId[s.event.task.groupId] }));
       // "X more" indicator if exceeds maxLanesShown
       const overflowCount = lanes.length - maxLanesShown;
       if (overflowCount > 0) {
@@ -4352,7 +4434,7 @@ function renderRoadmapCalendar(roadmapId) {
           });
           if (cnt > 0) {
             const left = (d / nDays) * 100;
-            const top = maxLanesShown * 22;
+            const top = laneTop[maxLanesShown] || (maxLanesShown * 22);
             html += '<div class="cal-more-events" style="left:calc(' + left + '% + 4px); top:' + top + 'px">+' + cnt + ' more</div>';
           }
         }
