@@ -300,7 +300,27 @@
   /* Nested child inside a group */
   .cal-event.cal-event-child {
     box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    z-index: 4;
   }
+  .cal-event.cal-event-child:hover { z-index: 12; }
+  .cal-event-edit-popover {
+    position: absolute; min-width: 240px; background: #fff;
+    border: 1px solid #d8d6d1; border-radius: 10px; padding: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+    z-index: 200;
+    font-size: 12px; color: #1a1a1a;
+  }
+  .cal-event-edit-popover h4 { margin: 0 0 8px; font-size: 13px; font-weight: 700; }
+  .cal-event-edit-popover .cep-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .cal-event-edit-popover .cep-row label { font-size: 11px; color: #6b6b6b; width: 38px; }
+  .cal-event-edit-popover input[type="date"] { flex: 1; }
+  .cal-event-edit-popover .cep-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 6px; }
+  .cal-event-edit-popover .cep-link { background: none; border: none; color: #1a73e8; cursor: pointer; font-size: 11.5px; padding: 0; text-decoration: underline; }
+  .cal-event-edit-popover button.danger {
+    background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;
+    padding: 4px 10px; border-radius: 6px; font-size: 11.5px; cursor: pointer;
+  }
+  .cal-event-edit-popover button.danger:hover { background: #fee2e2; }
   .cal-more-events {
     position: absolute; font-size: 10px; color: #6b6b6b; cursor: pointer;
     padding: 2px 6px; pointer-events: auto;
@@ -4501,9 +4521,80 @@ function renderRoadmapCalendar(roadmapId) {
     roadmapCalState.yearMonth = { year: t.getFullYear(), month: t.getMonth() };
     renderRoadmapCalendar(roadmapId);
   });
-  // Event clicks
+  // Event clicks → open a small popover to edit roadmap dates (and a link to open the task modal)
+  function closeCalEventPopover() {
+    const old = document.querySelector('.cal-event-edit-popover');
+    if (old) old.remove();
+  }
   cont.querySelectorAll('.cal-event').forEach(node => {
-    node.addEventListener('click', () => openModal(node.dataset.tid));
+    node.addEventListener('click', e => {
+      e.stopPropagation();
+      const tid = node.dataset.tid;
+      const entry = (r.tasks || []).find(en => en.taskId === tid);
+      if (!entry) { openModal(tid); return; }
+      const task = STORE.tasks.find(t => t.id === tid);
+      if (!task) return;
+      closeCalEventPopover();
+      const pop = document.createElement('div');
+      pop.className = 'cal-event-edit-popover';
+      const isG = !!task.isGroup;
+      pop.innerHTML =
+        '<h4>' + (isG ? '📁 ' : '') + escapeHtml(task.subject) + '</h4>' +
+        '<div class="cep-row"><label>Start</label>' +
+          '<input type="date" id="cepStart" value="' + escapeHtml(entry.startDate || '') + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + '>' +
+        '</div>' +
+        '<div class="cep-row"><label>End</label>' +
+          '<input type="date" id="cepEnd" value="' + escapeHtml(entry.endDate || '') + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + '>' +
+        '</div>' +
+        '<div class="cep-actions">' +
+          '<button type="button" class="cep-link" id="cepOpenTask">Open task →</button>' +
+          '<button type="button" class="danger" id="cepRemove">Remove from roadmap</button>' +
+        '</div>';
+      document.body.appendChild(pop);
+      // Position near the clicked node
+      const rect = node.getBoundingClientRect();
+      pop.style.left = (rect.left + window.scrollX) + 'px';
+      pop.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+      // Flip if no room below
+      setTimeout(() => {
+        const pr = pop.getBoundingClientRect();
+        if (pr.right > window.innerWidth - 8) {
+          pop.style.left = Math.max(8, window.innerWidth - pr.width - 8 + window.scrollX) + 'px';
+        }
+        if (pr.bottom > window.innerHeight - 8) {
+          const above = rect.top - pr.height - 6;
+          pop.style.top = (Math.max(8, above) + window.scrollY) + 'px';
+        }
+      }, 0);
+      pop.querySelector('#cepStart').addEventListener('change', ev => {
+        entry.startDate = ev.target.value;
+        saveStore(STORE);
+        renderRoadmapCalendar(roadmapId);
+      });
+      pop.querySelector('#cepEnd').addEventListener('change', ev => {
+        entry.endDate = ev.target.value;
+        saveStore(STORE);
+        renderRoadmapCalendar(roadmapId);
+      });
+      pop.querySelector('#cepRemove').addEventListener('click', () => {
+        if (!confirm('Remove "' + (task.subject||'this task') + '" from this roadmap?')) return;
+        r.tasks = (r.tasks || []).filter(en => en.taskId !== tid);
+        saveStore(STORE);
+        closeCalEventPopover();
+        renderRoadmapCalendar(roadmapId);
+      });
+      pop.querySelector('#cepOpenTask').addEventListener('click', () => {
+        closeCalEventPopover();
+        openModal(tid);
+      });
+    });
+  });
+  // Click outside the popover or any event closes it
+  document.addEventListener('click', e => {
+    const pop = document.querySelector('.cal-event-edit-popover');
+    if (!pop) return;
+    if (pop.contains(e.target) || e.target.closest('.cal-event')) return;
+    pop.remove();
   });
   // Hide-weekends toggle
   const hwCb = document.getElementById('calHideWeekends');
@@ -8055,11 +8146,22 @@ function bnOpenDatePicker(input) {
   popover.style.left = (rect.left + window.scrollX) + 'px';
   popover.style.top = (rect.bottom + window.scrollY + 4) + 'px';
   bnRenderDatePicker();
-  // Fix overflow off-right
+  // Fix overflow off-right and flip-up if no room below
   setTimeout(() => {
     const pr = popover.getBoundingClientRect();
     if (pr.right > window.innerWidth - 8) {
-      popover.style.left = (window.innerWidth - pr.width - 8 + window.scrollX) + 'px';
+      popover.style.left = Math.max(8, (window.innerWidth - pr.width - 8 + window.scrollX)) + 'px';
+    }
+    if (pr.bottom > window.innerHeight - 8) {
+      // Try flipping above the input. If there's not enough space above either, clamp inside viewport.
+      const spaceAbove = rect.top;
+      const popHeight = pr.height;
+      if (spaceAbove >= popHeight + 8) {
+        popover.style.top = (rect.top + window.scrollY - popHeight - 4) + 'px';
+      } else {
+        // Clamp inside viewport (top edge)
+        popover.style.top = (window.scrollY + Math.max(8, window.innerHeight - popHeight - 8)) + 'px';
+      }
     }
   }, 0);
 }
