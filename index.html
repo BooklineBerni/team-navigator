@@ -591,6 +591,36 @@
     background: #fef3c7; border-color: #f59e0b;
     filter: none; opacity: 1;
   }
+  /* Floating anchor picker menu (used by unscheduled-row pin buttons) */
+  .bn-anchor-menu {
+    position: absolute; z-index: 300;
+    background: #fff; border: 1px solid #d8d6d1; border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+    min-width: 240px; max-width: 360px;
+    padding: 6px;
+    font-size: 12px; color: #1a1a1a;
+  }
+  .bn-anchor-menu .bam-head {
+    font-weight: 700; font-size: 11.5px; color: #6b6b6b;
+    padding: 4px 8px 6px;
+    border-bottom: 1px solid #f1efe9; margin-bottom: 4px;
+  }
+  .bn-anchor-menu .bam-list {
+    max-height: 280px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 1px;
+  }
+  .bn-anchor-menu .bam-item {
+    display: block; width: 100%;
+    text-align: left; padding: 6px 8px;
+    background: transparent; border: none; border-radius: 6px;
+    font-size: 12px; color: #1a1a1a; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-family: inherit;
+  }
+  .bn-anchor-menu .bam-item:hover { background: #f5f3ed; }
+  .bn-anchor-menu .bam-item.selected {
+    background: #fef3c7; color: #92400e; font-weight: 600;
+  }
   .rm-side-area .rm-task-row .rm-task-del {
     background: transparent; color: #dc2626;
     border: 1px solid #fecaca;
@@ -4225,22 +4255,132 @@ function renderRoadmapCalendar(roadmapId) {
 
   // Build event list — task must have at least startDate; missing endDate → extend to far future ("infinity")
   const FAR_FUTURE = new Date(2099, 11, 31);
-  // Resolve effective dates for an entry, applying group anchors when set.
-  // Anchors: entry.startAnchor / entry.endAnchor ∈ {undefined, 'group-start', 'group-end'}
-  function effectiveDatesFor(entry) {
-    const task = STORE.tasks.find(t => t.id === entry.taskId);
-    let startStr = entry.startDate || '';
-    let endStr   = entry.endDate || '';
-    if ((entry.startAnchor || entry.endAnchor) && task && task.groupId) {
-      const parentEntry = (r.tasks || []).find(e => e.taskId === task.groupId);
-      if (parentEntry) {
-        if (entry.startAnchor === 'group-start') startStr = parentEntry.startDate || '';
-        else if (entry.startAnchor === 'group-end') startStr = parentEntry.endDate || '';
-        if (entry.endAnchor === 'group-start') endStr = parentEntry.startDate || '';
-        else if (entry.endAnchor === 'group-end') endStr = parentEntry.endDate || '';
-      }
+  // Resolve an anchor value to { taskId, side } or null.
+  // Supported formats:
+  //   ''                       → no anchor
+  //   'group-start' (legacy)   → parent group's start
+  //   'group-end'   (legacy)   → parent group's end
+  //   'task:{id}:start|end'    → any task's start/end
+  function parseAnchorRef(entry, anchorVal) {
+    if (!anchorVal) return null;
+    if (anchorVal === 'group-start' || anchorVal === 'group-end') {
+      const t = STORE.tasks.find(x => x.id === entry.taskId);
+      if (t && t.groupId) return { taskId: t.groupId, side: anchorVal === 'group-end' ? 'end' : 'start' };
+      return null;
     }
-    return { startStr, endStr };
+    if (anchorVal.indexOf('task:') === 0) {
+      const parts = anchorVal.split(':');
+      if (parts.length === 3 && (parts[2] === 'start' || parts[2] === 'end')) return { taskId: parts[1], side: parts[2] };
+    }
+    return null;
+  }
+  // Resolve effective dates for an entry, walking anchor chains so we always land on a concrete date.
+  // Cycles are protected by a visited-set; missing targets fall back to the entry's own date.
+  function effectiveDatesFor(entry) {
+    function resolveSide(startEntry, sideField /* 'start' | 'end' */) {
+      const visited = new Set();
+      let curEntry = startEntry;
+      let curSide = sideField;
+      while (curEntry && !visited.has(curEntry.taskId + '|' + curSide)) {
+        visited.add(curEntry.taskId + '|' + curSide);
+        const anchorVal = curSide === 'start' ? curEntry.startAnchor : curEntry.endAnchor;
+        const ref = parseAnchorRef(curEntry, anchorVal);
+        if (!ref) {
+          // No anchor on this side — return the literal date
+          return (curSide === 'start' ? curEntry.startDate : curEntry.endDate) || '';
+        }
+        const next = (r.tasks || []).find(e => e.taskId === ref.taskId);
+        if (!next) return '';   // target not on roadmap → no effective date
+        curEntry = next;
+        curSide = ref.side;
+      }
+      return '';   // cycle detected
+    }
+    return {
+      startStr: resolveSide(entry, 'start'),
+      endStr:   resolveSide(entry, 'end'),
+    };
+  }
+  // Build the list of anchor menu items for `entry` (excludes self). Returns [{value, label}, …].
+  function buildAnchorItems(entry) {
+    const items = [{ value: '', label: '○  Custom date' }];
+    const ownTask = STORE.tasks.find(x => x.id === entry.taskId);
+    // Order: parent group first (if any), then other groups, then standalone tasks.
+    const others = (r.tasks || []).filter(e => e.taskId !== entry.taskId).map(e => ({
+      entry: e, task: STORE.tasks.find(t => t.id === e.taskId)
+    })).filter(x => x.task);
+    others.sort((a, b) => {
+      const ag = ownTask && ownTask.groupId === a.task.id ? 0 : (a.task.isGroup ? 1 : 2);
+      const bg = ownTask && ownTask.groupId === b.task.id ? 0 : (b.task.isGroup ? 1 : 2);
+      if (ag !== bg) return ag - bg;
+      return (a.task.subject || '').localeCompare(b.task.subject || '');
+    });
+    others.forEach(({ task }) => {
+      const icon = task.isGroup ? '📁' : '·';
+      const name = (task.subject || '(unnamed)').slice(0, 55);
+      items.push({ value: 'task:' + task.id + ':start', label: '📌  ' + icon + ' ' + name + ' — start' });
+      items.push({ value: 'task:' + task.id + ':end',   label: '📌  ' + icon + ' ' + name + ' — end' });
+    });
+    return items;
+  }
+  // Normalize an anchor for display selection: legacy 'group-start' → 'task:{groupId}:start' (for matching <select> options).
+  function normalizeAnchorForSelect(entry, val) {
+    if (val === 'group-start' || val === 'group-end') {
+      const t = STORE.tasks.find(x => x.id === entry.taskId);
+      if (t && t.groupId) return 'task:' + t.groupId + (val === 'group-end' ? ':end' : ':start');
+    }
+    return val || '';
+  }
+  // Floating picker for anchor selection (used by unscheduled-row pin buttons).
+  // Closes any previous menu, opens a new one positioned near `anchorBtn`.
+  function openAnchorPicker(anchorBtn, entry, kind /* 'start'|'end' */, currentValue, onPicked) {
+    // Close any open picker
+    document.querySelectorAll('.bn-anchor-menu').forEach(n => n.remove());
+    const items = buildAnchorItems(entry);
+    if (items.length <= 1) return;   // only "Custom date" → nothing to anchor to
+    const menu = document.createElement('div');
+    menu.className = 'bn-anchor-menu';
+    const head = '<div class="bam-head">Anchor ' + (kind === 'start' ? 'start' : 'end') + ' to…</div>';
+    const list = items.map(it =>
+      '<button type="button" class="bam-item' + (it.value === currentValue ? ' selected' : '') + '" data-val="' + escapeHtml(it.value) + '">' + escapeHtml(it.label) + '</button>'
+    ).join('');
+    menu.innerHTML = head + '<div class="bam-list">' + list + '</div>';
+    document.body.appendChild(menu);
+    // Position near the pin button
+    const rect = anchorBtn.getBoundingClientRect();
+    menu.style.left = (rect.left + window.scrollX) + 'px';
+    menu.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+    // Flip if no room below / right
+    setTimeout(() => {
+      const mr = menu.getBoundingClientRect();
+      if (mr.right > window.innerWidth - 8) {
+        menu.style.left = Math.max(8, window.innerWidth - mr.width - 8 + window.scrollX) + 'px';
+      }
+      if (mr.bottom > window.innerHeight - 8) {
+        const above = rect.top - mr.height - 4;
+        menu.style.top = (Math.max(8, above) + window.scrollY) + 'px';
+      }
+    }, 0);
+    // Wire click handlers
+    menu.querySelectorAll('.bam-item').forEach(b => {
+      b.addEventListener('click', ev => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const v = b.dataset.val || '';
+        menu.remove();
+        if (typeof onPicked === 'function') onPicked(v);
+      });
+    });
+    // Click outside closes
+    setTimeout(() => {
+      const onDoc = (ev) => {
+        if (!menu.contains(ev.target) && ev.target !== anchorBtn) {
+          menu.remove();
+          document.removeEventListener('click', onDoc, true);
+        }
+      };
+      document.addEventListener('click', onDoc, true);
+    }, 0);
   }
   const events = (r.tasks || []).map(entry => {
     const task = STORE.tasks.find(t => t.id === entry.taskId);
@@ -4626,16 +4766,23 @@ function renderRoadmapCalendar(roadmapId) {
       const eff = effectiveDatesFor(entry);
       const ready = !!parseDate(eff.startStr);
       const isThisAGroup = !!task.isGroup;
-      // Show anchor pin buttons only when this task's parent group is on the roadmap
-      const parentEntry = (!isThisAGroup && task.groupId) ? (r.tasks || []).find(en => en.taskId === task.groupId) : null;
-      const canAnchor = !!parentEntry;
+      // Anchor pins now allow linking to ANY other task on the roadmap (groups + standalone).
+      const canAnchor = (r.tasks || []).filter(en => en.taskId !== task.id).length > 0;
       const sA = entry.startAnchor || '';
       const eA = entry.endAnchor   || '';
-      function pinBtnHtml(cls, isActive, kind) {
-        const tooltip = kind === 'start'
-          ? (isActive ? 'Anchored to group start — click to unlock' : 'Click to anchor start to group start')
-          : (isActive ? 'Anchored to group end — click to unlock'   : 'Click to anchor end to group end');
-        return '<button type="button" class="rmt-pin ' + cls + (isActive ? ' active' : '') + '" title="' + tooltip + '" data-kind="' + kind + '">📌</button>';
+      function anchorLabel(anchorVal) {
+        const ref = parseAnchorRef(entry, anchorVal);
+        if (!ref) return '';
+        const tt = STORE.tasks.find(x => x.id === ref.taskId);
+        if (!tt) return '';
+        return (tt.subject || '(unnamed)') + ' — ' + ref.side;
+      }
+      function pinBtnHtml(cls, isActive, kind, anchorVal) {
+        const label = anchorLabel(anchorVal);
+        const tooltip = isActive
+          ? 'Anchored to ' + (label || 'another task') + ' — click to change/unlock'
+          : 'Click to anchor ' + kind + ' to another task on this roadmap';
+        return '<button type="button" class="rmt-pin ' + cls + (isActive ? ' active' : '') + '" title="' + escapeHtml(tooltip) + '" data-kind="' + kind + '">📌</button>';
       }
       // Group assignment picker (only for non-group tasks)
       const groupPickerHtml = isThisAGroup ? '' : (
@@ -4654,7 +4801,7 @@ function renderRoadmapCalendar(roadmapId) {
           '<div class="rmt-pair">' +
             '<span class="rmt-label">Start</span>' +
             '<div class="rmt-input-wrap">' +
-              (canAnchor ? pinBtnHtml('rmt-pin-start', sA === 'group-start', 'start') : '') +
+              (canAnchor ? pinBtnHtml('rmt-pin-start', !!sA, 'start', sA) : '') +
               '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (sA ? ' disabled' : '') + ' title="Start">' +
             '</div>' +
           '</div>' +
@@ -4662,7 +4809,7 @@ function renderRoadmapCalendar(roadmapId) {
             '<span class="rmt-label">End</span>' +
             '<div class="rmt-input-wrap">' +
               '<input type="date" class="rmt-end" value="' + escapeHtml(entry.endDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (eA ? ' disabled' : '') + ' title="End">' +
-              (canAnchor ? pinBtnHtml('rmt-pin-end', eA === 'group-end', 'end') : '') +
+              (canAnchor ? pinBtnHtml('rmt-pin-end', !!eA, 'end', eA) : '') +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -4746,15 +4893,16 @@ function renderRoadmapCalendar(roadmapId) {
       const pop = document.createElement('div');
       pop.className = 'cal-event-edit-popover';
       const isG = !!task.isGroup;
-      // Anchors only available if THIS task is a child whose parent group is on this roadmap
-      const parentGroupEntry = (task.groupId && !isG) ? (r.tasks || []).find(en => en.taskId === task.groupId) : null;
-      const canAnchor = !!parentGroupEntry;
       const sAnchor = entry.startAnchor || '';
       const eAnchor = entry.endAnchor || '';
+      const sAnchorNorm = normalizeAnchorForSelect(entry, sAnchor);
+      const eAnchorNorm = normalizeAnchorForSelect(entry, eAnchor);
+      const anchorItems = buildAnchorItems(entry);
+      const canAnchor = anchorItems.length > 1;   // there is at least one other task in the roadmap
       function anchorOptions(selected) {
-        return '<option value=""' + (selected === '' ? ' selected' : '') + '>Custom date</option>' +
-               '<option value="group-start"' + (selected === 'group-start' ? ' selected' : '') + '>📌 Anchor to group start</option>' +
-               '<option value="group-end"'   + (selected === 'group-end' ? ' selected' : '') + '>📌 Anchor to group end</option>';
+        return anchorItems.map(it =>
+          '<option value="' + escapeHtml(it.value) + '"' + (it.value === selected ? ' selected' : '') + '>' + escapeHtml(it.label) + '</option>'
+        ).join('');
       }
       pop.innerHTML =
         '<h4>' + (isG ? '📁 ' : '') + escapeHtml(task.subject) + '</h4>' +
@@ -4762,13 +4910,13 @@ function renderRoadmapCalendar(roadmapId) {
           '<input type="date" id="cepStart" value="' + escapeHtml(entry.startDate || '') + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + (sAnchor ? ' disabled' : '') + '>' +
         '</div>' +
         (canAnchor ?
-          '<div class="cep-row"><label></label><select id="cepStartAnchor" style="flex:1">' + anchorOptions(sAnchor) + '</select></div>'
+          '<div class="cep-row"><label></label><select id="cepStartAnchor" style="flex:1" title="Anchor start to another task">' + anchorOptions(sAnchorNorm) + '</select></div>'
           : '') +
         '<div class="cep-row"><label>End</label>' +
           '<input type="date" id="cepEnd" value="' + escapeHtml(entry.endDate || '') + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + (eAnchor ? ' disabled' : '') + '>' +
         '</div>' +
         (canAnchor ?
-          '<div class="cep-row"><label></label><select id="cepEndAnchor" style="flex:1">' + anchorOptions(eAnchor) + '</select></div>'
+          '<div class="cep-row"><label></label><select id="cepEndAnchor" style="flex:1" title="Anchor end to another task">' + anchorOptions(eAnchorNorm) + '</select></div>'
           : '') +
         '<div class="cep-actions">' +
           '<button type="button" class="cep-link" id="cepOpenTask">Open task →</button>' +
@@ -4805,12 +4953,16 @@ function renderRoadmapCalendar(roadmapId) {
       const sAnchorSel = pop.querySelector('#cepStartAnchor');
       if (sAnchorSel) sAnchorSel.addEventListener('change', ev => {
         entry.startAnchor = ev.target.value || '';
+        const inp = pop.querySelector('#cepStart');
+        if (inp) inp.disabled = !!entry.startAnchor;
         saveStore(STORE);
         renderRoadmapCalendar(roadmapId);
       });
       const eAnchorSel = pop.querySelector('#cepEndAnchor');
       if (eAnchorSel) eAnchorSel.addEventListener('change', ev => {
         entry.endAnchor = ev.target.value || '';
+        const inp = pop.querySelector('#cepEnd');
+        if (inp) inp.disabled = !!entry.endAnchor;
         saveStore(STORE);
         renderRoadmapCalendar(roadmapId);
       });
@@ -4928,30 +5080,33 @@ function renderRoadmapCalendar(roadmapId) {
         refreshRowReadyState();
       }
     });
-    // Anchor pin buttons (only when parent group is on the roadmap).
-    // Toggle in-place — no full re-render so scroll position is preserved.
+    // Anchor pin buttons → open a picker so user can pick any task's start/end (or clear).
+    // In-place updates avoid a full re-render so scroll position is preserved.
     node.querySelectorAll('.rmt-pin').forEach(btn => {
       btn.addEventListener('click', e => {
         e.preventDefault();
+        e.stopPropagation();
         if (idx < 0) return;
-        const kind = btn.dataset.kind;
-        if (kind === 'start') {
-          const nowActive = !btn.classList.contains('active');
-          btn.classList.toggle('active', nowActive);
-          r.tasks[idx].startAnchor = nowActive ? 'group-start' : '';
-          const inp = node.querySelector('.rmt-start');
-          if (inp) inp.disabled = nowActive;
-          if (nowActive) window.__rmPendingApply.add(tid);
-        } else if (kind === 'end') {
-          const nowActive = !btn.classList.contains('active');
-          btn.classList.toggle('active', nowActive);
-          r.tasks[idx].endAnchor = nowActive ? 'group-end' : '';
-          const inp = node.querySelector('.rmt-end');
-          if (inp) inp.disabled = nowActive;
-          if (nowActive) window.__rmPendingApply.add(tid);
-        }
-        saveStore(STORE);
-        refreshRowReadyState();   // updates Apply count + row "ready" class without full re-render
+        const kind = btn.dataset.kind;   // 'start' | 'end'
+        const entryRef = r.tasks[idx];
+        const currentRaw = (kind === 'start' ? entryRef.startAnchor : entryRef.endAnchor) || '';
+        const current = normalizeAnchorForSelect(entryRef, currentRaw);
+        openAnchorPicker(btn, entryRef, kind, current, (newVal) => {
+          if (kind === 'start') entryRef.startAnchor = newVal || '';
+          else                  entryRef.endAnchor   = newVal || '';
+          // Update pin appearance + date input enable state
+          btn.classList.toggle('active', !!newVal);
+          btn.title = newVal
+            ? 'Anchored — click to change/unlock'
+            : 'Click to anchor ' + kind + ' to another task on this roadmap';
+          const inp = node.querySelector(kind === 'start' ? '.rmt-start' : '.rmt-end');
+          if (inp) inp.disabled = !!newVal;
+          // If we now have a resolvable date, mark this row pending-apply
+          const eff = effectiveDatesFor(entryRef);
+          if (parseDate(eff.startStr)) window.__rmPendingApply.add(tid);
+          saveStore(STORE);
+          refreshRowReadyState();
+        });
       });
     });
     // Group assignment picker — sets task.groupId on the task itself
