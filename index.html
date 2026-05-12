@@ -1785,11 +1785,19 @@
 
   /* Group cards (parent tasks) */
   .group-row {
-    display: grid; grid-template-columns: 22px 1fr auto auto; gap: 10px; align-items: center;
+    display: grid; grid-template-columns: 16px 22px 1fr auto auto; gap: 10px; align-items: center;
     padding: 10px 14px; background: #fffaf0; border: 1px solid #f0e3c4; border-radius: 10px;
     margin-bottom: 6px; cursor: pointer;
   }
+  .group-row[data-selected="true"] { outline: 2px solid #1a1a1a; outline-offset: -1px; }
   .group-row:hover { border-color: #d6b962; background: #fff5dc; }
+  .group-row .group-checkbox {
+    width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #d8d6d1;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    background: #fff; flex-shrink: 0; font-size: 11px; line-height: 1; color: #fff;
+  }
+  .group-row .group-checkbox.checked { background: #1a1a1a; border-color: #1a1a1a; }
+  .group-row .group-checkbox.checked::before { content: "\2713"; }
   .group-row .caret { font-size: 11px; color: #6b6b6b; transition: transform .15s; display: inline-flex; align-items: center; justify-content: center; }
   .group-row.expanded .caret { transform: rotate(90deg); }
   .group-row .group-title { font-weight: 600; font-size: 14px; color: #1a1a1a; display: flex; align-items: center; gap: 8px; }
@@ -2801,6 +2809,10 @@ function toggleSelected(tid) {
 }
 function selectAllVisible() {
   STORE.tasks.filter(taskMatchesFilters).forEach(t => selectedTaskIds.add(t.id));
+  // Also include visible groups (parents with subtasks) when in the flat list view
+  if (typeof tasksViewMode !== 'undefined' && tasksViewMode === 'list') {
+    (STORE.tasks || []).filter(t => t.isGroup).forEach(g => selectedTaskIds.add(g.id));
+  }
   render();
 }
 function clearSelection() {
@@ -2848,11 +2860,13 @@ function mapPanelStatus(s) { const v = (s||'').toLowerCase(); if (v.includes('co
 function taskMatchesFilters(t) {
   // Groups themselves are never returned by this filter — they're rendered separately.
   if (t.isGroup) return false;
-  // Team-only mode: only show tasks owned by an active Team member
+  // Team-only mode: only show tasks owned by an active Team member, OR unassigned tasks (so the Unassigned card still appears).
   if (teamOnly) {
-    if (!t.responsibleId) return false;   // unassigned tasks: hidden in team-only mode
-    if (!isTeamMember(t.responsibleId)) return false;
-    if (isDeactivated(t.responsibleId)) return false;
+    if (t.responsibleId) {
+      if (!isTeamMember(t.responsibleId)) return false;
+      if (isDeactivated(t.responsibleId)) return false;
+    }
+    // else: unassigned task → keep visible so the Unassigned card can render it
   }
   // When teamOnly is OFF, disabled people's tasks ARE included.
   // Person tristate: include & exclude
@@ -3537,8 +3551,8 @@ function render() {
   });
 
   // ===== Unassigned card =====
-  // Always show when teamOnly is off so the user can park new tasks here.
-  if (!teamOnly) {
+  // Always show (regardless of teamOnly) so the user can see and assign parked tasks.
+  {
     const unassignedAll = allTasks.filter(t => !t.isGroup && !t.responsibleId);
     {
       const unassignedVisible = unassignedAll.filter(taskMatchesFilters);
@@ -7453,7 +7467,9 @@ function groupProgress(groupId) {
 function groupRowHtml(g) {
   const expanded = isGroupExpanded(g.id);
   const prog = groupProgress(g.id);
-  return '<div class="group-row' + (expanded ? ' expanded' : '') + '" data-gid="' + escapeHtml(g.id) + '">' +
+  const sel = isSelected(g.id);
+  return '<div class="group-row' + (expanded ? ' expanded' : '') + '" data-gid="' + escapeHtml(g.id) + '"' + (sel ? ' data-selected="true"' : '') + '>' +
+      '<span class="checkbox group-checkbox' + (sel ? ' checked' : '') + '" data-gid="' + escapeHtml(g.id) + '" title="Select this group for bulk actions"></span>' +
       '<span class="caret">▶</span>' +
       '<span class="group-title"><span class="folder-emoji">📁</span>' + escapeHtml(g.subject || '(unnamed group)') + '</span>' +
       '<span class="group-progress">' +
@@ -7468,6 +7484,7 @@ function attachGroupHandlers(container) {
     const gid = node.dataset.gid;
     node.addEventListener("click", e => {
       if (e.target.closest(".group-edit-btn")) return;
+      if (e.target.closest(".group-checkbox")) return;   // checkbox handled below
       toggleGroupExpanded(gid);
       // Toggle visually + render new children
       const childrenEl = node.nextElementSibling;
@@ -7481,6 +7498,14 @@ function attachGroupHandlers(container) {
     });
     const editBtn = node.querySelector(".group-edit-btn");
     if (editBtn) editBtn.addEventListener("click", e => { e.stopPropagation(); openModal(gid); });
+    const cb = node.querySelector(".group-checkbox");
+    if (cb) cb.addEventListener("click", e => {
+      e.stopPropagation();
+      toggleSelected(gid);
+      const sel = isSelected(gid);
+      node.dataset.selected = sel ? "true" : "";
+      cb.classList.toggle("checked", sel);
+    });
   });
 }
 
