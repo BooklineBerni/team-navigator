@@ -406,11 +406,14 @@
   .rm-cal-area .cal-grid { flex: 1; min-height: 0; overflow-y: auto; }
   .rm-side-area {
     min-width: 0; min-height: 0;
-    display: flex; flex-direction: column; overflow: hidden;
+    display: flex; flex-direction: column; align-items: stretch;
+    overflow: hidden;
   }
   .rm-side-area .rm-unscheduled {
     margin-top: 0 !important;
-    flex: 1; min-height: 0;
+    /* Shrink-to-fit when there are few tasks; cap to available viewport height */
+    flex: 0 1 auto;
+    max-height: 100%;
     overflow-y: auto;
     display: flex; flex-direction: column; gap: 6px;
   }
@@ -4210,16 +4213,12 @@ function renderRoadmapCalendar(roadmapId) {
     // Day list invariant across weeks (depends only on hide-weekends toggle)
     const dayList = roadmapCalState.hideWeekends ? [0,1,2,3,4] : [0,1,2,3,4,5,6];
     const nDays = dayList.length;
-    // If hiding weekends AND the month starts on Sat/Sun, the first row (Mon-Fri) is entirely in
-    // the previous month — skip it. Same idea at the end if the month ends Mon/Tue/etc.
+    // If hiding weekends AND the month starts on Sat/Sun, the first row (Mon-Fri) is entirely
+    // in the previous month — skip it. The last row is never empty even when the month ends
+    // on a weekend, since the previous weekdays are still in the current month.
     let firstWeek = 0;
-    let lastWeek = totalWeeks;
-    if (roadmapCalState.hideWeekends) {
-      // First row empty if startWeekday is Sat (5) or Sun (6): no weekday of this month in it
-      if (startWeekday >= 5) firstWeek = 1;
-      // Last row empty if lastWeekday is Sat (5) or Sun (6): last week only has weekend cells from this month
-      if (lastWeekday >= 5) lastWeek = totalWeeks - 1;
-    }
+    const lastWeek = totalWeeks;
+    if (roadmapCalState.hideWeekends && startWeekday >= 5) firstWeek = 1;
     // For each week, build day cells + event overlay
     for (let w = firstWeek; w < lastWeek; w++) {
       const weekStart = addDays(gridStart, w * 7);
