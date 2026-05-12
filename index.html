@@ -264,6 +264,24 @@
   .rm-modal-date-input:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
   .rm-modal-date-input:disabled { background: #fef3c7; color: #92400e; cursor: not-allowed; }
   .rm-modal-arrow { color: #92400e; font-weight: 600; font-size: 11px; }
+  /* Mini avatar used in roadmap rows / picker (replaces the old pin emoji) */
+  .rm-owner-mini {
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;
+    color: #fff; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    vertical-align: middle;
+  }
+  .rm-owner-mini.empty { background: #d8d6d1; color: #6b6b6b; font-weight: 500; }
+  .rm-owner-mini .ini { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 0; }
+  .rm-owner-mini img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: cover; }
+  .rm-modal-link { display: inline-flex; align-items: center; gap: 6px; }
+  .rm-name-popover .pp-row .nm { display: inline-flex; align-items: center; gap: 8px; }
+  .rm-name-popover .pp-row .nm-text { flex: 1; }
+  .rm-name-trigger { display: inline-flex; align-items: center; gap: 8px; }
+  .rm-name-trigger .rm-owner-mini { width: 24px; height: 24px; font-size: 10px; }
   /* Subtasks panel inside the task modal */
   .subtasks-list { display: flex; flex-direction: column; gap: 4px; }
   .subtask-row {
@@ -298,6 +316,42 @@
     flex-shrink: 0;
   }
   .subtask-detach:hover { background: rgba(0,0,0,0.06); color: #1a1a1a; }
+  .subtask-picker {
+    position: relative;
+  }
+  .subtask-picker-icon {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; opacity: 0.55; pointer-events: none;
+  }
+  #f_subtasksSearch {
+    width: 100%; box-sizing: border-box;
+    padding: 7px 10px 7px 30px;
+    border: 1px solid #ece8d8; border-radius: 8px;
+    background: #f7f5ee;
+    font-size: 12.5px; font-family: inherit;
+    outline: none;
+    transition: border-color .12s, background .12s;
+  }
+  #f_subtasksSearch:focus { border-color: #1a1a1a; background: #fff; box-shadow: 0 0 0 3px rgba(26,26,26,0.06); }
+  .subtask-suggestions {
+    position: absolute; left: 0; right: 0; top: 100%;
+    margin-top: 4px;
+    background: #fff; border: 1px solid #e6e3da; border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.14);
+    max-height: 240px; overflow-y: auto;
+    z-index: 60;
+    padding: 4px;
+  }
+  .subtask-suggestion {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 6px 8px;
+    background: transparent; border: none; border-radius: 6px;
+    font-family: inherit; font-size: 12.5px; color: #1a1a1a;
+    text-align: left; cursor: pointer;
+  }
+  .subtask-suggestion:hover { background: #f5f3ed; }
+  .subtask-suggestion .subtask-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .subtask-suggestion-empty { padding: 14px 12px; text-align: center; color: #9a9a9a; font-size: 12px; }
   .rm-modal-x {
     appearance: none; border: none; background: transparent;
     color: #92400e; cursor: pointer;
@@ -2265,13 +2319,6 @@
   <div class="modal" id="modal">
     <span class="close-x" onclick="closeModal()">&times;</span>
     <h2 id="modalTitle">Edit task</h2>
-    <div class="field" id="f_isGroupRow" style="margin-bottom:6px">
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:13px; font-weight:500">
-        <input type="checkbox" id="f_isGroup" style="width:16px; height:16px; cursor:pointer">
-        <span>📁 This is a group (a folder for other tasks)</span>
-      </label>
-      <div style="font-size:11px; color:#6b6b6b; margin-top:4px; padding-left:24px">Groups have only a title + description and show a progress bar based on their children.</div>
-    </div>
     <div class="field"><label>Title <span style="color:#dc2626">*</span></label><input type="text" id="f_subject"></div>
     <div class="field" id="f_groupRow" style="display:none">
       <label>Group (optional)</label>
@@ -2351,11 +2398,20 @@
       <div class="preset-tags" id="f_presetTaskTagsContainer" style="margin-top:6px"></div>
       <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click an assigned tag to remove it. Click a suggested tag to add it. Manage the library from the "Task Tags" button in the header.</div>
     </div>
-    <div class="field" id="f_subtasksField" style="display:none">
-      <label>Subtasks</label>
-      <div id="f_subtasksList" style="margin-bottom:6px"></div>
-      <select id="f_addSubtaskSel" style="max-width:360px"><option value="">+ Add subtask…</option></select>
-      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Pick an existing task to nest under this one. Click × to detach.</div>
+    <div class="field" id="f_subtasksField">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none">
+        <input type="checkbox" id="f_isGroup" style="width:16px; height:16px; cursor:pointer">
+        <span>Subtasks — this task contains other tasks</span>
+      </label>
+      <div id="f_subtasksPanel" style="display:none; margin-top:8px">
+        <div id="f_subtasksList" style="margin-bottom:8px"></div>
+        <div class="subtask-picker">
+          <span class="subtask-picker-icon">🔍</span>
+          <input type="text" id="f_subtasksSearch" placeholder="Search tasks to nest…" autocomplete="off">
+          <div id="f_subtasksSuggestions" class="subtask-suggestions" style="display:none"></div>
+        </div>
+        <div style="font-size:11px; color:#6b6b6b; margin-top:6px">Type to find an existing task. Picking it nests it under this one. Click × on a row to detach.</div>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn danger" id="deleteBtn">Delete</button>
@@ -3733,12 +3789,12 @@ function applyGroupModeToModal(isGroup) {
   document.querySelectorAll(".f_taskOnlyRow").forEach(el => { el.style.display = ""; });
   document.getElementById("f_groupRow").style.display = "";
   document.getElementById("f_extraCommentsLabel").textContent = "Extra comments";
-  // Show/hide the Subtasks panel
-  const subPanel = document.getElementById("f_subtasksField");
+  // Show/hide the inner subtasks panel (the field + checkbox stay visible always)
+  const subPanel = document.getElementById("f_subtasksPanel");
   if (subPanel) subPanel.style.display = isGroup ? "" : "none";
   // Title hint
   const subjInp = document.getElementById("f_subject");
-  if (subjInp) subjInp.placeholder = isGroup ? "e.g. Q4 Redesign Project (acts as a parent)" : "";
+  if (subjInp) subjInp.placeholder = isGroup ? "e.g. Q4 Redesign Project (this task contains others)" : "";
 }
 
 function openModal(tid, overrides) {
@@ -3752,7 +3808,7 @@ function openModal(tid, overrides) {
   }
   editingId = t.id;
   const isG = !!t.isGroup;
-  document.getElementById("modalTitle").textContent = (t._isNew ? "New " : "Edit ") + (isG ? "group" : "task");
+  document.getElementById("modalTitle").textContent = (t._isNew ? "New task" : "Edit task");
   document.getElementById("f_subject").value = t.subject || "";
   document.getElementById("f_isGroup").checked = isG;
   // Disable toggling isGroup on existing groups that already have children (would orphan them)
@@ -4257,7 +4313,8 @@ function renderRoadmapsInModal(t) {
       const eAnchored = !!(entry && entry.endAnchor);
       return '<div class="rm-modal-row" data-rmid="' + escapeHtml(r.id) + '">' +
         '<button type="button" class="rm-modal-link" data-rmid="' + escapeHtml(r.id) + '" title="Open this roadmap">' +
-          '📍 ' + escapeHtml(r.name || '(unnamed)') +
+          roadmapOwnerAvatarHtml(r, 18) +
+          '<span>' + escapeHtml(r.name || '(unnamed)') + '</span>' +
         '</button>' +
         '<span class="rm-modal-dates">' +
           '<input type="date" class="rm-modal-date-input rm-modal-start" data-rmid="' + escapeHtml(r.id) + '" value="' + escapeHtml(sVal) + '" title="' + (sAnchored ? 'Anchored — edit in roadmap to change' : 'Start in this roadmap') + '"' + (sAnchored ? ' disabled' : '') + '>' +
@@ -4356,11 +4413,27 @@ function renderRoadmapsInModal(t) {
   };
 }
 
+// Small avatar (18px) for a roadmap owner — used wherever we previously showed 📍.
+function roadmapOwnerAvatarHtml(roadmap, size) {
+  const px = (typeof size === 'number') ? size : 18;
+  const owner = roadmap && roadmap.responsibleId ? findPerson(roadmap.responsibleId) : null;
+  if (!owner) {
+    // Fallback to a neutral folder/dot when there's no owner
+    return '<span class="rm-owner-mini empty" style="width:' + px + 'px; height:' + px + 'px; font-size:' + Math.max(8, px - 8) + 'px">·</span>';
+  }
+  const fontSize = Math.max(8, px - 10);
+  return '<span class="rm-owner-mini avatar" title="' + escapeHtml(owner.displayName || owner.name || '') + '" style="width:' + px + 'px; height:' + px + 'px; background:' + (owner.color || '#9a9a9a') + '; font-size:' + fontSize + 'px">' +
+    (owner.photo ? '<img src="' + escapeHtml(owner.photo) + '" alt="" onerror="this.remove()">' : '') +
+    '<span class="ini">' + escapeHtml(initials(owner.name || '')) + '</span>' +
+  '</span>';
+}
+
 // ---- Subtasks panel inside the task modal (shown when isGroup=true) ----
 function renderSubtasksInModal(t) {
   const list = document.getElementById("f_subtasksList");
-  const sel  = document.getElementById("f_addSubtaskSel");
-  if (!list || !sel) return;
+  const searchInp = document.getElementById("f_subtasksSearch");
+  const sugg = document.getElementById("f_subtasksSuggestions");
+  if (!list || !searchInp || !sugg) return;
   const children = (STORE.tasks || []).filter(x => x.groupId === t.id && x.id !== t.id);
   // Render the list of current subtasks
   if (children.length === 0) {
@@ -4404,27 +4477,72 @@ function renderSubtasksInModal(t) {
       });
     });
   }
-  // Dropdown: every task that's NOT already this task's child, NOT this task itself, and NOT one of this task's ancestors.
+  // Search picker: any task that's NOT already this task's child, NOT this task itself, and NOT one of this task's ancestors.
   const ancestors = new Set();
   let cur = t;
   while (cur && cur.groupId) {
     ancestors.add(cur.groupId);
     cur = STORE.tasks.find(x => x.id === cur.groupId);
   }
-  const candidates = (STORE.tasks || []).filter(x => x.id !== t.id && x.groupId !== t.id && !ancestors.has(x.id))
-    .slice().sort((a, b) => (a.subject || '').localeCompare(b.subject || ''));
-  sel.innerHTML = '<option value="">+ Add subtask…</option>' +
-    candidates.map(x => '<option value="' + escapeHtml(x.id) + '">' + (x.isGroup ? '📁 ' : '') + escapeHtml(x.subject || '(unnamed)') + '</option>').join("");
-  sel.onchange = () => {
-    const cid = sel.value;
-    if (!cid) return;
-    const c = STORE.tasks.find(x => x.id === cid);
-    if (!c) return;
-    c.groupId = t.id;
-    c._pendingSync = true;
-    saveAndSyncTaskDates();
-    sel.value = "";
-    renderSubtasksInModal(t);
+  function getCandidates(query) {
+    const q = (query || '').toLowerCase().trim();
+    return (STORE.tasks || []).filter(x => {
+      if (x.id === t.id) return false;
+      if (x.groupId === t.id) return false;        // already a child
+      if (ancestors.has(x.id)) return false;        // would create cycle
+      if (!q) return true;
+      return (x.subject || '').toLowerCase().indexOf(q) >= 0;
+    }).slice().sort((a, b) => (a.subject || '').localeCompare(b.subject || ''));
+  }
+  function renderSuggestions(query) {
+    const cands = getCandidates(query).slice(0, 30);
+    if (cands.length === 0) {
+      sugg.innerHTML = '<div class="subtask-suggestion-empty">No matches</div>';
+    } else {
+      sugg.innerHTML = cands.map(c => {
+        const icon = c.isGroup ? '📁' : '·';
+        const stat = c.slackStatus ? '<span class="subtask-status">' + escapeHtml(c.slackStatus) + '</span>' : '';
+        return '<button type="button" class="subtask-suggestion" data-tid="' + escapeHtml(c.id) + '">' +
+          '<span class="subtask-icon">' + icon + '</span>' +
+          '<span class="subtask-name">' + escapeHtml(c.subject || '(unnamed)') + '</span>' +
+          stat +
+        '</button>';
+      }).join('');
+      sugg.querySelectorAll('.subtask-suggestion').forEach(btn => {
+        btn.addEventListener('mousedown', e => {   // mousedown so it fires before blur
+          e.preventDefault();
+          const cid = btn.dataset.tid;
+          const c = STORE.tasks.find(x => x.id === cid);
+          if (!c) return;
+          c.groupId = t.id;
+          c._pendingSync = true;
+          saveAndSyncTaskDates();
+          searchInp.value = '';
+          sugg.style.display = 'none';
+          renderSubtasksInModal(t);
+        });
+      });
+    }
+  }
+  // Wire search input
+  searchInp.value = '';
+  searchInp.oninput = () => {
+    renderSuggestions(searchInp.value);
+    sugg.style.display = '';
+  };
+  searchInp.onfocus = () => {
+    renderSuggestions(searchInp.value);
+    sugg.style.display = '';
+  };
+  searchInp.onblur = () => {
+    setTimeout(() => { sugg.style.display = 'none'; }, 120);
+  };
+  searchInp.onkeydown = e => {
+    if (e.key === 'Escape') {
+      searchInp.value = '';
+      sugg.style.display = 'none';
+      searchInp.blur();
+    }
   };
 }
 
@@ -5143,6 +5261,7 @@ function renderRoadmapCalendar(roadmapId) {
   let html = '<div class="rm-summary-card">' +
     '<div class="rm-name-wrapper" style="position:relative; display:inline-block">' +
       '<div class="rm-name-trigger' + (rmOpen ? ' open' : '') + '" id="rmNameTrigger" title="Switch roadmap">' +
+        roadmapOwnerAvatarHtml(r, 28) +
         '<div class="rm-summary-name">' + escapeHtml(r.name||'(unnamed)') + '</div>' +
         '<span class="arrow">▾</span>' +
       '</div>' +
@@ -5947,7 +6066,7 @@ function renderRoadmapNamePopover(currentRoadmapId) {
       const cnt = (r.tasks || []).length;
       const active = (r.id === currentRoadmapId) ? ' active' : '';
       html += '<div class="pp-row' + active + '" data-rm="' + escapeHtml(r.id) + '">';
-      html += '<span class="nm">📍 ' + escapeHtml(r.name || '(unnamed)') + '</span>';
+      html += '<span class="nm">' + roadmapOwnerAvatarHtml(r, 20) + '<span class="nm-text">' + escapeHtml(r.name || '(unnamed)') + '</span></span>';
       html += '<span class="cnt">' + cnt + '</span>';
       html += '</div>';
     });
@@ -6114,7 +6233,9 @@ document.getElementById("exportCsvBtn").addEventListener("click", exportToCsv);
 function renderHomePage() {
   const tasks = STORE.tasks;
   const total = tasks.length;
-  const open = tasks.filter(t => t.slackStatus === "Proposed" || t.slackStatus === "In Progress").length;
+  // "Open" = any status that's not a terminal state (Completed/Archived/Discarded) and not empty
+  const openStatuses = ["Waiting", "Proposed", "Later / Next", "In Progress", "Under Review"];
+  const open = tasks.filter(t => openStatuses.indexOf(t.slackStatus) >= 0).length;
   const completed = tasks.filter(t => t.slackStatus === "Completed").length;
   const archived = tasks.filter(t => t.slackStatus === "Archived").length;
   const discarded = tasks.filter(t => t.slackStatus === "Discarded").length;
@@ -6126,16 +6247,17 @@ function renderHomePage() {
   if (arc) arc.setAttribute("stroke-dasharray", (openPct * circumference).toFixed(1) + " " + circumference.toFixed(1));
   document.getElementById("dashOpenValue").textContent = open;
   document.getElementById("dashOpenSub").textContent = "/ " + total + " total";
-  document.getElementById("dashOpenPct").textContent = Math.round(openPct * 100) + "% open (proposed or in progress)";
+  document.getElementById("dashOpenPct").textContent = Math.round(openPct * 100) + "% open (active statuses)";
 
-  // Pipeline bars by status
+  // Pipeline bars in the user-defined order, with the new colors
   const buckets = [
-    { key: "Proposed",     label: "Proposed",     color: "#fbbf24", count: tasks.filter(t => t.slackStatus === "Proposed").length },
-    { key: "Under Review", label: "Under Review", color: "#f59e0b", count: tasks.filter(t => t.slackStatus === "Under Review").length },
-    { key: "In Progress",  label: "In Progress",  color: "#60a5fa", count: tasks.filter(t => t.slackStatus === "In Progress").length },
-    { key: "Waiting",      label: "Waiting",      color: "#fb923c", count: tasks.filter(t => t.slackStatus === "Waiting").length },
-    { key: "Later / Next", label: "Later / Next", color: "#a78bfa", count: tasks.filter(t => t.slackStatus === "Later / Next").length },
-    { key: "Completed",    label: "Completed",    color: "#34d399", count: completed },
+    { key: "",             label: "(empty)",      color: "#cbd5e1", count: tasks.filter(t => !t.slackStatus).length },
+    { key: "Waiting",      label: "Waiting",      color: "#60a5fa", count: tasks.filter(t => t.slackStatus === "Waiting").length },
+    { key: "Proposed",     label: "Proposed",     color: "#1d4ed8", count: tasks.filter(t => t.slackStatus === "Proposed").length },
+    { key: "Later / Next", label: "Later / Next", color: "#dc2626", count: tasks.filter(t => t.slackStatus === "Later / Next").length },
+    { key: "In Progress",  label: "In Progress",  color: "#f97316", count: tasks.filter(t => t.slackStatus === "In Progress").length },
+    { key: "Under Review", label: "Under Review", color: "#7c3aed", count: tasks.filter(t => t.slackStatus === "Under Review").length },
+    { key: "Completed",    label: "Completed",    color: "#16a34a", count: completed },
     { key: "Archived",     label: "Archived",     color: "#a98c5a", count: archived },
     { key: "Discarded",    label: "Discarded",    color: "#9a9a9a", count: discarded }
   ];
@@ -6158,7 +6280,7 @@ function renderHomePage() {
   document.getElementById("dashTopContributors").innerHTML = counts.length === 0
     ? '<div style="color:#6b6b6b; font-size:13px">No task assignments yet.</div>'
     : counts.map(({p, n}) => {
-      const open = tasks.filter(t => t.responsibleId === p.id && (t.slackStatus === "Proposed" || t.slackStatus === "In Progress")).length;
+      const open = tasks.filter(t => t.responsibleId === p.id && openStatuses.indexOf(t.slackStatus) >= 0).length;
       return '<div style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:#faf9f7; border:1px solid #ececea; border-radius:10px; min-width:200px">' +
         '<span class="avatar" style="width:36px; height:36px; flex-shrink:0; background:' + p.color + '; font-size:13px">' +
           '<img src="' + p.photo + '" alt="" onerror="this.remove()">' +
