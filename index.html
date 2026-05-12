@@ -1696,15 +1696,8 @@
   <header class="top">
     <div></div>
     <div class="actions">
-      <span id="pendingSyncBadge" class="pending-sync-counter" style="display:none">
-        <span>Pending sync:</span><strong id="pendingSyncCount">0</strong>
-      </span>
-      <button class="btn" id="reimportBtn" title="Reload the 157 tasks from the CSV (overwrites local changes)">Re-import CSV</button>
       <button class="btn" id="resetFiltersBtn" title="Clear all active filters">Reset filters</button>
       <button class="btn" id="exportCsvBtn" title="Download currently-filtered tasks as Excel-compatible CSV (or all if filters are off)">Export CSV</button>
-      <button class="btn" id="exportBtn" title="Download currently-filtered tasks as JSON (or full store from other pages)">Export JSON</button>
-      <button class="btn" id="importBtn">Import JSON</button>
-      <input type="file" id="importFile" accept="application/json" style="display:none">
       <button class="btn" id="manageTagsBtn" title="Create, edit, recolor and reorder member tags" style="display:none">Member Tags</button>
       <button class="btn" id="manageTaskTagsBtn" title="Create, edit, recolor and reorder task tags">Task Tags</button>
       <button class="btn" id="roadmapsBtn" title="Create and manage roadmaps" style="display:none">Roadmaps</button>
@@ -3805,42 +3798,9 @@ document.getElementById("searchInput").addEventListener("input", e => {
   window.__searchT = setTimeout(render, 150);
 });
 
-document.getElementById("reimportBtn").addEventListener("click", () => {
-  if (!confirm("Overwrite all local tasks with the 157 from the CSV?")) return;
-  importTasksFromCsv(); render();
-});
-document.getElementById("exportBtn").addEventListener("click", () => {
-  const isTasksView = (typeof currentView !== 'undefined' && currentView === 'tasks');
-  let payload, suffix;
-  if (isTasksView) {
-    const filtered = STORE.tasks.filter(taskMatchesFilters);
-    payload = { _exportType: "filtered-tasks", _exportedAt: new Date().toISOString(), tasks: filtered };
-    suffix = "-filtered";
-    if (filtered.length === STORE.tasks.filter(t=>!t.isGroup).length) suffix = "-all";
-  } else {
-    payload = STORE;
-    suffix = "-full";
-  }
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const date = new Date().toISOString().slice(0,10);
-  a.href = url; a.download = "berni-navigator-" + date + suffix + ".json"; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-});
-document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
-document.getElementById("importFile").addEventListener("change", async e => {
-  const f = e.target.files[0]; if (!f) return;
-  try { const data = JSON.parse(await f.text()); if (data && Array.isArray(data.tasks)) { STORE = data; saveStore(STORE); render(); } else alert("Incompatible file"); }
-  catch (err) { alert("Archivo no valido"); }
-  e.target.value = "";
-});
-
-function updatePendingSyncCounter() {
-  const n = STORE.tasks.filter(t => t._pendingSync).length;
-  document.getElementById("pendingSyncCount").textContent = n;
-  document.getElementById("pendingSyncBadge").style.display = n > 0 ? "inline-flex" : "none";
-}
+// Removed: reimport CSV / Export JSON / Import JSON / Pending sync badge.
+// Stubs kept so older call sites don't crash.
+function updatePendingSyncCounter() { /* noop: badge removed from header */ }
 
 function detectBlockedPhotos() {
   setTimeout(() => {
