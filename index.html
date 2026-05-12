@@ -4155,21 +4155,41 @@ function renderRoadmapCalendar(roadmapId) {
 
   // Build event list — task must have at least startDate; missing endDate → extend to far future ("infinity")
   const FAR_FUTURE = new Date(2099, 11, 31);
+  // Resolve effective dates for an entry, applying group anchors when set.
+  // Anchors: entry.startAnchor / entry.endAnchor ∈ {undefined, 'group-start', 'group-end'}
+  function effectiveDatesFor(entry) {
+    const task = STORE.tasks.find(t => t.id === entry.taskId);
+    let startStr = entry.startDate || '';
+    let endStr   = entry.endDate || '';
+    if ((entry.startAnchor || entry.endAnchor) && task && task.groupId) {
+      const parentEntry = (r.tasks || []).find(e => e.taskId === task.groupId);
+      if (parentEntry) {
+        if (entry.startAnchor === 'group-start') startStr = parentEntry.startDate || '';
+        else if (entry.startAnchor === 'group-end') startStr = parentEntry.endDate || '';
+        if (entry.endAnchor === 'group-start') endStr = parentEntry.startDate || '';
+        else if (entry.endAnchor === 'group-end') endStr = parentEntry.endDate || '';
+      }
+    }
+    return { startStr, endStr };
+  }
   const events = (r.tasks || []).map(entry => {
     const task = STORE.tasks.find(t => t.id === entry.taskId);
-    let start = parseDate(entry.startDate);
-    let end = parseDate(entry.endDate);
+    const eff = effectiveDatesFor(entry);
+    let start = parseDate(eff.startStr);
+    let end = parseDate(eff.endStr);
     if (start && !end) end = FAR_FUTURE;
-    return { entry, task, start, end, openEnded: start && !parseDate(entry.endDate) };
+    return { entry, task, start, end, openEnded: start && !parseDate(eff.endStr) };
   }).filter(e => e.task && e.start && e.end);
 
-  // Unscheduled = no start date OR currently being edited and not yet applied
+  // Unscheduled = no effective start date OR currently being edited and not yet applied.
+  // Effective start respects anchors: a child anchored to a group inherits the group's dates.
   if (!window.__rmPendingApply) window.__rmPendingApply = new Set();
   const unscheduled = (r.tasks || []).filter(entry => {
     const t = STORE.tasks.find(x => x.id === entry.taskId);
     if (!t) return false;
     if (window.__rmPendingApply.has(entry.taskId)) return true;  // user is editing dates here
-    return !parseDate(entry.startDate);
+    const eff = effectiveDatesFor(entry);
+    return !parseDate(eff.startStr);
   });
   // Also exclude these "pending apply" entries from the calendar events
   const eventsScheduled = events.filter(e => !window.__rmPendingApply.has(e.entry.taskId));
@@ -4538,14 +4558,30 @@ function renderRoadmapCalendar(roadmapId) {
       const pop = document.createElement('div');
       pop.className = 'cal-event-edit-popover';
       const isG = !!task.isGroup;
+      // Anchors only available if THIS task is a child whose parent group is on this roadmap
+      const parentGroupEntry = (task.groupId && !isG) ? (r.tasks || []).find(en => en.taskId === task.groupId) : null;
+      const canAnchor = !!parentGroupEntry;
+      const sAnchor = entry.startAnchor || '';
+      const eAnchor = entry.endAnchor || '';
+      function anchorOptions(selected) {
+        return '<option value=""' + (selected === '' ? ' selected' : '') + '>Custom date</option>' +
+               '<option value="group-start"' + (selected === 'group-start' ? ' selected' : '') + '>📌 Anchor to group start</option>' +
+               '<option value="group-end"'   + (selected === 'group-end' ? ' selected' : '') + '>📌 Anchor to group end</option>';
+      }
       pop.innerHTML =
         '<h4>' + (isG ? '📁 ' : '') + escapeHtml(task.subject) + '</h4>' +
         '<div class="cep-row"><label>Start</label>' +
-          '<input type="date" id="cepStart" value="' + escapeHtml(entry.startDate || '') + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + '>' +
+          '<input type="date" id="cepStart" value="' + escapeHtml(entry.startDate || '') + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + (sAnchor ? ' disabled' : '') + '>' +
         '</div>' +
+        (canAnchor ?
+          '<div class="cep-row"><label></label><select id="cepStartAnchor" style="flex:1">' + anchorOptions(sAnchor) + '</select></div>'
+          : '') +
         '<div class="cep-row"><label>End</label>' +
-          '<input type="date" id="cepEnd" value="' + escapeHtml(entry.endDate || '') + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + '>' +
+          '<input type="date" id="cepEnd" value="' + escapeHtml(entry.endDate || '') + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + (eAnchor ? ' disabled' : '') + '>' +
         '</div>' +
+        (canAnchor ?
+          '<div class="cep-row"><label></label><select id="cepEndAnchor" style="flex:1">' + anchorOptions(eAnchor) + '</select></div>'
+          : '') +
         '<div class="cep-actions">' +
           '<button type="button" class="cep-link" id="cepOpenTask">Open task →</button>' +
           '<button type="button" class="danger" id="cepRemove">Remove from roadmap</button>' +
@@ -4568,11 +4604,25 @@ function renderRoadmapCalendar(roadmapId) {
       }, 0);
       pop.querySelector('#cepStart').addEventListener('change', ev => {
         entry.startDate = ev.target.value;
+        entry.startAnchor = '';   // setting a custom date clears the anchor
         saveStore(STORE);
         renderRoadmapCalendar(roadmapId);
       });
       pop.querySelector('#cepEnd').addEventListener('change', ev => {
         entry.endDate = ev.target.value;
+        entry.endAnchor = '';
+        saveStore(STORE);
+        renderRoadmapCalendar(roadmapId);
+      });
+      const sAnchorSel = pop.querySelector('#cepStartAnchor');
+      if (sAnchorSel) sAnchorSel.addEventListener('change', ev => {
+        entry.startAnchor = ev.target.value || '';
+        saveStore(STORE);
+        renderRoadmapCalendar(roadmapId);
+      });
+      const eAnchorSel = pop.querySelector('#cepEndAnchor');
+      if (eAnchorSel) eAnchorSel.addEventListener('change', ev => {
+        entry.endAnchor = ev.target.value || '';
         saveStore(STORE);
         renderRoadmapCalendar(roadmapId);
       });
