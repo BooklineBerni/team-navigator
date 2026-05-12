@@ -372,17 +372,42 @@
   .badge.roadmap-badge { background: #e0e7ff; color: #3730a3; }
 
 
+  /* Roadmap page — full viewport, no outer scroll */
+  #view-roadmaps {
+    display: flex; flex-direction: column;
+    height: calc(100vh - 24px);   /* leaves room for top padding */
+    overflow: hidden;
+  }
+  #view-roadmaps .page-header,
+  #view-roadmaps .rm-toolbar { flex-shrink: 0; }
+  #view-roadmaps #rmPageContent {
+    flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+  }
   /* Roadmap calendar split layout (calendar left, unscheduled right) */
   .rm-content-row {
-    display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start;
+    display: grid; grid-template-columns: 1fr 320px; gap: 16px;
+    flex: 1; min-height: 0; align-items: stretch;
   }
   .rm-content-row.no-side { grid-template-columns: 1fr; }
   @media (max-width: 1200px) { .rm-content-row { grid-template-columns: 1fr; } }
-  .rm-cal-area { min-width: 0; }
+  .rm-cal-area { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .rm-cal-area > * { min-height: 0; }
+  /* The actual calendar grid scrolls internally if needed */
+  .rm-cal-area .cal-grid { flex: 1; min-height: 0; overflow-y: auto; }
+  .rm-side-area {
+    min-width: 0; min-height: 0;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
   .rm-side-area .rm-unscheduled {
     margin-top: 0 !important;
-    position: sticky; top: 16px;
-    max-height: calc(100vh - 80px); overflow-y: auto;
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .rm-side-area .rm-unscheduled .rm-unscheduled-head {
+    position: sticky; top: 0; background: #fffbeb;
+    margin: -12px -12px 8px; padding: 12px 12px 8px;
+    border-bottom: 1px solid #fde68a; z-index: 2;
   }
 
 
@@ -551,6 +576,13 @@
     transition: opacity .15s; opacity: 0;
   }
   .file-card .file-preview img.file-thumb.loaded { opacity: 1; }
+  .file-card .file-preview iframe.file-iframe {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    border: 0; pointer-events: none; background: #fff;
+    /* Scale the preview down so docs/sheets fit nicely in the card */
+    transform: scale(0.55); transform-origin: top left;
+    width: 181.8%; height: 181.8%;
+  }
   .file-card .file-preview .file-icon-fallback {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     padding: 18%;
@@ -6747,6 +6779,20 @@ function driveThumbnailUrl(url, size) {
   size = size || 800;
   return 'https://drive.google.com/thumbnail?id=' + id + '&sz=w' + size;
 }
+// Embeddable preview URL — works in iframe for signed-in users.
+// Picks the right path per Google product so the preview actually renders.
+function drivePreviewUrl(file) {
+  const id = extractDriveId(file.url);
+  if (!id) return null;
+  const t = file.type || detectFileType(file.url);
+  if (t === 'doc')    return 'https://docs.google.com/document/d/'      + id + '/preview';
+  if (t === 'sheet')  return 'https://docs.google.com/spreadsheets/d/'  + id + '/preview';
+  if (t === 'slides') return 'https://docs.google.com/presentation/d/'  + id + '/preview';
+  if (t === 'form')   return 'https://docs.google.com/forms/d/'         + id + '/viewform?embedded=true';
+  if (t === 'file')   return 'https://drive.google.com/file/d/'         + id + '/preview';
+  if (t === 'folder') return null;
+  return null;
+}
 
 function detectFileType(url) {
   if (!url) return 'link';
@@ -6873,10 +6919,11 @@ function renderFilesPage() {
     const t = f.type || detectFileType(f.url);
     const ic = fileIconForType(t);
     const dateStr = f.addedAt ? new Date(f.addedAt).toLocaleDateString('es-ES', { dateStyle: 'short' }) : '';
-    const thumbUrl = (t !== 'link') ? driveThumbnailUrl(f.url, 800) : null;
-    // Preview block (used only by grid view)
+    const previewIframeUrl = drivePreviewUrl(f);
+    // Preview block (used only by grid view) — uses the official Google /preview iframe
+    // which works for any user signed into Google with permission to view the file.
     const previewHtml = '<div class="file-preview">' +
-      (thumbUrl ? '<img class="file-thumb" data-thumb="' + escapeHtml(thumbUrl) + '" alt="">' : '') +
+      (previewIframeUrl ? '<iframe class="file-iframe" src="' + escapeHtml(previewIframeUrl) + '" sandbox="allow-scripts allow-same-origin allow-popups" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>' : '') +
       '<div class="file-icon-fallback">' + (ic.svg || '') + '</div>' +
       '<div class="file-actions">' +
         '<button class="file-action-btn" data-act="edit" title="Edit">✎</button>' +
@@ -6908,13 +6955,6 @@ function renderFilesPage() {
   });
   html += '</div>';
   cont.innerHTML = html;
-  // Lazy-load thumbnails to avoid spamming requests + handle errors gracefully
-  cont.querySelectorAll('img.file-thumb[data-thumb]').forEach(img => {
-    const src = img.dataset.thumb;
-    img.onload = () => img.classList.add('loaded');
-    img.onerror = () => img.remove();   // fall back to the SVG icon already in DOM
-    img.src = src;
-  });
   // Wire up
   cont.querySelectorAll('.file-card').forEach(card => {
     const id = card.dataset.id;
