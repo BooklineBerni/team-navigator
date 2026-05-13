@@ -569,6 +569,7 @@
   .cal-event.continues-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
   .cal-event.continues-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
   /* Group container bar: transparent backdrop tinted by status with a dashed border. Children render on top. */
+  /* z-index 6 sits ABOVE .no-work-stripes (z-index 5) so the title text isn't crossed by stripes. */
   .cal-event.cal-event-group {
     font-weight: 700;
     border: 1.5px dashed #d97706;
@@ -576,9 +577,9 @@
     padding: 2px 8px;
     line-height: 22px !important;   /* keep title strip at the top regardless of bar height */
     overflow: visible;
-    z-index: 2;
+    z-index: 6;
   }
-  .cal-event.cal-event-group:hover { transform: none; z-index: 3; filter: brightness(0.96) saturate(1.1); }
+  .cal-event.cal-event-group:hover { transform: none; z-index: 7; filter: brightness(0.96) saturate(1.1); }
   .cal-event.cal-event-group.expanded { border-style: solid; }
   /* When the group bar hosts children, only the title strip area should catch clicks/hover for the bar itself;
      the body below is "open" so children inside receive pointer events directly */
