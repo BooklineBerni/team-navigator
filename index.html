@@ -125,46 +125,37 @@
   .task .checkbox.checked { background: #1a1a1a; border-color: #1a1a1a; color: #fff; }
   .task .checkbox.checked::before { content: "\2713"; }
   .task .badges { grid-column: 2 / -1; display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
-  /* Aggregated info card inside the task card — common source pill + min start / max end / span days */
-  .task .task-agg, .flat-task .task-agg {
-    display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    margin-top: 6px; padding: 6px 10px;
+  /* Compact aggregate mini-badge — inline with the other badges. Rounded, tiny font, pill inside. */
+  .task-agg {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 6px;
     background: #fff;
-    border: 1px solid #ececea;
-    border-radius: 8px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-    font-size: 11px;
-    width: fit-content;
-    max-width: 100%;
+    border: 1px solid #e6e3da;
+    border-radius: 999px;
+    font-size: 9.5px; line-height: 1.4;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    vertical-align: middle;
   }
-  .task .task-agg { grid-column: 2 / -1; }
-  .flat-task .task-agg.flat-task-agg { margin-top: 4px; }
   .task-agg .ta-key {
-    font-size: 9.5px; font-weight: 700; color: #6b6b6b;
+    font-size: 8.5px; font-weight: 700; color: #9a9a9a;
     text-transform: uppercase; letter-spacing: .04em;
   }
-  .task-agg .ta-stack { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; }
   .task-agg .ta-pill {
-    font-size: 10px; font-weight: 700;
-    border: 1px solid #d8d6d1; border-radius: 4px;
-    padding: 1px 5px;
-    max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 9px; font-weight: 700;
+    border: 1px solid #d8d6d1; border-radius: 999px;
+    padding: 0 5px;
+    max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  /* Date shown DIRECTLY (no pill above) — primary display, inline with the key */
   .task-agg .ta-val {
-    font-size: 10.5px; font-weight: 700; color: #1a1a1a;
-    font-variant-numeric: tabular-nums; padding: 0 2px;
+    font-size: 9.5px; font-weight: 600; color: #1a1a1a;
+    font-variant-numeric: tabular-nums;
   }
   .task-agg .ta-val.empty { color: #b3b3b3; font-style: italic; }
-  /* Date shown BELOW a pill — secondary reference, smaller and dimmer with "= " prefix in the markup */
-  .task-agg .ta-val-below {
-    font-size: 9.5px; font-weight: 500; opacity: 0.7; color: #6b6b6b;
-    font-variant-numeric: tabular-nums; padding: 0 2px;
-  }
-  .task-agg .ta-val-below.empty { color: #b3b3b3; font-style: italic; }
   .task-agg .ta-span {
-    font-size: 10px; font-weight: 600; color: #6b6b6b;
-    font-variant-numeric: tabular-nums; padding: 0 4px;
+    font-size: 9px; font-weight: 700; color: #6b6b6b;
+    font-variant-numeric: tabular-nums;
+    padding: 0 3px;
+    background: #f5f5f4; border-radius: 999px;
   }
   .badge { display: inline-flex; padding: 1px 6px; border-radius: 999px; font-size: 9.5px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap; }
   .badge.prio-Critical  { background: #fee4e2; color: #b42318; }
@@ -2608,6 +2599,7 @@
       <div class="filters">
         <label class="show-counts-toggle" title="Show task/member counts on each filter button"><input type="checkbox" id="showCountsChk"> <span>Counts</span></label>
         <label class="show-counts-toggle" title="Show only tasks assigned to people on your active Team"><input type="checkbox" id="teamOnlyChk"> <span>Team only</span></label>
+        <label class="show-counts-toggle" title="Show the Unassigned card (tasks without a responsible person) at the top of the people grid"><input type="checkbox" id="showUnassignedChk"> <span>Show Unassigned</span></label>
         <input class="search-input" id="searchInput" placeholder="Search titles and comments...">
         <div id="statusFilterContainer" class="filter-group"></div>
         <div id="prioFilterContainer" class="filter-group"></div>
@@ -3275,8 +3267,21 @@ rebuildTeam();
 function uid() { return "loc" + Math.random().toString(36).slice(2, 10); }
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);}
 function initials(name){return (name||'').split(/\s+/).filter(Boolean).slice(0,2).map(s => s[0]).join("").toUpperCase();}
+// Virtual "Unassigned" pseudo-person, returned by findPerson when id === '__unassigned'.
+// Lets the profile page and other person-driven UIs treat unassigned tasks as if they had a person.
+const UNASSIGNED_PERSON = {
+  id: '__unassigned',
+  name: 'Unassigned',
+  displayName: 'Unassigned',
+  email: '',
+  role: '',
+  photo: '',
+  color: '#9aa0a6',
+  isUnassigned: true,
+};
 function findPerson(id) {
   if (!id) return null;
+  if (id === '__unassigned') return UNASSIGNED_PERSON;
   return TEAM.find(p => p.id === id) ||
          (typeof EXTERNAL_TEAM !== 'undefined' && EXTERNAL_TEAM.find(p => p.id === id)) ||
          null;
@@ -3692,6 +3697,11 @@ function renderTeamStrip() {
   if (personInclude.size > 0) visibleCount = personInclude.size;
   else visibleCount = availableCount - Array.from(personExclude).filter(id => availableTeam.some(p => p.id === id)).length;
   html.push('<div class="team-pill ' + (!anyPersonFilter ? 'active' : '') + '" data-uid="all"><span class="av" style="background:#1a1a1a"><span class="ini">&Sigma;</span></span>All' + (showCounts ? '<span class="count">' + visibleCount + ' / ' + availableCount + '</span>' : '') + '</div>');
+  // Unassigned pill — shown only when the "Show Unassigned" checkbox is on. Click → open profile.
+  if (typeof getShowUnassigned === 'function' ? getShowUnassigned() : (localStorage.getItem('bookline-showUnassigned') === '1')) {
+    const unassignedCount = (STORE.tasks || []).filter(t => !t.responsibleId).length;
+    html.push('<div class="team-pill" data-uid="__unassigned" title="Open Unassigned profile"><span class="av" style="background:#9aa0a6"><span class="ini">?</span></span>Unassigned' + (showCounts ? '<span class="count">' + unassignedCount + '</span>' : '') + '</div>');
+  }
   const sortedTeamIds = sortPersons(availableTeam.map(p => p.id), all);
   sortedTeamIds.forEach(pid => {
     const p = findPerson(pid);
@@ -3709,6 +3719,12 @@ function renderTeamStrip() {
   el.querySelectorAll(".team-pill").forEach(node => {
     node.addEventListener("click", () => {
       const id = node.dataset.uid;
+      // Unassigned pill → open the Unassigned profile (special case).
+      if (id === '__unassigned') {
+        if (typeof setProfilePerson === 'function') setProfilePerson('__unassigned');
+        if (typeof switchView === 'function') switchView('profile');
+        return;
+      }
       // Always-additive: behaves like tag pills (click to toggle, multi-select free)
       togglePersonSelection(id, true);
       render();
@@ -4264,8 +4280,9 @@ function render() {
   });
 
   // ===== Unassigned card =====
-  // Always show (regardless of teamOnly) so the user can see and assign parked tasks.
-  {
+  // Only shown when the "Show Unassigned" checkbox is checked. Renders at the TOP of the grid
+  // (insertBefore the first child) so it sits above the team people cards.
+  if (typeof getShowUnassigned === 'function' ? getShowUnassigned() : (localStorage.getItem('bookline-showUnassigned') === '1')) {
     const unassignedAll = allTasks.filter(t => !t.isGroup && !t.responsibleId);
     {
       const unassignedVisible = unassignedAll.filter(taskMatchesFilters);
@@ -4283,9 +4300,9 @@ function render() {
       ucard.className = "card card-unassigned";
       ucard.innerHTML = `
         <div class="person-row">
-          <span class="avatar" style="background:#9aa0a6;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">?</span>
+          <span class="avatar" data-go-unassigned="1" title="Open Unassigned profile" style="background:#9aa0a6;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;cursor:pointer">?</span>
           <div class="meta">
-            <div class="name">Unassigned</div>
+            <div class="name" data-go-unassigned="1" title="Open Unassigned profile" style="cursor:pointer">Unassigned</div>
             <div class="role">Tasks without a responsible person</div>
           </div>
         </div>
@@ -4305,7 +4322,17 @@ function render() {
           <input type="text" placeholder="New unassigned task..." required>
           <button type="submit">Add</button>
         </form>`;
-      grid.appendChild(ucard);
+      // Insert at the top so Unassigned appears ABOVE the team's people cards.
+      if (grid.firstChild) grid.insertBefore(ucard, grid.firstChild);
+      else grid.appendChild(ucard);
+      // Click on the "?" avatar or the "Unassigned" name → open the Unassigned profile page.
+      ucard.querySelectorAll('[data-go-unassigned]').forEach(el => {
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          if (typeof setProfilePerson === 'function') setProfilePerson('__unassigned');
+          if (typeof switchView === 'function') switchView('profile');
+        });
+      });
     }
   }
 
@@ -4407,68 +4434,14 @@ function taskHtml(t) {
     ? '<button type="button" class="task-group-caret' + (isGExpanded ? ' expanded' : '') + '" data-gid="' + t.id + '" title="' + (isGExpanded ? 'Collapse subtasks' : 'Expand subtasks') + '">▶</button>'
     : '';
   const folderPrefix = isG ? '<span class="folder-emoji">📁</span> ' : '';
-  // Aggregated info: common source pill (if all roadmap entries share it) + min start / max end + total days.
-  let aggHtml = '';
-  const tEntries = [];
-  (STORE.roadmaps || []).forEach(rm => {
-    const en = (rm.tasks || []).find(x => x.taskId === t.id);
-    if (en) tEntries.push({ entry: en, rm });
-  });
-  if (tEntries.length > 0) {
-    const starts = tEntries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).startStr);
-    const ends   = tEntries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).endStr);
-    const aggStart = starts.every(s => !!s) ? starts.reduce((m, s) => (!m || s < m) ? s : m, '') : '';
-    const aggEnd   = ends.every(s => !!s)   ? ends.reduce((m, s) => (!m || s > m) ? s : m, '')   : '';
-    function commonLbl(arr) {
-      if (arr.length === 0) return ''; const first = arr[0]; if (!first) return '';
-      return arr.every(x => x === first) ? first : '';
-    }
-    const sLbl = commonLbl(tEntries.map(x => x.entry.startSrcLabel || ''));
-    const sTid = commonLbl(tEntries.map(x => x.entry.startSrcTaskId || ''));
-    const eLbl = commonLbl(tEntries.map(x => {
-      if (x.entry.endSrcLabel) return x.entry.endSrcLabel;
-      if (typeof x.entry.durationDays === 'number' && x.entry.durationDays >= 1) {
-        return x.entry.durationDays + ' day' + (x.entry.durationDays === 1 ? '' : 's');
-      }
-      return '';
-    }));
-    const eTid = commonLbl(tEntries.map(x => x.entry.endSrcTaskId || ''));
-    const spanN = (aggStart && aggEnd) ? bnDaysInclusive(aggStart, aggEnd) : 0;
-    // Render only if there is at least something useful to show
-    if (aggStart || aggEnd || sLbl || eLbl) {
-      function pillStyleFor(lbl, tid) {
-        const isDays = lbl && /^\d+\s+day/.test(lbl);
-        if (isDays) return bnPillInlineStyle(BN_GRAY_PILL);
-        const stl = bnPillStyleForTaskId(tid);
-        return stl ? bnPillInlineStyle(stl) : '';
-      }
-      // Render: when there's a pill, stack it above a small "= DD/MM/YYYY" reference.
-      // When there's NO pill, show the date directly inline (no "= " prefix, primary font size).
-      function renderSide(lbl, tid, dateStr) {
-        const dateFmt = bnFormatDateDMY(dateStr);
-        if (lbl) {
-          return '<span class="ta-stack">' +
-            '<span class="ta-pill" style="' + pillStyleFor(lbl, tid) + '">' + escapeHtml(lbl) + '</span>' +
-            '<span class="ta-val-below' + (dateStr ? '' : ' empty') + '">= ' + (dateStr ? escapeHtml(dateFmt) : '—') + '</span>' +
-          '</span>';
-        }
-        return '<span class="ta-val' + (dateStr ? '' : ' empty') + '">' + (dateStr ? escapeHtml(dateFmt) : '—') + '</span>';
-      }
-      aggHtml = '<div class="task-agg">';
-      aggHtml += '<span class="ta-key">Start</span>';
-      aggHtml += renderSide(sLbl, sTid, aggStart);
-      if (spanN > 0) aggHtml += '<span class="ta-span">' + spanN + ' day' + (spanN === 1 ? '' : 's') + '</span>';
-      aggHtml += '<span class="ta-key">End</span>';
-      aggHtml += renderSide(eLbl, eTid, aggEnd);
-      aggHtml += '</div>';
-    }
-  }
+  // Aggregated info — compact mini-pill rendered inline as a badge after the roadmap badges.
+  const aggBadge = bnRenderTaskAggBadge(t);
+  if (aggBadge) badges.push(aggBadge);
   return '<div class="task' + (isG ? ' is-group' : '') + '" data-pstatus="' + escapeHtml(t.slackStatus||'') + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
     '<span class="checkbox ' + (sel?'checked':'') + '" title="Select task (use modal to mark completed)"></span>' +
     '<span class="text" title="Click to edit all fields">' + chevHtml + folderPrefix + escapeHtml(t.subject) + '</span>' +
     '<button class="edit-btn" title="Edit">&#9998;</button>' +
     '<div class="badges">' + badges.join('') + ' ' + taskTagsHtml + '</div>' +
-    aggHtml +
     '</div>';
 }
 
@@ -4880,9 +4853,8 @@ function bnEndFromStartAndDuration(startStr, n) {
       pill.className = 'rm-modal-pill-btn';
       pill.title = label + ' — click to clear and pick a date';
       pill.innerHTML = escapeHtml(label) + '<span class="bn-pill-x" aria-hidden="true">×</span>';
-      // Apply color: "N days" → gray; "start/end of TaskX" → that task's status color (from srcTaskId).
-      const isDaysLabel = /^\d+\s+day/.test(label);
-      const stl = isDaysLabel ? BN_GRAY_PILL : bnPillStyleForTaskId(srcTaskId);
+      // Apply color: "N days" → gray; "start/end of TaskX" → that task's status color.
+      const stl = bnPillStyleForLabel(label, srcTaskId);
       if (stl) pill.setAttribute('style', bnPillInlineStyle(stl));
       pill.addEventListener('click', ev => {
         ev.preventDefault(); ev.stopPropagation();
@@ -5265,8 +5237,7 @@ window.__renderTaskAggregatedSchedule = function(t) {
     if (lbl) {
       pillEl.textContent = lbl;
       pillEl.style.display = '';
-      const isDays = /^\d+\s+day/.test(lbl);
-      const stl = isDays ? BN_GRAY_PILL : bnPillStyleForTaskId(srcTaskId);
+      const stl = bnPillStyleForLabel(lbl, srcTaskId);
       if (stl) pillEl.setAttribute('style', bnPillInlineStyle(stl));
       else pillEl.removeAttribute('style');
       if (valEl) valEl.classList.add('below');
@@ -5858,13 +5829,9 @@ function renderRoadmapsInModal(t) {
         let pillStyle = '';
         if (srcLbl) {
           const entry2 = entryFor(r.id).entry;
-          if (isDaysLabel) {
-            pillStyle = bnPillInlineStyle(BN_GRAY_PILL);
-          } else {
-            const srcTid = entry2 && (side === 'start' ? entry2.startSrcTaskId : entry2.endSrcTaskId);
-            const stl = bnPillStyleForTaskId(srcTid);
-            if (stl) pillStyle = bnPillInlineStyle(stl);
-          }
+          const srcTid = entry2 && (side === 'start' ? entry2.startSrcTaskId : entry2.endSrcTaskId);
+          const stl = bnPillStyleForLabel(srcLbl, srcTid);
+          if (stl) pillStyle = bnPillInlineStyle(stl);
         }
         const pill = srcLbl
           ? '<button type="button" class="rm-modal-pill rm-modal-pill-btn" data-side="' + side + '" data-rmid="' + escapeHtml(r.id) + '" style="' + pillStyle + '" title="' + escapeHtml(srcLbl) + ' — click to clear and pick a date">' +
@@ -6830,11 +6797,79 @@ function bnFormatDateDMY(s) {
   if (parts.length !== 3) return s;
   return parts[2] + '/' + parts[1] + '/' + parts[0];
 }
+// Compact "agg" badge rendered inline with other badges on a task card. Computes min start /
+// max end across all roadmap entries; uses status-colored pills when every entry shares the
+// same source label; renders gray "N days" pill when every entry shares the same durationDays.
+function bnRenderTaskAggBadge(t) {
+  if (!t) return '';
+  const tEntries = [];
+  (STORE.roadmaps || []).forEach(rm => {
+    const en = (rm.tasks || []).find(x => x.taskId === t.id);
+    if (en) tEntries.push({ entry: en, rm });
+  });
+  if (tEntries.length === 0) return '';
+  const starts = tEntries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).startStr);
+  const ends   = tEntries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).endStr);
+  const aggStart = starts.every(s => !!s) ? starts.reduce((m, s) => (!m || s < m) ? s : m, '') : '';
+  const aggEnd   = ends.every(s => !!s)   ? ends.reduce((m, s) => (!m || s > m) ? s : m, '')   : '';
+  function commonLbl(arr) {
+    if (arr.length === 0) return ''; const first = arr[0]; if (!first) return '';
+    return arr.every(x => x === first) ? first : '';
+  }
+  const sLbl = commonLbl(tEntries.map(x => x.entry.startSrcLabel || ''));
+  const sTid = commonLbl(tEntries.map(x => x.entry.startSrcTaskId || ''));
+  const eLbl = commonLbl(tEntries.map(x => {
+    if (x.entry.endSrcLabel) return x.entry.endSrcLabel;
+    if (typeof x.entry.durationDays === 'number' && x.entry.durationDays >= 1) {
+      return x.entry.durationDays + ' day' + (x.entry.durationDays === 1 ? '' : 's');
+    }
+    return '';
+  }));
+  const eTid = commonLbl(tEntries.map(x => x.entry.endSrcTaskId || ''));
+  const spanN = (aggStart && aggEnd) ? bnDaysInclusive(aggStart, aggEnd) : 0;
+  if (!aggStart && !aggEnd && !sLbl && !eLbl) return '';
+  function pillStyleFor(lbl, tid) {
+    const stl = bnPillStyleForLabel(lbl, tid);
+    return stl ? bnPillInlineStyle(stl) : '';
+  }
+  function renderSide(lbl, tid, dateStr) {
+    const dateFmt = bnFormatDateDMY(dateStr);
+    if (lbl) {
+      return '<span class="ta-pill" style="' + pillStyleFor(lbl, tid) + '" title="' + escapeHtml(lbl) + (dateStr ? ' = ' + escapeHtml(dateFmt) : '') + '">' + escapeHtml(lbl) + '</span>';
+    }
+    return '<span class="ta-val' + (dateStr ? '' : ' empty') + '">' + (dateStr ? escapeHtml(dateFmt) : '—') + '</span>';
+  }
+  let h = '<span class="task-agg">';
+  h += '<span class="ta-key">S</span>' + renderSide(sLbl, sTid, aggStart);
+  if (spanN > 0) h += '<span class="ta-span">' + spanN + 'd</span>';
+  h += '<span class="ta-key">E</span>' + renderSide(eLbl, eTid, aggEnd);
+  h += '</span>';
+  return h;
+}
 function bnPillStyleForTaskId(taskId) {
   if (!taskId) return null;
   const tk = STORE.tasks.find(x => x.id === taskId);
   if (!tk) return null;
   return BN_STATUS_PILL[tk.slackStatus || ''] || BN_STATUS_PILL[''];
+}
+// Resolve a pill's color from EITHER a stored srcTaskId OR by parsing the label "start of NAME"
+// / "end of NAME" and looking up the task by subject. Days pills → gray. Returns null only if
+// no matching task is found and not a days label.
+function bnPillStyleForLabel(lbl, srcTaskId) {
+  if (lbl && /^\d+\s+day/.test(lbl)) return BN_GRAY_PILL;
+  if (srcTaskId) {
+    const stl = bnPillStyleForTaskId(srcTaskId);
+    if (stl) return stl;
+  }
+  if (lbl) {
+    const m = lbl.match(/^(?:start|end)\s+of\s+(.+)$/i);
+    if (m) {
+      const name = m[1].trim().toLowerCase();
+      const found = (STORE.tasks || []).find(t => (t.subject || '').toLowerCase() === name);
+      if (found) return BN_STATUS_PILL[found.slackStatus || ''] || BN_STATUS_PILL[''];
+    }
+  }
+  return null;
 }
 function bnPillInlineStyle(style) {
   if (!style) return '';
@@ -8675,6 +8710,10 @@ renderRoadmapsTimelinePage = function() {
 
 document.getElementById("showCountsChk").checked = showCounts;
 document.getElementById("teamOnlyChk").checked = teamOnly;
+// Show Unassigned: persists via localStorage. Default OFF.
+function getShowUnassigned() { return localStorage.getItem('bookline-showUnassigned') === '1'; }
+const _suChk = document.getElementById("showUnassignedChk");
+if (_suChk) _suChk.checked = getShowUnassigned();
 
 // Collapse-all / Expand-all toggle in the Tasks toolbar — operates on the global bn-group-expanded
 (function wireTasksCollapseAll() {
@@ -9154,7 +9193,10 @@ function renderProfilePage() {
   const settings = getPersonSettings(person.id);
   const personTags = getTagsFor(person.id);
   const tagLib = getTagLibrary();
-  const personTasks = STORE.tasks.filter(t => t.responsibleId === person.id);
+  // For the virtual Unassigned profile, "their" tasks are those without any responsibleId.
+  const personTasks = person.isUnassigned
+    ? STORE.tasks.filter(t => !t.responsibleId)
+    : STORE.tasks.filter(t => t.responsibleId === person.id);
   const counts = {
     total:        personTasks.length,
     proposed:     personTasks.filter(t=>t.slackStatus === "Proposed").length,
@@ -10282,69 +10324,15 @@ function flatTaskHtml(t) {
   const groupCountSuffix = (isG && childCount > 0)
     ? ' <span class="flat-group-count">(' + childCount + ')</span>'
     : '';
-  // Aggregated info row — same as the by-people view's task card. Min start / max end across all
-  // assigned roadmaps, common pill (status-colored) when every entry shares the same source.
-  let aggHtml = '';
-  const tEntries = [];
-  (STORE.roadmaps || []).forEach(rm => {
-    const en = (rm.tasks || []).find(x => x.taskId === t.id);
-    if (en) tEntries.push({ entry: en, rm });
-  });
-  if (tEntries.length > 0) {
-    const starts = tEntries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).startStr);
-    const ends   = tEntries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).endStr);
-    const aggStart = starts.every(s => !!s) ? starts.reduce((m, s) => (!m || s < m) ? s : m, '') : '';
-    const aggEnd   = ends.every(s => !!s)   ? ends.reduce((m, s) => (!m || s > m) ? s : m, '')   : '';
-    function commonLbl(arr) {
-      if (arr.length === 0) return '';
-      const first = arr[0];
-      if (!first) return '';
-      return arr.every(x => x === first) ? first : '';
-    }
-    const sLbl = commonLbl(tEntries.map(x => x.entry.startSrcLabel || ''));
-    const sTid = commonLbl(tEntries.map(x => x.entry.startSrcTaskId || ''));
-    const eLbl = commonLbl(tEntries.map(x => {
-      if (x.entry.endSrcLabel) return x.entry.endSrcLabel;
-      if (typeof x.entry.durationDays === 'number' && x.entry.durationDays >= 1) {
-        return x.entry.durationDays + ' day' + (x.entry.durationDays === 1 ? '' : 's');
-      }
-      return '';
-    }));
-    const eTid = commonLbl(tEntries.map(x => x.entry.endSrcTaskId || ''));
-    const spanN = (aggStart && aggEnd) ? bnDaysInclusive(aggStart, aggEnd) : 0;
-    if (aggStart || aggEnd || sLbl || eLbl) {
-      function pillStyleFor(lbl, tid) {
-        const isDays = lbl && /^\d+\s+day/.test(lbl);
-        if (isDays) return bnPillInlineStyle(BN_GRAY_PILL);
-        const stl = bnPillStyleForTaskId(tid);
-        return stl ? bnPillInlineStyle(stl) : '';
-      }
-      function renderSide(lbl, tid, dateStr) {
-        const dateFmt = bnFormatDateDMY(dateStr);
-        if (lbl) {
-          return '<span class="ta-stack">' +
-            '<span class="ta-pill" style="' + pillStyleFor(lbl, tid) + '">' + escapeHtml(lbl) + '</span>' +
-            '<span class="ta-val-below' + (dateStr ? '' : ' empty') + '">= ' + (dateStr ? escapeHtml(dateFmt) : '—') + '</span>' +
-          '</span>';
-        }
-        return '<span class="ta-val' + (dateStr ? '' : ' empty') + '">' + (dateStr ? escapeHtml(dateFmt) : '—') + '</span>';
-      }
-      aggHtml = '<div class="task-agg flat-task-agg">';
-      aggHtml += '<span class="ta-key">Start</span>';
-      aggHtml += renderSide(sLbl, sTid, aggStart);
-      if (spanN > 0) aggHtml += '<span class="ta-span">' + spanN + ' day' + (spanN === 1 ? '' : 's') + '</span>';
-      aggHtml += '<span class="ta-key">End</span>';
-      aggHtml += renderSide(eLbl, eTid, aggEnd);
-      aggHtml += '</div>';
-    }
-  }
+  // Aggregated info — compact mini-pill rendered inline with the other badges.
+  const aggBadgeFlat = bnRenderTaskAggBadge(t);
+  if (aggBadgeFlat) badges.push(aggBadgeFlat);
   return '<div class="flat-task' + (isG ? ' is-group' : '') + '" data-pstatus="' + escapeHtml(t.slackStatus||'') + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
     '<span class="checkbox ' + (sel ? 'checked' : '') + '" title="Select"></span>' +
     '<span class="av-mini"' + avClickAttr + '><img src="' + photo + '" alt="" onerror="this.remove()"><span class="ini">' + escapeHtml(ini) + '</span></span>' +
     '<div>' +
       '<div class="text" title="Click to edit">' + chevHtml + folderPrefix + escapeHtml(t.subject) + groupCountSuffix + '</div>' +
       '<div class="meta-line"><span class="badges-inline">' + badges.join(' ') + (taskTagsHtml ? ' ' + taskTagsHtml : '') + '</span></div>' +
-      aggHtml +
     '</div>' +
     '<span' + nameClickAttr + '>' + escapeHtml(respName) + '</span>' +
     '<button class="edit-btn" title="Edit">&#9998;</button>' +
@@ -11292,6 +11280,14 @@ document.getElementById("teamOnlyChk").addEventListener("change", e => {
   localStorage.setItem("bookline-teamOnly", teamOnly ? "true" : "false");
   render();
 });
+(function() {
+  const suChk = document.getElementById("showUnassignedChk");
+  if (!suChk) return;
+  suChk.addEventListener("change", e => {
+    localStorage.setItem("bookline-showUnassigned", e.target.checked ? "1" : "0");
+    render();
+  });
+})();
 
 // =================== FILES (Google Drive links) ===================
 if (!STORE.driveFiles) STORE.driveFiles = [];
