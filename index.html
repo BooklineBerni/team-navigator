@@ -4703,6 +4703,10 @@ function bnEndFromStartAndDuration(startStr, n) {
     if (!wrap) return;
     const isStart = (srcEl === sSrcEl);
     const inp = isStart ? startEl : endEl;
+    // Track the currently-displayed source label in module-level state so the Apply
+    // handler can propagate it to each per-roadmap row.
+    if (isStart) window.__quickApplyStartSrcLbl = label || '';
+    else         window.__quickApplyEndSrcLbl   = label || '';
     // Always remove any existing pill before re-rendering
     const oldPill = wrap.querySelector('.rm-modal-pill-btn');
     if (oldPill) oldPill.remove();
@@ -4749,6 +4753,8 @@ function bnEndFromStartAndDuration(startStr, n) {
     startEl.value = '';
     endEl.value   = '';
     if (daysEl) daysEl.value = '';
+    window.__quickApplyStartSrcLbl = '';
+    window.__quickApplyEndSrcLbl   = '';
     setSourceChip(sSrcEl, '');
     setSourceChip(eSrcEl, '');
     btnEl.title = 'Write these dates to every assigned roadmap immediately';
@@ -5002,10 +5008,17 @@ function bnEndFromStartAndDuration(startStr, n) {
     if (!t) return;
     const startV = startEl.value || '';
     const endV   = endEl.value || '';
+    // Read the current source labels + days from the top component so they propagate to each row.
+    const startSrcLbl = window.__quickApplyStartSrcLbl || '';
+    const endSrcLbl   = window.__quickApplyEndSrcLbl   || '';
+    const daysNum     = daysEl ? parseInt(daysEl.value, 10) : NaN;
+    const hasDays     = Number.isFinite(daysNum) && daysNum >= 1;
     t.startDate = startV;
     t.endDate   = endV;
     t.startAnchor = '';
     t.endAnchor   = '';
+    // Make sure the per-row source-label store exists (renderRoadmapsInModal uses it)
+    if (!window.__rmRowSrc) window.__rmRowSrc = {};
     const rms = (typeof getRoadmaps === 'function' ? getRoadmaps() : (STORE.roadmaps || []));
     let touched = 0;
     rms.forEach(rm => {
@@ -5015,6 +5028,21 @@ function bnEndFromStartAndDuration(startStr, n) {
       e.startAnchor = '';
       e.endDate     = endV;
       e.endAnchor   = '';
+      // Propagate the START source label (pill text). Empty label clears the row's source.
+      const sKey = t.id + '|' + rm.id + '|start';
+      if (startSrcLbl) window.__rmRowSrc[sKey] = startSrcLbl;
+      else delete window.__rmRowSrc[sKey];
+      // Days take precedence over an end pill label. If days is set, store durationDays so the
+      // row renders "N days" pill from entry.durationDays (no rmRowSrc entry needed for end).
+      const eKey = t.id + '|' + rm.id + '|end';
+      if (hasDays) {
+        e.durationDays = daysNum;
+        delete window.__rmRowSrc[eKey];
+      } else {
+        delete e.durationDays;
+        if (endSrcLbl) window.__rmRowSrc[eKey] = endSrcLbl;
+        else delete window.__rmRowSrc[eKey];
+      }
       touched++;
     });
     if (typeof recomputeTaskDates === 'function') recomputeTaskDates(t.id);
