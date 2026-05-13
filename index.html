@@ -3904,6 +3904,9 @@ function openModal(tid, overrides) {
     tStartEl.value = t.startDate || "";
     tEndEl.value   = t.endDate   || "";
     if (tApplyEl) tApplyEl.disabled = true;   // becomes enabled once user edits a date below
+    // Reset any leftover "Pending" visual state from a previous modal session
+    window.__pendingApplyToRoadmaps = false;
+    if (typeof window.__resetApplyToRoadmapsState === 'function') window.__resetApplyToRoadmapsState();
   }
   document.getElementById("deleteBtn").style.display = t._isNew ? "none" : "inline-block";
   document.getElementById("modalBg").classList.add("show");
@@ -3913,7 +3916,15 @@ function openModal(tid, overrides) {
 document.getElementById("f_isGroup").addEventListener("change", e => {
   applyGroupModeToModal(e.target.checked);
 });
-function closeModal() { document.getElementById("modalBg").classList.remove("show"); editingId = null; }
+function closeModal() {
+  // Discard any pending Apply-to-roadmaps that wasn't committed via Save
+  if (window.__pendingApplyToRoadmaps) {
+    window.__pendingApplyToRoadmaps = false;
+    if (typeof window.__resetApplyToRoadmapsState === 'function') window.__resetApplyToRoadmapsState();
+  }
+  document.getElementById("modalBg").classList.remove("show");
+  editingId = null;
+}
 document.getElementById("modalBg").addEventListener("click", e => { if (e.target.id === "modalBg") closeModal(); });
 
 document.getElementById("saveBtn").addEventListener("click", () => {
@@ -3984,7 +3995,14 @@ document.getElementById("saveBtn").addEventListener("click", () => {
     STORE.requestActions[t._fromRequestTs] = { action: 'approved', at: Date.now(), taskId: t.id };
     if (typeof bnUpdateRequestsBadge === 'function') bnUpdateRequestsBadge();
   }
+  // Commit any pending "Apply to roadmaps" — only happens if the user clicked Apply earlier in this modal session
+  if (window.__pendingApplyToRoadmaps) {
+    try { applyTaskDatesToRoadmaps(t.id); } catch(_) {}
+    try { recomputeTaskDates(t.id); } catch(_) {}
+    window.__pendingApplyToRoadmaps = false;
+  }
   saveStore(STORE);
+  if (typeof window.__resetApplyToRoadmapsState === 'function') window.__resetApplyToRoadmapsState();
   closeModal(); render();
 });
 
@@ -4011,12 +4029,24 @@ document.getElementById("deleteBtn").addEventListener("click", () => {
 document.getElementById("addBtn").addEventListener("click", () => openModal("new"));
 
 // ---- Task schedule (Start/End synced with roadmaps) ----
-// Enable the Apply button when the user has edited a date away from the auto-computed value.
+// Apply is now STAGED — clicking it only previews the change and flags it as pending.
+// The actual push to roadmaps (and recompute) happens when the user clicks Save.
+// Cancel / close discards the pending apply.
+window.__pendingApplyToRoadmaps = false;
 (function wireTaskScheduleControls() {
   const startEl = document.getElementById("f_taskStart");
   const endEl   = document.getElementById("f_taskEnd");
   const applyEl = document.getElementById("f_taskApplyDates");
+  const hintEl  = document.getElementById("f_taskDatesHint");
   if (!startEl || !endEl || !applyEl) return;
+  const defaultHint = hintEl ? hintEl.innerHTML : '';
+  function clearPendingApplyVisual() {
+    window.__pendingApplyToRoadmaps = false;
+    applyEl.textContent = 'Apply to roadmaps';
+    if (hintEl) hintEl.innerHTML = defaultHint;
+  }
+  // Expose so closeModal / saveBtn can reset it
+  window.__resetApplyToRoadmapsState = clearPendingApplyVisual;
   function bumpApplyState() {
     if (!editingId) { applyEl.disabled = true; return; }
     const t = STORE.tasks.find(x => x.id === editingId);
@@ -4027,42 +4057,32 @@ document.getElementById("addBtn").addEventListener("click", () => openModal("new
     applyEl.disabled = !(hasRoadmaps && hasDate);
     applyEl.title = !hasRoadmaps
       ? 'Task must be in at least one roadmap to apply'
-      : (hasDate ? 'Copy these dates to every assigned roadmap (clears anchors)' : 'Set Start or End first');
+      : (hasDate ? 'Stage these dates for all assigned roadmaps (saved when you click Save)' : 'Set Start or End first');
   }
-  startEl.addEventListener('input', bumpApplyState);
-  endEl.addEventListener('input', bumpApplyState);
-  // Re-evaluate whenever the modal opens
+  // Editing Start/End after staging cancels the pending apply (forces re-Apply)
+  startEl.addEventListener('input', () => { if (window.__pendingApplyToRoadmaps) clearPendingApplyVisual(); bumpApplyState(); });
+  endEl.addEventListener('input',   () => { if (window.__pendingApplyToRoadmaps) clearPendingApplyVisual(); bumpApplyState(); });
   document.getElementById('modalBg').addEventListener('transitionend', bumpApplyState);
-  // Also re-evaluate when roadmaps in modal change
   const obs = new MutationObserver(bumpApplyState);
   const cont = document.getElementById('f_roadmapsContainer');
   if (cont) obs.observe(cont, { childList: true, subtree: true });
   applyEl.addEventListener('click', () => {
     if (!editingId) return;
-    const t = STORE.tasks.find(x => x.id === editingId);
-    if (!t) return;
-    // Stage the inputs into the task first
-    t.startDate = startEl.value || '';
-    t.endDate   = endEl.value || '';
-    const n = applyTaskDatesToRoadmaps(t.id);
-    if (n === 0) return;
-    saveStore(STORE);
-    // After push, recompute so we have the canonical aggregated values
-    recomputeTaskDates(t.id);
-    saveStore(STORE);
-    // Reload inputs to show the (possibly clamped) result
-    startEl.value = t.startDate || '';
-    endEl.value   = t.endDate   || '';
+    const startV = startEl.value || '';
+    const endV   = endEl.value || '';
+    // Flag as pending — the actual STORE mutation happens in the modal's Save handler
+    window.__pendingApplyToRoadmaps = true;
+    // Visual preview: update the per-roadmap row inputs in place (no STORE write)
+    document.querySelectorAll('#modal .rm-modal-row').forEach(row => {
+      const sInp = row.querySelector('.rm-modal-start');
+      const eInp = row.querySelector('.rm-modal-end');
+      if (sInp && startV) { sInp.value = startV; sInp.disabled = false; }
+      if (eInp && endV)   { eInp.value = endV;   eInp.disabled = false; }
+    });
+    // Cue: change button label + hint so the user knows it's staged
+    applyEl.textContent = 'Pending — click Save to persist';
     applyEl.disabled = true;
-    // Refresh the per-roadmap rows in the modal so their dates reflect the just-applied values immediately.
-    if (typeof renderRoadmapsInModal === 'function') {
-      try { renderRoadmapsInModal(t); } catch(_) {}
-    }
-    // Re-render any visible roadmap calendar so the bars update immediately
-    if (typeof renderRoadmapCalendar === 'function' && typeof selectedRoadmapTimelineId !== 'undefined' && selectedRoadmapTimelineId) {
-      try { renderRoadmapCalendar(selectedRoadmapTimelineId); } catch(_) {}
-    }
-    if (typeof render === 'function') render();
+    if (hintEl) hintEl.innerHTML = '<strong style="color:#92400e">Staged.</strong> These dates will be written to every assigned roadmap (clearing anchors) when you click <strong>Save</strong>. Click <strong>Cancel</strong> to discard.';
   });
 })();
 
