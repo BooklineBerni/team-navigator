@@ -4051,6 +4051,10 @@ document.getElementById("addBtn").addEventListener("click", () => openModal("new
     startEl.value = t.startDate || '';
     endEl.value   = t.endDate   || '';
     applyEl.disabled = true;
+    // Refresh the per-roadmap rows in the modal so their dates reflect the just-applied values immediately.
+    if (typeof renderRoadmapsInModal === 'function') {
+      try { renderRoadmapsInModal(t); } catch(_) {}
+    }
     // Re-render any visible roadmap calendar so the bars update immediately
     if (typeof renderRoadmapCalendar === 'function' && typeof selectedRoadmapTimelineId !== 'undefined' && selectedRoadmapTimelineId) {
       try { renderRoadmapCalendar(selectedRoadmapTimelineId); } catch(_) {}
