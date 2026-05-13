@@ -6300,8 +6300,10 @@ function renderHomePage() {
       '</div>';
   }).join("");
 
-  // Top contributors: top 5 people by task count
-  const counts = TEAM.map(p => ({ p, n: tasks.filter(t => t.responsibleId === p.id).length }))
+  // Top contributors: top 5 people by task count — excluding deactivated members
+  const counts = TEAM
+    .filter(p => !isDeactivated(p.id))
+    .map(p => ({ p, n: tasks.filter(t => t.responsibleId === p.id).length }))
     .filter(x => x.n > 0)
     .sort((a, b) => b.n - a.n)
     .slice(0, 6);
