@@ -1698,6 +1698,41 @@
   .mini-7day .mini-day .mini-event:hover {
     transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.18);
   }
+  .mini-7day .mini-day .mini-event.is-group { font-style: italic; opacity: 0.95; }
+  .mini-7day .mini-day .mini-event.is-kid {
+    font-size: 9px; padding: 1px 4px;
+    opacity: 0.92;
+    box-shadow: inset 2px 0 0 rgba(255,255,255,0.45);
+  }
+  /* Profile roadmap card: group expand chips */
+  .profile-rm-card .profile-rm-groups {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    padding: 6px 0 4px;
+    border-top: 1px dashed #f0efeb;
+    margin-top: 6px;
+  }
+  .profile-rm-card .profile-rm-group-toggle {
+    display: inline-flex; align-items: center; gap: 5px;
+    border: 1px solid #fde68a; background: #fffbeb;
+    color: #92400e;
+    padding: 2px 8px 2px 6px;
+    border-radius: 999px;
+    font-size: 10.5px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    transition: background .12s, border-color .12s, transform .12s;
+  }
+  .profile-rm-card .profile-rm-group-toggle:hover { background: #fef3c7; border-color: #fcd34d; }
+  .profile-rm-card .profile-rm-group-toggle.expanded { background: #fef3c7; border-color: #d97706; }
+  .profile-rm-card .profile-rm-group-toggle .prgt-caret {
+    font-size: 8.5px; display: inline-flex; align-items: center; justify-content: center;
+    width: 10px; transition: transform .15s;
+  }
+  .profile-rm-card .profile-rm-group-toggle.expanded .prgt-caret { transform: rotate(90deg); }
+  .profile-rm-card .profile-rm-group-toggle .prgt-name { white-space: nowrap; }
+  .profile-rm-card .profile-rm-group-toggle .prgt-count {
+    background: rgba(146,64,14,0.15); padding: 0 5px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 700; min-width: 14px; text-align: center;
+  }
   .profile-rm-card .rm-task-row {
     display: flex; align-items: center; gap: 8px; padding: 6px 0;
     border-top: 1px solid #f0efeb; font-size: 12.5px;
@@ -1982,6 +2017,31 @@
   .group-children.collapsed { display: none; }
   /* Children of a group: keep their own status color but indented. */
   .flat-task.is-group { border-style: dashed; font-weight: 600; }
+  /* Panel-view (byperson) group nesting */
+  .task.is-group { border-style: dashed; font-weight: 600; }
+  .task .task-group-caret {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px;
+    margin-right: 5px;
+    vertical-align: middle;
+    border: 1px solid rgba(0,0,0,0.08);
+    background: rgba(255,255,255,0.6);
+    font-size: 8.5px; color: inherit; font-weight: 700;
+    border-radius: 4px;
+    cursor: pointer; padding: 0;
+    font-family: inherit;
+    transition: background .12s, transform .15s, border-color .12s;
+  }
+  .task .task-group-caret:hover { background: rgba(255,255,255,0.95); border-color: rgba(0,0,0,0.18); }
+  .task .task-group-caret.expanded { transform: rotate(90deg); }
+  .card-group-children {
+    margin: -2px 0 6px 22px;
+    padding: 4px 0 4px 8px;
+    border-left: 2px dashed #ececea;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .card-group-children.collapsed { display: none; }
+  .card-group-empty { color: #9a9a9a; font-size: 11.5px; font-style: italic; padding: 4px 8px; }
   .flat-task .flat-group-caret {
     display: inline-flex; align-items: center; justify-content: center;
     width: 18px; height: 18px;
@@ -3737,7 +3797,33 @@ function render() {
         ${counts.discarded > 0 ? '<span class="stat" title="Discarded"><span class="dot discarded"></span>'+counts.discarded+'</span>' : ''}
         <span class="stat" style="margin-left:auto"><strong>${visibleTasks.length}</strong> of ${personTasksMatchingNonStatus.length}</span>
       </div>
-      <div class="tasks" data-uid="${pid}">${sortTaskList(visibleTasks).map(t => taskHtml(t)).join("")}</div>
+      <div class="tasks" data-uid="${pid}">${(() => {
+        // Show this person's groups too so they can be collapsed
+        const personGroups = (STORE.tasks || []).filter(t =>
+          t.isGroup && t.responsibleId === pid && taskMatchesFilters(t, { allowGroups: true })
+        );
+        const ownedGroupIds = new Set(personGroups.map(g => g.id));
+        const childrenByParent = {};
+        const orphanTasks = [];
+        visibleTasks.forEach(t => {
+          if (t.groupId && ownedGroupIds.has(t.groupId)) {
+            (childrenByParent[t.groupId] = childrenByParent[t.groupId] || []).push(t);
+          } else {
+            orphanTasks.push(t);
+          }
+        });
+        let out = '';
+        sortTaskList(personGroups).forEach(g => {
+          out += taskHtml(g);
+          const expanded = isGroupExpanded(g.id);
+          const kids = sortTaskList(childrenByParent[g.id] || []);
+          out += '<div class="card-group-children' + (expanded ? '' : ' collapsed') + '" data-gid="' + escapeHtml(g.id) + '">' +
+            (kids.length === 0 ? '<div class="card-group-empty">No subtasks of this person.</div>' : kids.map(t => taskHtml(t)).join('')) +
+          '</div>';
+        });
+        out += sortTaskList(orphanTasks).map(t => taskHtml(t)).join("");
+        return out;
+      })()}</div>
       <form class="add-row" data-uid="${pid}">
         <input type="text" placeholder="New task for ${escapeHtml(person.displayName)}..." required>
         <button type="submit">Add</button>
@@ -3826,7 +3912,24 @@ function render() {
 
   grid.querySelectorAll(".task").forEach(node => {
     const tid = node.dataset.tid;
-    node.querySelector(".text").addEventListener("click", () => openModal(tid));
+    // Chevron (only on group tasks) → toggle children visibility
+    const caret = node.querySelector(".task-group-caret");
+    if (caret) caret.addEventListener("click", e => {
+      e.stopPropagation();
+      toggleGroupExpanded(tid);
+      const kidsEl = node.nextElementSibling;
+      if (kidsEl && kidsEl.classList.contains("card-group-children")) {
+        kidsEl.classList.toggle("collapsed");
+        caret.classList.toggle("expanded");
+        caret.title = caret.classList.contains("expanded") ? "Collapse subtasks" : "Expand subtasks";
+      } else if (typeof render === "function") {
+        render();
+      }
+    });
+    node.querySelector(".text").addEventListener("click", e => {
+      if (e.target.closest(".task-group-caret")) return;
+      openModal(tid);
+    });
     node.querySelector(".edit-btn").addEventListener("click", () => openModal(tid));
     node.querySelector(".checkbox").addEventListener("click", e => {
       e.stopPropagation();
@@ -3866,9 +3969,15 @@ function taskHtml(t) {
   const allTaskTags = [...orderedTags, ...extraTags];
   const taskTagsHtml = allTaskTags.map(n => taskTagBadgeHtml(n, false)).join("");
   const sel = isSelected(t.id);
-  return '<div class="task" data-pstatus="' + escapeHtml(t.slackStatus||'') + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
+  const isG = !!t.isGroup;
+  const isGExpanded = isG ? isGroupExpanded(t.id) : false;
+  const chevHtml = isG
+    ? '<button type="button" class="task-group-caret' + (isGExpanded ? ' expanded' : '') + '" data-gid="' + t.id + '" title="' + (isGExpanded ? 'Collapse subtasks' : 'Expand subtasks') + '">▶</button>'
+    : '';
+  const folderPrefix = isG ? '<span class="folder-emoji">📁</span> ' : '';
+  return '<div class="task' + (isG ? ' is-group' : '') + '" data-pstatus="' + escapeHtml(t.slackStatus||'') + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
     '<span class="checkbox ' + (sel?'checked':'') + '" title="Select task (use modal to mark completed)"></span>' +
-    '<span class="text" title="Click to edit all fields">' + escapeHtml(t.subject) + '</span>' +
+    '<span class="text" title="Click to edit all fields">' + chevHtml + folderPrefix + escapeHtml(t.subject) + '</span>' +
     '<button class="edit-btn" title="Edit">&#9998;</button>' +
     '<div class="badges">' + badges.join('') + ' ' + taskTagsHtml + '</div>' +
     '</div>';
@@ -7583,6 +7692,24 @@ function renderProfileRoadmapCard(rm, personId) {
   };
   const wdLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
+  // Find groups owned by this person within this roadmap; expansion toggles add their kids' events.
+  if (!window.__profileGroupExp) window.__profileGroupExp = {};
+  const personGroupsInRm = personTaskEntries
+    .map(en => STORE.tasks.find(t => t.id === en.taskId))
+    .filter(t => t && t.isGroup);
+  // For each expanded group, collect entries of its CHILDREN in this roadmap (any responsible).
+  const expandedKidEntries = [];
+  personGroupsInRm.forEach(g => {
+    const key = rm.id + '|' + g.id;
+    if (!window.__profileGroupExp[key]) return;
+    (rm.tasks || []).forEach(en => {
+      const ct = STORE.tasks.find(t => t.id === en.taskId);
+      if (ct && !ct.isGroup && ct.groupId === g.id) {
+        expandedKidEntries.push({ entry: en, task: ct, viaExpandedGroup: true });
+      }
+    });
+  });
+
   let html = '<div class="profile-rm-card">';
   html += '<div class="rm-head">';
   html += '<div class="lhs">';
@@ -7590,6 +7717,21 @@ function renderProfileRoadmapCard(rm, personId) {
   html += '</div>';
   html += '<span class="rm-meta">' + personTaskEntries.length + ' task' + (personTaskEntries.length===1?'':'s') + '</span>';
   html += '</div>';
+  // Toggle chips for any groups present (lets the user reveal subtasks in the mini calendar below)
+  if (personGroupsInRm.length > 0) {
+    html += '<div class="profile-rm-groups">';
+    personGroupsInRm.forEach(g => {
+      const key = rm.id + '|' + g.id;
+      const exp = !!window.__profileGroupExp[key];
+      const childCount = (STORE.tasks || []).filter(t => !t.isGroup && t.groupId === g.id).length;
+      html += '<button type="button" class="profile-rm-group-toggle' + (exp ? ' expanded' : '') + '" data-rmid="' + escapeHtml(rm.id) + '" data-gid="' + escapeHtml(g.id) + '" title="' + (exp ? 'Hide subtasks of this group' : 'Show subtasks of this group') + '">' +
+        '<span class="prgt-caret">▶</span>' +
+        '<span class="prgt-name">📁 ' + escapeHtml((g.subject || '(unnamed)').slice(0,28)) + '</span>' +
+        (childCount > 0 ? '<span class="prgt-count">' + childCount + '</span>' : '') +
+      '</button>';
+    });
+    html += '</div>';
+  }
   // Mini 7-day calendar
   html += '<div class="mini-7day">';
   days.forEach((d, idx) => {
@@ -7611,18 +7753,25 @@ function renderProfileRoadmapCard(rm, personId) {
     if (hol && !worked) {
       html += '<div class="mini-hol" title="' + escapeHtml(hol) + '">' + escapeHtml(hol) + '</div>';
     }
-    // Events for this day
-    personTaskEntries.forEach(entry => {
+    // Events for this day — person's own tasks first, then children of expanded groups
+    function paintEvent(entry, task, isKid) {
       const start = parseDate(entry.startDate);
       const end = parseDate(entry.endDate) || (start ? new Date(2099,11,31) : null);
       if (!start) return;
       if (d >= start && d <= end) {
-        const t = STORE.tasks.find(x => x.id === entry.taskId);
-        if (!t) return;
-        const color = statusColors[t.slackStatus] || '#94a3b8';
-        html += '<div class="mini-event" style="background:' + color + '" title="' + escapeHtml(t.subject) + '" data-tid="' + t.id + '">' + escapeHtml(t.subject) + '</div>';
+        const color = statusColors[task.slackStatus] || '#94a3b8';
+        const isG = !!task.isGroup;
+        const cls = 'mini-event' + (isG ? ' is-group' : '') + (isKid ? ' is-kid' : '');
+        const label = (isG ? '📁 ' : (isKid ? '· ' : '')) + task.subject;
+        html += '<div class="' + cls + '" style="background:' + color + '" title="' + escapeHtml(label) + '" data-tid="' + task.id + '">' + escapeHtml(label) + '</div>';
       }
+    }
+    personTaskEntries.forEach(entry => {
+      const t = STORE.tasks.find(x => x.id === entry.taskId);
+      if (!t) return;
+      paintEvent(entry, t, false);
     });
+    expandedKidEntries.forEach(({ entry, task }) => paintEvent(entry, task, true));
     html += '</div>';
   });
   html += '</div>';
@@ -7771,6 +7920,20 @@ function wireProfileTasks() {
     node.addEventListener("click", e => {
       e.stopPropagation();
       if (node.dataset.tid) openModal(node.dataset.tid);
+    });
+  });
+  // Group toggle chips in profile rm-cards — show/hide subtasks in the 7-day mini calendar
+  document.querySelectorAll('#profilePageContent .profile-rm-group-toggle').forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const rmId = btn.dataset.rmid;
+      const gid = btn.dataset.gid;
+      if (!rmId || !gid) return;
+      if (!window.__profileGroupExp) window.__profileGroupExp = {};
+      const key = rmId + '|' + gid;
+      window.__profileGroupExp[key] = !window.__profileGroupExp[key];
+      // Re-render the profile page to reflect the change
+      if (typeof renderProfilePage === 'function') renderProfilePage();
     });
   });
 }
