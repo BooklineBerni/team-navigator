@@ -972,6 +972,13 @@
   }
   .bn-quick-apply-arrow { color: #9a9a9a; font-size: 13px; }
   .bn-quick-apply-btn { font-size: 12px; padding: 5px 14px; }
+  .bn-quick-apply-pin {
+    background: #fff; border: 1px solid #d6d3c8; border-radius: 6px;
+    padding: 3px 6px; cursor: pointer;
+    font-size: 12px; line-height: 1;
+    opacity: .65; transition: all .12s;
+  }
+  .bn-quick-apply-pin:hover { opacity: 1; border-color: #999; }
   .bn-quick-apply-feedback {
     font-size: 11px; color: #16a34a; font-weight: 600;
     background: #dcfce7; padding: 3px 8px; border-radius: 4px;
@@ -2867,14 +2874,17 @@
     <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
     <div class="field" id="f_roadmapsField">
       <label>Roadmaps</label>
-      <!-- Quick "Apply to all roadmaps" row — sits directly above the chips and commits IMMEDIATELY (no Save needed) -->
+      <!-- Quick "Apply to all roadmaps" row — always visible. Commits IMMEDIATELY (no Save needed).
+           Each date can be filled manually OR by picking another task's aggregated start/end via 📌. -->
       <div id="f_quickApplyRow" class="bn-quick-apply">
         <span class="bn-quick-apply-lbl">Apply to all roadmaps</span>
         <div class="bn-quick-apply-inputs">
           <input type="date" id="f_quickApplyStart" class="bn-quick-apply-input" title="Start">
+          <button type="button" id="f_quickApplyStartPin" class="bn-quick-apply-pin" title="Use another task's aggregated start/end as this Start">📌</button>
           <span class="bn-quick-apply-arrow">→</span>
           <input type="date" id="f_quickApplyEnd" class="bn-quick-apply-input" title="End">
-          <button type="button" id="f_quickApplyBtn" class="btn primary bn-quick-apply-btn" disabled>Apply</button>
+          <button type="button" id="f_quickApplyEndPin" class="bn-quick-apply-pin" title="Use another task's aggregated start/end as this End">📌</button>
+          <button type="button" id="f_quickApplyBtn" class="btn primary bn-quick-apply-btn">Apply</button>
         </div>
         <span id="f_quickApplyFeedback" class="bn-quick-apply-feedback" style="display:none"></span>
       </div>
@@ -4570,53 +4580,38 @@ function bnEndFromStartAndDuration(startStr, n) {
   return dateKey(d);
 }
 // Quick "Apply to all roadmaps" row at the top of the Roadmaps field.
-// Commits IMMEDIATELY (no Save needed) — writes startDate/endDate to every assigned roadmap entry,
-// clears their anchors, updates task.startDate/task.endDate, then refreshes UI in place.
+// Always visible. Inputs default empty. Each has a 📌 pin that opens a picker of OTHER tasks
+// (excluding self + subtasks of self) — picking a task's start/end fills the input with that
+// task's aggregated date (min start / max end across all its roadmap entries).
+// Apply commits IMMEDIATELY (no Save needed).
 (function wireQuickApplyDates() {
   const row     = document.getElementById('f_quickApplyRow');
   const startEl = document.getElementById('f_quickApplyStart');
   const endEl   = document.getElementById('f_quickApplyEnd');
   const btnEl   = document.getElementById('f_quickApplyBtn');
   const fbEl    = document.getElementById('f_quickApplyFeedback');
+  const sPinEl  = document.getElementById('f_quickApplyStartPin');
+  const ePinEl  = document.getElementById('f_quickApplyEndPin');
   if (!row || !startEl || !endEl || !btnEl) return;
   function showFeedback(msg, isError) {
     if (!fbEl) return;
     fbEl.textContent = msg;
     fbEl.classList.toggle('error', !!isError);
-    // Force re-trigger of the fade animation
     fbEl.style.display = 'none';
-    fbEl.offsetHeight;  // reflow
+    fbEl.offsetHeight;  // reflow to restart animation
     fbEl.style.display = '';
     clearTimeout(window.__quickApplyHideT);
     window.__quickApplyHideT = setTimeout(() => { if (fbEl) fbEl.style.display = 'none'; }, 2500);
   }
-  function refreshBtnState() {
-    if (!editingId) { btnEl.disabled = true; row.style.display = 'none'; return; }
-    const t = STORE.tasks.find(x => x.id === editingId);
-    if (!t) { btnEl.disabled = true; return; }
-    const rms = (typeof getRoadmaps === 'function' ? getRoadmaps() : (STORE.roadmaps || []))
-      .filter(r => (r.tasks || []).some(e => e.taskId === t.id));
-    const hasRoadmaps = rms.length > 0;
-    row.style.display = hasRoadmaps ? '' : 'none';
-    btnEl.disabled = !hasRoadmaps;
-    btnEl.title = hasRoadmaps
-      ? 'Write these dates to every assigned roadmap immediately'
-      : 'Task must be in at least one roadmap';
-  }
+  // Always show the row; inputs always start empty when modal opens.
   window.__refreshQuickApplyFromTask = function(t) {
-    if (!t) { row.style.display = 'none'; return; }
-    startEl.value = t.startDate || '';
-    endEl.value   = t.endDate   || '';
+    row.style.display = '';
+    startEl.value = '';
+    endEl.value   = '';
+    btnEl.title = 'Write these dates to every assigned roadmap immediately';
     if (fbEl) fbEl.style.display = 'none';
-    refreshBtnState();
   };
-  // Re-evaluate visibility whenever roadmaps change (chips added/removed)
-  const cont = document.getElementById('f_roadmapsContainer');
-  if (cont) {
-    const obs = new MutationObserver(refreshBtnState);
-    obs.observe(cont, { childList: true, subtree: true });
-  }
-  // Delete / Backspace clears the date input (mirrors other date inputs)
+  // Delete / Backspace clears the date input
   [startEl, endEl].forEach(inp => {
     inp.addEventListener('keydown', e => {
       if ((e.key === 'Delete' || e.key === 'Backspace') && inp.value) {
@@ -4625,6 +4620,145 @@ function bnEndFromStartAndDuration(startStr, n) {
       }
     });
   });
+  // Compute another task's aggregated start/end (min start / max end across all its roadmap entries,
+  // resolving anchor chains via effectiveDatesForInRoadmap). Returns empty string if not resolvable.
+  function aggregatedDateForTask(taskId, side /* 'start'|'end' */) {
+    const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : (STORE.roadmaps || []);
+    const dates = [];
+    rms.forEach(rm => {
+      const e = (rm.tasks || []).find(x => x.taskId === taskId);
+      if (!e) return;
+      const r = effectiveDatesForInRoadmap(e, rm);
+      const s = side === 'start' ? r.startStr : r.endStr;
+      if (s) dates.push(s);
+    });
+    // Also fall back to the task's own startDate/endDate if no roadmap entries
+    if (dates.length === 0) {
+      const tk = STORE.tasks.find(t => t.id === taskId);
+      const fallback = tk ? (side === 'start' ? tk.startDate : tk.endDate) : '';
+      return fallback || '';
+    }
+    return side === 'start'
+      ? dates.reduce((m, s) => (!m || s < m) ? s : m, '')
+      : dates.reduce((m, s) => (!m || s > m) ? s : m, '');
+  }
+  // Floating picker that mirrors openAnchorPicker's UI but operates against ALL tasks (excluding
+  // the task being edited + any of its subtasks). Picking a side copies the resolved date to inp.
+  function openQuickApplyPicker(anchorBtn, side, inp) {
+    document.querySelectorAll('.bn-anchor-menu').forEach(n => n.remove());
+    if (!editingId) return;
+    const selfId = editingId;
+    // Exclude self + direct subtasks (tasks whose groupId === self)
+    const others = (STORE.tasks || []).filter(t => t.id !== selfId && t.groupId !== selfId);
+    if (others.length === 0) return;
+    others.sort((a, b) => {
+      const ap = a.isGroup ? 0 : 1;
+      const bp = b.isGroup ? 0 : 1;
+      if (ap !== bp) return ap - bp;
+      return (a.subject || '').localeCompare(b.subject || '');
+    });
+    const groupCount = others.filter(t => t.isGroup).length;
+    const taskCount = others.length - groupCount;
+    const menu = document.createElement('div');
+    menu.className = 'bn-anchor-menu';
+    menu.innerHTML =
+      '<div class="bam-head">' +
+        '<strong>Pick another task\'s ' + (side === 'start' ? 'start' : 'end') + '</strong>' +
+        '<button type="button" class="bam-close" title="Close">✕</button>' +
+      '</div>' +
+      '<div class="bam-search-wrap">' +
+        '<span class="bam-search-icon">🔍</span>' +
+        '<input type="text" class="bam-search" placeholder="Search tasks…" autocomplete="off">' +
+      '</div>' +
+      '<div class="bam-filters">' +
+        '<button type="button" class="bam-chip active" data-filter="all">All <span class="bam-count">' + others.length + '</span></button>' +
+        '<button type="button" class="bam-chip" data-filter="groups">📁 Groups <span class="bam-count">' + groupCount + '</span></button>' +
+        '<button type="button" class="bam-chip" data-filter="tasks">Tasks <span class="bam-count">' + taskCount + '</span></button>' +
+      '</div>' +
+      '<div class="bam-list">' +
+        others.map(task => {
+          const isG = !!task.isGroup;
+          const name = task.subject || '(unnamed)';
+          const aggStart = aggregatedDateForTask(task.id, 'start');
+          const aggEnd   = aggregatedDateForTask(task.id, 'end');
+          const sTitle = aggStart ? ('Aggregated start: ' + aggStart) : 'No aggregated start available';
+          const eTitle = aggEnd   ? ('Aggregated end: '   + aggEnd)   : 'No aggregated end available';
+          return '<div class="bam-row" data-type="' + (isG ? 'group' : 'task') + '" data-name="' + escapeHtml(name.toLowerCase()) + '">' +
+            '<span class="bam-row-name">' +
+              (isG ? '<span class="bam-icon">📁</span>' : '<span class="bam-icon-task">·</span>') +
+              '<span class="bam-row-label" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span>' +
+            '</span>' +
+            '<span class="bam-row-actions">' +
+              '<button type="button" class="bam-side-btn" data-val="' + escapeHtml(aggStart) + '"' + (aggStart ? '' : ' disabled') + ' title="' + escapeHtml(sTitle) + '">start' + (aggStart ? '' : ' —') + '</button>' +
+              '<button type="button" class="bam-side-btn" data-val="' + escapeHtml(aggEnd) + '"' + (aggEnd ? '' : ' disabled') + ' title="' + escapeHtml(eTitle) + '">end' + (aggEnd ? '' : ' —') + '</button>' +
+            '</span>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+      '<div class="bam-empty" style="display:none">No matches</div>';
+    document.body.appendChild(menu);
+    const rect = anchorBtn.getBoundingClientRect();
+    menu.style.left = (rect.left + window.scrollX) + 'px';
+    menu.style.top  = (rect.bottom + window.scrollY + 6) + 'px';
+    setTimeout(() => {
+      const mr = menu.getBoundingClientRect();
+      if (mr.right > window.innerWidth - 8) menu.style.left = Math.max(8, window.innerWidth - mr.width - 8 + window.scrollX) + 'px';
+      if (mr.bottom > window.innerHeight - 8) menu.style.top = (Math.max(8, rect.top - mr.height - 6) + window.scrollY) + 'px';
+    }, 0);
+    let activeFilter = 'all';
+    let activeQuery = '';
+    function applyFilter() {
+      let visibleCount = 0;
+      menu.querySelectorAll('.bam-row').forEach(rw => {
+        const type = rw.dataset.type;
+        const name = rw.dataset.name || '';
+        const filterMatch = activeFilter === 'all' || activeFilter === (type === 'group' ? 'groups' : 'tasks');
+        const queryMatch = !activeQuery || name.indexOf(activeQuery) >= 0;
+        const show = filterMatch && queryMatch;
+        rw.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+      });
+      menu.querySelector('.bam-empty').style.display = visibleCount === 0 ? '' : 'none';
+    }
+    const searchInput = menu.querySelector('.bam-search');
+    searchInput.addEventListener('input', () => {
+      activeQuery = searchInput.value.trim().toLowerCase();
+      applyFilter();
+    });
+    setTimeout(() => searchInput.focus(), 30);
+    menu.querySelectorAll('.bam-chip').forEach(chip => {
+      chip.addEventListener('click', ev => {
+        ev.stopPropagation();
+        menu.querySelectorAll('.bam-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        activeFilter = chip.dataset.filter;
+        applyFilter();
+      });
+    });
+    menu.querySelectorAll('.bam-side-btn').forEach(b => {
+      b.addEventListener('click', ev => {
+        ev.preventDefault(); ev.stopPropagation();
+        const v = b.dataset.val || '';
+        if (!v) return;
+        inp.value = v;
+        menu.remove();
+      });
+    });
+    menu.querySelector('.bam-close').addEventListener('click', ev => {
+      ev.preventDefault(); ev.stopPropagation();
+      menu.remove();
+    });
+    setTimeout(() => {
+      const closer = ev => {
+        if (menu.contains(ev.target) || ev.target === anchorBtn) return;
+        menu.remove();
+        document.removeEventListener('click', closer, true);
+      };
+      document.addEventListener('click', closer, true);
+    }, 0);
+  }
+  if (sPinEl) sPinEl.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openQuickApplyPicker(sPinEl, 'start', startEl); });
+  if (ePinEl) ePinEl.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openQuickApplyPicker(ePinEl, 'end',   endEl); });
   // Apply button → write to every assigned roadmap, clear anchors, save immediately.
   btnEl.addEventListener('click', () => {
     if (!editingId) return;
@@ -4632,13 +4766,10 @@ function bnEndFromStartAndDuration(startStr, n) {
     if (!t) return;
     const startV = startEl.value || '';
     const endV   = endEl.value || '';
-    // Update the canonical task dates so the chip rows render correctly on re-render
     t.startDate = startV;
     t.endDate   = endV;
-    // Drop any task-level anchors — they no longer match
     t.startAnchor = '';
     t.endAnchor   = '';
-    // Push to every assigned roadmap (this also clears per-entry anchors)
     const rms = (typeof getRoadmaps === 'function' ? getRoadmaps() : (STORE.roadmaps || []));
     let touched = 0;
     rms.forEach(rm => {
@@ -4650,20 +4781,15 @@ function bnEndFromStartAndDuration(startStr, n) {
       e.endAnchor   = '';
       touched++;
     });
-    // Persist immediately and refresh everything in place
     if (typeof recomputeTaskDates === 'function') recomputeTaskDates(t.id);
     saveStore(STORE);
-    // Re-render the chips so their inputs show the new dates
     if (typeof renderRoadmapsInModal === 'function') renderRoadmapsInModal(t);
-    // Refresh the aggregated visual section below
     if (typeof window.__renderTaskAggregatedSchedule === 'function') window.__renderTaskAggregatedSchedule(t);
-    // Sync the lower Schedule section (if present) so it doesn't show stale staged state
-    const lowerStart = document.getElementById('f_taskStart');
-    const lowerEnd   = document.getElementById('f_taskEnd');
-    if (lowerStart) lowerStart.value = startV;
-    if (lowerEnd)   lowerEnd.value   = endV;
-    if (typeof window.__refreshSchedulePinsFromTask === 'function') window.__refreshSchedulePinsFromTask(t);
-    showFeedback(touched + ' roadmap' + (touched === 1 ? '' : 's') + ' updated · saved');
+    if (touched === 0) {
+      showFeedback('Task not in any roadmap yet', true);
+    } else {
+      showFeedback(touched + ' roadmap' + (touched === 1 ? '' : 's') + ' updated · saved');
+    }
   });
 })();
 // Anchors staged at the task level for the Apply-to-all flow.
