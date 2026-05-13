@@ -984,6 +984,28 @@
     0%, 70% { opacity: 1; }
     100% { opacity: 0; }
   }
+  /* Task modal — simple aggregated display (read-only, min start / max end across roadmaps) */
+  .bn-agg-display {
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    margin-top: 12px; padding: 10px 12px;
+    background: #f5f3ed; border: 1px dashed #d6d3c8; border-radius: 8px;
+  }
+  .bn-agg-display-lbl {
+    font-size: 10.5px; font-weight: 700; color: #6b6b6b;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .bn-agg-display-pair {
+    display: inline-flex; align-items: baseline; gap: 6px;
+  }
+  .bn-agg-display-key {
+    font-size: 10.5px; font-weight: 700; color: #9a9a9a;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .bn-agg-display-val {
+    font-size: 13px; font-weight: 700; color: #1a1a1a;
+    font-variant-numeric: tabular-nums;
+  }
+  .bn-agg-display-val.empty { color: #b3b3b3; font-weight: 500; font-style: italic; }
   /* Task modal — Schedule sections (Apply-to-all editable + Aggregated read-only) */
   .bn-sched-section {
     background: #fbfaf6; border: 1px solid #ececea; border-radius: 10px;
@@ -2859,54 +2881,18 @@
       <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
       <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
       <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap.</div>
-      <div class="f_taskOnlyRow" id="f_taskDatesField" style="margin-top:14px; padding-top:12px; border-top:1px dashed #ececea">
-        <!-- ============ Section A: Editable — apply same dates to ALL assigned roadmaps ============ -->
-        <div class="bn-sched-section bn-sched-edit">
-          <div class="bn-sched-section-head">
-            <span class="bn-sched-section-title">📅 Schedule — apply to all roadmaps</span>
-            <span class="bn-sched-section-sub">Set Start/End once and push them to every assigned roadmap row</span>
-          </div>
-          <div class="bn-sched-row">
-            <div class="bn-sched-cell">
-              <label class="bn-sched-lbl">Start</label>
-              <div class="bn-sched-input-wrap">
-                <input type="date" id="f_taskStart" class="bn-sched-input">
-                <button type="button" id="f_taskStartPin" class="bn-sched-pin" title="Anchor start to another task's start/end">📌</button>
-              </div>
-              <div id="f_taskStartHint" class="bn-sched-anchor-hint" style="display:none"></div>
-            </div>
-            <div class="bn-sched-cell">
-              <label class="bn-sched-lbl">End</label>
-              <div class="bn-sched-input-wrap">
-                <input type="date" id="f_taskEnd" class="bn-sched-input">
-                <button type="button" id="f_taskEndPin" class="bn-sched-pin" title="Anchor end to another task's start/end">📌</button>
-              </div>
-              <div id="f_taskEndHint" class="bn-sched-anchor-hint" style="display:none"></div>
-            </div>
-            <div class="bn-sched-cell bn-sched-dur">
-              <label class="bn-sched-lbl">Duration</label>
-              <div style="display:flex; gap:4px; align-items:center">
-                <input type="number" id="f_taskDuration" min="1" step="1" placeholder="N" title="Duration in days (inclusive) — sets End = Start + N − 1 days">
-                <span style="font-size:11px; color:#6b6b6b">days</span>
-              </div>
-            </div>
-            <div class="bn-sched-cell bn-sched-apply-cell">
-              <label class="bn-sched-lbl" style="visibility:hidden">.</label>
-              <button type="button" id="f_taskApplyDates" class="btn primary" disabled>Apply to all roadmaps</button>
-            </div>
-          </div>
-          <div class="bn-sched-hint" id="f_taskDatesHint">Edit values (or pin to anchor) + click <strong>Apply</strong> to push them down to every assigned roadmap. Use the 📌 pin to anchor to another task's start/end — when applied, each roadmap entry will anchor too if the target task is in that roadmap (otherwise it falls back to the resolved date).</div>
-        </div>
-        <!-- ============ Section B: Visual only — aggregated from each roadmap ============ -->
-        <div class="bn-sched-section bn-sched-view" style="margin-top:12px">
-          <div class="bn-sched-section-head">
-            <span class="bn-sched-section-title">📊 Aggregated from roadmaps</span>
-            <span class="bn-sched-section-sub">Read-only: min Start / max End computed across every assigned roadmap</span>
-          </div>
-          <div id="f_taskAggregatedView" class="bn-sched-agg-view">
-            <span class="bn-sched-empty">Not in any roadmap yet.</span>
-          </div>
-        </div>
+      <!-- Visual-only aggregated display: min Start across all roadmaps (only if every roadmap has one),
+           max End across all roadmaps (only if every roadmap has one). Blank otherwise. -->
+      <div class="f_taskOnlyRow bn-agg-display" id="f_taskDatesField">
+        <span class="bn-agg-display-lbl">Aggregated</span>
+        <span class="bn-agg-display-pair">
+          <span class="bn-agg-display-key">Start</span>
+          <span class="bn-agg-display-val" id="f_aggMinStart">—</span>
+        </span>
+        <span class="bn-agg-display-pair">
+          <span class="bn-agg-display-key">End</span>
+          <span class="bn-agg-display-val" id="f_aggMaxEnd">—</span>
+        </span>
       </div>
     </div>
     <div class="field f_taskOnlyRow"><label>Task tags</label>
@@ -4684,56 +4670,39 @@ function bnEndFromStartAndDuration(startStr, n) {
 // These are committed to task.startAnchor / task.endAnchor on Save (via window.__pendingApplyToRoadmaps).
 window.__pendingTaskStartAnchor = '';
 window.__pendingTaskEndAnchor   = '';
-// Renders the visual-only "Aggregated from roadmaps" section in the task modal.
-// Shows per-roadmap start/end (and a tag if anchored) plus the aggregated min/max footer.
+// Visual-only aggregated display: smallest Start across all roadmaps if EVERY roadmap has one,
+// else blank; largest End across all roadmaps if EVERY roadmap has one, else blank.
 window.__renderTaskAggregatedSchedule = function(t) {
-  const cont = document.getElementById('f_taskAggregatedView');
-  if (!cont || !t) return;
+  const startEl = document.getElementById('f_aggMinStart');
+  const endEl   = document.getElementById('f_aggMaxEnd');
+  if (!startEl || !endEl || !t) return;
   const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : (STORE.roadmaps || []);
   const entries = [];
   rms.forEach(rm => {
     const e = (rm.tasks || []).find(x => x.taskId === t.id);
     if (e) entries.push({ entry: e, rm });
   });
-  if (entries.length === 0) {
-    cont.innerHTML = '<span class="bn-sched-empty">Not in any roadmap yet. Add the task to one above to see its aggregated dates here.</span>';
-    return;
+  function setVal(el, val) {
+    if (val) { el.textContent = val; el.classList.remove('empty'); }
+    else     { el.textContent = '—'; el.classList.add('empty'); }
   }
-  function fmtDate(s) {
-    return s || '—';
+  if (entries.length === 0) {
+    setVal(startEl, '');
+    setVal(endEl, '');
+    return;
   }
   const resolvedStarts = entries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).startStr);
   const resolvedEnds   = entries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).endStr);
+  // Min start ONLY if every roadmap has a resolvable start; otherwise blank.
   const aggStart = resolvedStarts.every(s => !!s)
     ? resolvedStarts.reduce((m, s) => (!m || s < m) ? s : m, '')
     : '';
+  // Max end ONLY if every roadmap has a resolvable end; otherwise blank.
   const aggEnd = resolvedEnds.every(s => !!s)
     ? resolvedEnds.reduce((m, s) => (!m || s > m) ? s : m, '')
     : '';
-  let html = '';
-  html += '<div class="bn-sched-agg-summary">';
-  html += '<div class="bn-agg-pair"><span class="bn-agg-label">Min start</span><span class="bn-agg-value' + (aggStart ? '' : ' empty') + '">' + escapeHtml(fmtDate(aggStart)) + '</span></div>';
-  html += '<div class="bn-agg-pair"><span class="bn-agg-label">Max end</span><span class="bn-agg-value' + (aggEnd ? '' : ' empty') + '">' + escapeHtml(fmtDate(aggEnd)) + '</span></div>';
-  if (aggStart && aggEnd) {
-    const n = bnDaysInclusive(aggStart, aggEnd);
-    if (n > 0) html += '<div class="bn-agg-pair"><span class="bn-agg-label">Span</span><span class="bn-agg-value">' + n + ' day' + (n === 1 ? '' : 's') + '</span></div>';
-  }
-  html += '</div>';
-  html += '<div class="bn-sched-agg-rows">';
-  entries.forEach(({ entry, rm }) => {
-    const dates = effectiveDatesForInRoadmap(entry, rm);
-    const sAnchored = !!entry.startAnchor;
-    const eAnchored = !!entry.endAnchor;
-    html += '<div class="bn-sched-agg-row">';
-    html += '<span class="bn-agg-rm-name" title="' + escapeHtml(rm.name || '(unnamed)') + '">' + escapeHtml(rm.name || '(unnamed)') + '</span>';
-    html += '<span class="bn-agg-cell' + (dates.startStr ? '' : ' empty') + '">' + escapeHtml(dates.startStr || '—') + (sAnchored ? ' <span class="bn-agg-anchor-tag" title="Anchored">⚓</span>' : '') + '</span>';
-    html += '<span class="bn-agg-cell' + (dates.endStr ? '' : ' empty') + '">' + escapeHtml(dates.endStr || '—') + (eAnchored ? ' <span class="bn-agg-anchor-tag" title="Anchored">⚓</span>' : '') + '</span>';
-    const n = (dates.startStr && dates.endStr) ? bnDaysInclusive(dates.startStr, dates.endStr) : 0;
-    html += '<span class="bn-agg-cell' + (n > 0 ? '' : ' empty') + '">' + (n > 0 ? (n + 'd') : '—') + '</span>';
-    html += '</div>';
-  });
-  html += '</div>';
-  cont.innerHTML = html;
+  setVal(startEl, aggStart);
+  setVal(endEl, aggEnd);
 };
 (function wireTaskScheduleControls() {
   const startEl = document.getElementById("f_taskStart");
