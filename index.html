@@ -126,8 +126,7 @@
   .task .checkbox.checked::before { content: "\2713"; }
   .task .badges { grid-column: 2 / -1; display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
   /* Aggregated info card inside the task card — common source pill + min start / max end / span days */
-  .task .task-agg {
-    grid-column: 2 / -1;
+  .task .task-agg, .flat-task .task-agg {
     display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap;
     margin-top: 6px; padding: 6px 10px;
     background: #fff;
@@ -138,30 +137,32 @@
     width: fit-content;
     max-width: 100%;
   }
-  .task .task-agg .ta-key {
+  .task .task-agg { grid-column: 2 / -1; }
+  .flat-task .task-agg.flat-task-agg { margin-top: 4px; }
+  .task-agg .ta-key {
     font-size: 9.5px; font-weight: 700; color: #6b6b6b;
     text-transform: uppercase; letter-spacing: .04em;
   }
-  .task .task-agg .ta-stack { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; }
-  .task .task-agg .ta-pill {
+  .task-agg .ta-stack { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+  .task-agg .ta-pill {
     font-size: 10px; font-weight: 700;
     border: 1px solid #d8d6d1; border-radius: 4px;
     padding: 1px 5px;
     max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   /* Date shown DIRECTLY (no pill above) — primary display, inline with the key */
-  .task .task-agg .ta-val {
+  .task-agg .ta-val {
     font-size: 10.5px; font-weight: 700; color: #1a1a1a;
     font-variant-numeric: tabular-nums; padding: 0 2px;
   }
-  .task .task-agg .ta-val.empty { color: #b3b3b3; font-style: italic; }
+  .task-agg .ta-val.empty { color: #b3b3b3; font-style: italic; }
   /* Date shown BELOW a pill — secondary reference, smaller and dimmer with "= " prefix in the markup */
-  .task .task-agg .ta-val-below {
+  .task-agg .ta-val-below {
     font-size: 9.5px; font-weight: 500; opacity: 0.7; color: #6b6b6b;
     font-variant-numeric: tabular-nums; padding: 0 2px;
   }
-  .task .task-agg .ta-val-below.empty { color: #b3b3b3; font-style: italic; }
-  .task .task-agg .ta-span {
+  .task-agg .ta-val-below.empty { color: #b3b3b3; font-style: italic; }
+  .task-agg .ta-span {
     font-size: 10px; font-weight: 600; color: #6b6b6b;
     font-variant-numeric: tabular-nums; padding: 0 4px;
   }
@@ -938,7 +939,6 @@
   .cal-toggle {
     display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #6b6b6b;
     cursor: pointer; user-select: none; padding: 4px 8px; border-radius: 6px;
-    margin-left: auto;
   }
   .cal-toggle:hover { background: #f0efeb; }
   .cal-toggle input { cursor: pointer; margin: 0; }
@@ -7450,19 +7450,21 @@ function renderRoadmapCalendar(roadmapId) {
   const anyGroupExpanded = getAllGroupIds().some(g => isGroupExpanded(g));
   const collapseAllLabel = anyGroupExpanded ? '⊟ Collapse all' : '⊞ Expand all';
   const collapseAllTitle = anyGroupExpanded ? 'Collapse every group' : 'Expand every group';
+  // Toolbar order — left side: Month/Year label, then the view toggle (Week/Month/Year + 6m) right
+  // after it. Right side (auto-margin pushes them right): nav arrows + Today, hide weekends, collapse-all, side toggle.
   html += '<div class="cal-toolbar">' +
-    '<div class="cal-nav-group">' +
-      '<button class="cal-nav-btn" id="calPrev" title="' + prevTitle + '"' + (atStart ? ' disabled' : '') + '>‹</button>' +
-      '<button class="cal-today-btn" id="calToday">Today</button>' +
-      '<button class="cal-nav-btn" id="calNext" title="' + nextTitle + '">›</button>' +
-    '</div>' +
     '<div class="cal-month-label">' + periodLabel + '</div>' +
     '<div class="cal-view-toggle" role="group" aria-label="View mode">' +
       '<button type="button" class="cal-view-btn ' + (viewMode === 'week'  ? 'active' : '') + '" id="calViewWeek"  title="Week view">Week</button>' +
       '<button type="button" class="cal-view-btn ' + (viewMode === 'month' ? 'active' : '') + '" id="calViewMonth" title="Month view">Month</button>' +
       '<button type="button" class="cal-view-btn ' + (viewMode === 'year'  ? 'active' : '') + '" id="calViewYear"  title="Year view">Year</button>' +
     '</div>' +
-    '<button type="button" class="cal-view-btn cal-view-6m' + (viewMode === '6m' ? ' active' : '') + '" id="calView6m" title="6-month rolling view" style="margin-left:8px">6 MFN</button>' +
+    '<button type="button" class="cal-view-btn cal-view-6m' + (viewMode === '6m' ? ' active' : '') + '" id="calView6m" title="6-month rolling view" style="margin-left:4px">6 MFN</button>' +
+    '<div class="cal-nav-group" style="margin-left:auto">' +
+      '<button class="cal-nav-btn" id="calPrev" title="' + prevTitle + '"' + (atStart ? ' disabled' : '') + '>‹</button>' +
+      '<button class="cal-today-btn" id="calToday">Today</button>' +
+      '<button class="cal-nav-btn" id="calNext" title="' + nextTitle + '">›</button>' +
+    '</div>' +
     ((viewMode === 'year' || viewMode === '6m') ? '' : '<label class="cal-toggle"><input type="checkbox" id="calHideWeekends" ' + (roadmapCalState.hideWeekends ? "checked" : "") + '> <span>Hide weekends</span></label>') +
     '<button type="button" class="cal-view-btn" id="calCollapseAll" title="' + collapseAllTitle + '" style="margin-left:6px">' + collapseAllLabel + '</button>' +
     (hasSideContent
@@ -10280,12 +10282,69 @@ function flatTaskHtml(t) {
   const groupCountSuffix = (isG && childCount > 0)
     ? ' <span class="flat-group-count">(' + childCount + ')</span>'
     : '';
+  // Aggregated info row — same as the by-people view's task card. Min start / max end across all
+  // assigned roadmaps, common pill (status-colored) when every entry shares the same source.
+  let aggHtml = '';
+  const tEntries = [];
+  (STORE.roadmaps || []).forEach(rm => {
+    const en = (rm.tasks || []).find(x => x.taskId === t.id);
+    if (en) tEntries.push({ entry: en, rm });
+  });
+  if (tEntries.length > 0) {
+    const starts = tEntries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).startStr);
+    const ends   = tEntries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).endStr);
+    const aggStart = starts.every(s => !!s) ? starts.reduce((m, s) => (!m || s < m) ? s : m, '') : '';
+    const aggEnd   = ends.every(s => !!s)   ? ends.reduce((m, s) => (!m || s > m) ? s : m, '')   : '';
+    function commonLbl(arr) {
+      if (arr.length === 0) return '';
+      const first = arr[0];
+      if (!first) return '';
+      return arr.every(x => x === first) ? first : '';
+    }
+    const sLbl = commonLbl(tEntries.map(x => x.entry.startSrcLabel || ''));
+    const sTid = commonLbl(tEntries.map(x => x.entry.startSrcTaskId || ''));
+    const eLbl = commonLbl(tEntries.map(x => {
+      if (x.entry.endSrcLabel) return x.entry.endSrcLabel;
+      if (typeof x.entry.durationDays === 'number' && x.entry.durationDays >= 1) {
+        return x.entry.durationDays + ' day' + (x.entry.durationDays === 1 ? '' : 's');
+      }
+      return '';
+    }));
+    const eTid = commonLbl(tEntries.map(x => x.entry.endSrcTaskId || ''));
+    const spanN = (aggStart && aggEnd) ? bnDaysInclusive(aggStart, aggEnd) : 0;
+    if (aggStart || aggEnd || sLbl || eLbl) {
+      function pillStyleFor(lbl, tid) {
+        const isDays = lbl && /^\d+\s+day/.test(lbl);
+        if (isDays) return bnPillInlineStyle(BN_GRAY_PILL);
+        const stl = bnPillStyleForTaskId(tid);
+        return stl ? bnPillInlineStyle(stl) : '';
+      }
+      function renderSide(lbl, tid, dateStr) {
+        const dateFmt = bnFormatDateDMY(dateStr);
+        if (lbl) {
+          return '<span class="ta-stack">' +
+            '<span class="ta-pill" style="' + pillStyleFor(lbl, tid) + '">' + escapeHtml(lbl) + '</span>' +
+            '<span class="ta-val-below' + (dateStr ? '' : ' empty') + '">= ' + (dateStr ? escapeHtml(dateFmt) : '—') + '</span>' +
+          '</span>';
+        }
+        return '<span class="ta-val' + (dateStr ? '' : ' empty') + '">' + (dateStr ? escapeHtml(dateFmt) : '—') + '</span>';
+      }
+      aggHtml = '<div class="task-agg flat-task-agg">';
+      aggHtml += '<span class="ta-key">Start</span>';
+      aggHtml += renderSide(sLbl, sTid, aggStart);
+      if (spanN > 0) aggHtml += '<span class="ta-span">' + spanN + ' day' + (spanN === 1 ? '' : 's') + '</span>';
+      aggHtml += '<span class="ta-key">End</span>';
+      aggHtml += renderSide(eLbl, eTid, aggEnd);
+      aggHtml += '</div>';
+    }
+  }
   return '<div class="flat-task' + (isG ? ' is-group' : '') + '" data-pstatus="' + escapeHtml(t.slackStatus||'') + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
     '<span class="checkbox ' + (sel ? 'checked' : '') + '" title="Select"></span>' +
     '<span class="av-mini"' + avClickAttr + '><img src="' + photo + '" alt="" onerror="this.remove()"><span class="ini">' + escapeHtml(ini) + '</span></span>' +
     '<div>' +
       '<div class="text" title="Click to edit">' + chevHtml + folderPrefix + escapeHtml(t.subject) + groupCountSuffix + '</div>' +
       '<div class="meta-line"><span class="badges-inline">' + badges.join(' ') + (taskTagsHtml ? ' ' + taskTagsHtml : '') + '</span></div>' +
+      aggHtml +
     '</div>' +
     '<span' + nameClickAttr + '>' + escapeHtml(respName) + '</span>' +
     '<button class="edit-btn" title="Edit">&#9998;</button>' +
