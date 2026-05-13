@@ -7314,30 +7314,37 @@ function renderRoadmapCalendar(roadmapId) {
         refreshRowReadyState();
       }
     });
-    // Duration input (persistent — stored on entry.durationDays) — sets End = Start + (N − 1) days
+    // Duration input (persistent — stored on entry.durationDays) — sets End = Start + (N − 1) days.
+    // Works whether Start is a literal date OR anchored to another task — we use the resolved Start.
     const durInput = node.querySelector('.rmt-duration');
     if (durInput) {
       durInput.addEventListener('change', e => {
         if (idx < 0) return;
         const n = parseInt(durInput.value, 10);
-        const startStr = r.tasks[idx].startDate || node.querySelector('.rmt-start')?.value || '';
+        // Resolve the effective Start date — follows anchors if startAnchor is set.
+        const eff = effectiveDatesFor(r.tasks[idx]);
+        const startStr = eff.startStr || r.tasks[idx].startDate || node.querySelector('.rmt-start')?.value || '';
         if (!Number.isFinite(n) || n < 1) {
           // Empty/invalid → clear stored duration AND end
           delete r.tasks[idx].durationDays;
           r.tasks[idx].endDate = '';
           r.tasks[idx].endAnchor = '';
           const eInp = node.querySelector('.rmt-end');
-          if (eInp) eInp.value = '';
+          if (eInp) { eInp.value = ''; eInp.disabled = false; }
+          const ePin = node.querySelector('.rmt-pin[data-kind="end"]');
+          if (ePin) ePin.classList.remove('active');
         } else {
-          // Persist the duration so it survives start-date changes
+          // Persist the duration so it survives start-date changes (including anchor changes)
           r.tasks[idx].durationDays = n;
           if (startStr) {
             const newEnd = bnEndFromStartAndDuration(startStr, n);
             if (newEnd) {
               r.tasks[idx].endDate = newEnd;
-              r.tasks[idx].endAnchor = '';
+              r.tasks[idx].endAnchor = '';   // duration drives the end — clear any existing end anchor
               const eInp = node.querySelector('.rmt-end');
-              if (eInp) eInp.value = newEnd;
+              if (eInp) { eInp.value = newEnd; eInp.disabled = false; }
+              const ePin = node.querySelector('.rmt-pin[data-kind="end"]');
+              if (ePin) ePin.classList.remove('active');
               window.__rmPendingApply.add(tid);
             }
           }
@@ -7367,9 +7374,34 @@ function renderRoadmapCalendar(roadmapId) {
             : 'Click to anchor ' + kind + ' to another task on this roadmap';
           const inp = node.querySelector(kind === 'start' ? '.rmt-start' : '.rmt-end');
           if (inp) inp.disabled = !!newVal;
+          // When START is (re-)anchored AND a stored duration exists, recompute End from resolved start.
+          // This keeps "Start anchored + N days" working: end = resolved-start + (N − 1) days.
+          if (kind === 'start') {
+            const storedN = entryRef.durationDays;
+            if (typeof storedN === 'number' && storedN >= 1) {
+              const eff = effectiveDatesFor(entryRef);
+              if (eff.startStr) {
+                const newEnd = bnEndFromStartAndDuration(eff.startStr, storedN);
+                if (newEnd) {
+                  entryRef.endDate = newEnd;
+                  entryRef.endAnchor = '';
+                  const eInp = node.querySelector('.rmt-end');
+                  if (eInp) { eInp.value = newEnd; eInp.disabled = false; }
+                  const ePin = node.querySelector('.rmt-pin[data-kind="end"]');
+                  if (ePin) ePin.classList.remove('active');
+                }
+              }
+            }
+          }
+          // Manually anchoring END clears any stored duration (anchor wins).
+          if (kind === 'end' && newVal) {
+            delete entryRef.durationDays;
+            const di = node.querySelector('.rmt-duration');
+            if (di) di.value = '';
+          }
           // If we now have a resolvable date, mark this row pending-apply
-          const eff = effectiveDatesFor(entryRef);
-          if (parseDate(eff.startStr)) window.__rmPendingApply.add(tid);
+          const eff2 = effectiveDatesFor(entryRef);
+          if (parseDate(eff2.startStr)) window.__rmPendingApply.add(tid);
           saveAndSyncTaskDates();
           refreshRowReadyState();
         });
