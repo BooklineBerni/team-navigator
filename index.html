@@ -1730,10 +1730,29 @@
   .profile-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
   .profile-stat-card {
     background: #fff; border: 1px solid #ececea; border-radius: 12px; padding: 14px;
+    position: relative; overflow: hidden;
+  }
+  .profile-stat-card.status-card {
+    border-top: 3px solid var(--status-color, #ececea);
+    padding-top: 11px;
   }
   .profile-stat-card .num { font-size: 26px; font-weight: 700; color: #1a1a1a; }
-  .profile-stat-card .lbl { font-size: 11px; color: #6b6b6b; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+  .profile-stat-card.status-card .num { color: var(--status-color, #1a1a1a); }
+  .profile-stat-card .lbl {
+    font-size: 11px; color: #6b6b6b; text-transform: uppercase;
+    letter-spacing: .04em; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .profile-stat-card .lbl-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--status-color, #cbd5e1);
+    flex: 0 0 8px;
+  }
   .profile-stat-card .sub { font-size: 11px; color: #9a9a9a; margin-top: 2px; }
+  .profile-stat-card.summary-card { background: #1a1a1a; color: #fff; }
+  .profile-stat-card.summary-card .num { color: #fff; }
+  .profile-stat-card.summary-card .lbl { color: #9a9a9a; }
+  .profile-stat-card.summary-card .sub { color: #6b6b6b; }
 
   .profile-section-title {
     font-size: 13px; font-weight: 700; color: #1a1a1a;
@@ -8083,16 +8102,35 @@ function renderProfilePage() {
   html += '</div>';
   html += '</div>';
 
-  // Stats — current statuses (Proposed/Waiting/In Progress/Under Review/Later-Next/Completed)
+  // Stats — current statuses, ordered by STATUS_ORDER and colored from the status palette
+  const STATUS_PALETTE = {
+    "Waiting": "#60a5fa", "Proposed": "#1d4ed8", "Later / Next": "#dc2626",
+    "In Progress": "#f97316", "Under Review": "#7c3aed", "Completed": "#16a34a",
+    "Archived": "#a98c5a", "Discarded": "#9a9a9a"
+  };
+  // Ordered list (key = STATUS_ORDER); reads from counts above.
+  const STATUS_CARDS = [
+    { key: "Waiting",      label: "Waiting",      num: counts.waiting },
+    { key: "Proposed",     label: "Proposed",     num: counts.proposed },
+    { key: "Later / Next", label: "Later / Next", num: counts.later_next },
+    { key: "In Progress",  label: "In Progress",  num: counts.in_progress },
+    { key: "Under Review", label: "Under Review", num: counts.under_review },
+    { key: "Completed",    label: "Completed",    num: counts.completed },
+    { key: "Archived",     label: "Archived",     num: counts.archived },
+    { key: "Discarded",    label: "Discarded",    num: counts.discarded },
+  ];
   html += '<div class="profile-stats">';
-  html += '<div class="profile-stat-card"><div class="num">' + counts.total + '</div><div class="lbl">Tasks</div><div class="sub">all time</div></div>';
-  html += '<div class="profile-stat-card"><div class="num">' + counts.in_progress + '</div><div class="lbl">In progress</div></div>';
-  html += '<div class="profile-stat-card"><div class="num">' + counts.proposed + '</div><div class="lbl">Proposed</div></div>';
-  html += '<div class="profile-stat-card"><div class="num">' + counts.waiting + '</div><div class="lbl">Waiting</div></div>';
-  html += '<div class="profile-stat-card"><div class="num">' + counts.under_review + '</div><div class="lbl">Under review</div></div>';
-  html += '<div class="profile-stat-card"><div class="num">' + counts.later_next + '</div><div class="lbl">Later / Next</div></div>';
-  html += '<div class="profile-stat-card"><div class="num">' + counts.completed + '</div><div class="lbl">Completed</div></div>';
-  html += '<div class="profile-stat-card"><div class="num">' + personRoadmaps.length + '</div><div class="lbl">Roadmaps</div></div>';
+  // Summary cards (dark) — total tasks + total roadmaps
+  html += '<div class="profile-stat-card summary-card"><div class="num">' + counts.total + '</div><div class="lbl">Tasks</div><div class="sub">all time</div></div>';
+  html += '<div class="profile-stat-card summary-card"><div class="num">' + personRoadmaps.length + '</div><div class="lbl">Roadmaps</div></div>';
+  // Status cards in canonical STATUS_ORDER, colored by status palette
+  STATUS_CARDS.forEach(s => {
+    const color = STATUS_PALETTE[s.key] || '#cbd5e1';
+    html += '<div class="profile-stat-card status-card" style="--status-color:' + color + '">' +
+      '<div class="num">' + s.num + '</div>' +
+      '<div class="lbl"><span class="lbl-dot"></span>' + escapeHtml(s.label) + '</div>' +
+    '</div>';
+  });
   html += '</div>';
 
   // Roadmaps section (collapsible)
@@ -8380,10 +8418,20 @@ function renderProfileRoadmapCard(rm, personId) {
   html += '</div>';   // .mini-7day (grid of day cells)
   // ----- Continuous events overlay: spans days as single bars, no gap breaks -----
   // Build the list of (entry, task, isKid) tuples that should be drawn this week.
+  // Hide tasks whose parent group is also in personTaskEntries AND that parent is COLLAPSED.
+  // (When the parent is expanded, the kid is added via expandedKidEntries below — not here —
+  //  so we never get duplicates.)
+  const personGroupIdsInRm = new Set(personGroupsInRm.map(g => g.id));
   const overlayEvents = [];
   personTaskEntries.forEach(entry => {
     const t = STORE.tasks.find(x => x.id === entry.taskId);
     if (!t) return;
+    // If this task is a kid of a group also in personTaskEntries, only show it
+    // when that group is expanded (we'll render it via expandedKidEntries instead).
+    if (t.groupId && personGroupIdsInRm.has(t.groupId)) {
+      // Skip — group will either be collapsed (hide kid) or expanded (kid added below as isKid).
+      return;
+    }
     overlayEvents.push({ entry, task: t, isKid: false });
   });
   expandedKidEntries.forEach(({ entry, task }) => overlayEvents.push({ entry, task, isKid: true }));
