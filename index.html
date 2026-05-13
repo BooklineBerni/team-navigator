@@ -484,6 +484,7 @@
   }
   .cal-year-bar:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.18); z-index: 5; }
   .cal-year-bar.cal-event-group { font-weight: 700; line-height: 18px; padding: 0 8px; }
+  .cal-year-label .cal-group-toggle-y,
   .cal-year-bar .cal-group-toggle-y {
     display: inline-flex; width: 14px; height: 14px;
     margin-right: 4px; vertical-align: middle;
@@ -495,6 +496,17 @@
   }
   .cal-year-bar .cal-group-toggle-y:hover { background: rgba(255,255,255,0.95); }
   .cal-year-bar .cal-group-toggle-y.expanded { transform: rotate(90deg); }
+  /* Same chevron in the label column (left side) */
+  .cal-year-label .cal-group-toggle-y {
+    margin-right: 6px;
+    background: #fff; color: #6b6b6b;
+    border: 1px solid #ececea;
+  }
+  .cal-year-label .cal-group-toggle-y:hover { background: #fff5dc; color: #92400e; border-color: #d6b962; }
+  .cal-year-label .cal-group-toggle-y.expanded { transform: rotate(90deg); }
+  .cal-year-label { display: flex; align-items: center; gap: 0; }
+  .cal-year-label .folder-emoji { margin-right: 4px; }
+  .cal-year-label .cal-year-label-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* Side toggle (collapse Unscheduled/Archived sidebar) */
   .cal-side-toggle {
     appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a;
@@ -1108,6 +1120,15 @@
   .rm-side-area .rm-task-row.ready {
     background: #ecfdf3; border: 1px solid #86efac; border-radius: 8px;
   }
+  /* Status-tinted backgrounds for Unscheduled rows (overridden by .ready when scheduled) */
+  .rm-side-area .rm-task-row[data-pstatus="Waiting"]      { background: #dbeafe; border-color: #93c5fd; }
+  .rm-side-area .rm-task-row[data-pstatus="Proposed"]     { background: #c7d2fe; border-color: #818cf8; }
+  .rm-side-area .rm-task-row[data-pstatus="Later / Next"] { background: #fee2e2; border-color: #fca5a5; }
+  .rm-side-area .rm-task-row[data-pstatus="In Progress"]  { background: #ffedd5; border-color: #fed7aa; }
+  .rm-side-area .rm-task-row[data-pstatus="Under Review"] { background: #ede9fe; border-color: #c4b5fd; }
+  .rm-side-area .rm-task-row[data-pstatus="Completed"]    { background: #ecfdf3; border-color: #a7f3d0; }
+  .rm-side-area .rm-task-row[data-pstatus="Archived"]     { background: #f5efe6; border-color: #d6c5a8; opacity: 0.9; }
+  .rm-side-area .rm-task-row[data-pstatus="Discarded"]    { background: #f5f5f4; border-color: #d8d6d1; opacity: 0.75; }
   .rm-unscheduled-head {
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 10px; gap: 8px;
@@ -1693,7 +1714,7 @@
   }
   .mini-7day .mini-day {
     background: #fff; border: 1px solid #ececea; border-radius: 8px;
-    min-height: 70px; padding: 5px 7px;
+    min-height: var(--day-min-h, 70px); padding: 5px 7px;
     display: flex; flex-direction: column; gap: 2px;
     position: relative; min-width: 0; overflow: hidden;
   }
@@ -1755,17 +1776,19 @@
     box-shadow: inset 2px 0 0 rgba(255,255,255,0.45);
   }
   /* Profile roadmap card: inline group expand chevron inside mini-event */
-  .mini-7day .mini-day .mini-event-caret {
+  .mini-event-bar .mini-event-caret {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 11px; height: 11px;
-    border: none; background: rgba(255,255,255,0.5);
-    color: inherit; font-size: 7px; font-weight: 700; line-height: 1;
-    border-radius: 2px; cursor: pointer; padding: 0; margin-right: 3px;
+    width: 14px; height: 14px;
+    border: 1px solid rgba(0,0,0,0.10);
+    background: rgba(255,255,255,0.75);
+    color: inherit; font-size: 8.5px; font-weight: 700; line-height: 1;
+    border-radius: 3px; cursor: pointer; padding: 0; margin-right: 4px;
     vertical-align: middle;
-    transition: background .12s, transform .15s;
+    transition: background .12s, transform .15s, border-color .12s;
+    pointer-events: auto;
   }
-  .mini-7day .mini-day .mini-event-caret:hover { background: rgba(255,255,255,0.9); }
-  .mini-7day .mini-day .mini-event-caret.expanded { transform: rotate(90deg); }
+  .mini-event-bar .mini-event-caret:hover { background: #fff; border-color: rgba(0,0,0,0.22); }
+  .mini-event-bar .mini-event-caret.expanded { transform: rotate(90deg); }
   .profile-rm-card .rm-task-row {
     display: flex; align-items: center; gap: 8px; padding: 6px 0;
     border-top: 1px solid #f0efeb; font-size: 12.5px;
@@ -5878,7 +5901,7 @@ function renderRoadmapCalendar(roadmapId) {
       '<button type="button" class="cal-view-btn ' + (viewMode === 'month' ? 'active' : '') + '" id="calViewMonth" title="Month view">Month</button>' +
       '<button type="button" class="cal-view-btn ' + (viewMode === 'year'  ? 'active' : '') + '" id="calViewYear"  title="Year view">Year</button>' +
     '</div>' +
-    '<button type="button" class="cal-view-btn cal-view-6m' + (viewMode === '6m' ? ' active' : '') + '" id="calView6m" title="6-month rolling view" style="margin-left:8px">6 months</button>' +
+    '<button type="button" class="cal-view-btn cal-view-6m' + (viewMode === '6m' ? ' active' : '') + '" id="calView6m" title="6-month rolling view" style="margin-left:8px">6 MFN</button>' +
     ((viewMode === 'year' || viewMode === '6m') ? '' : '<label class="cal-toggle"><input type="checkbox" id="calHideWeekends" ' + (roadmapCalState.hideWeekends ? "checked" : "") + '> <span>Hide weekends</span></label>') +
     '<button type="button" class="cal-view-btn" id="calCollapseAll" title="' + collapseAllTitle + '" style="margin-left:6px">' + collapseAllLabel + '</button>' +
     (hasSideContent
@@ -5986,17 +6009,21 @@ function renderRoadmapCalendar(roadmapId) {
         }
         const continuesLeft  = ev.start.getTime() < yearStartMs;
         const continuesRight = ev.end.getTime()   > yearEndMs;
-        const labelText = (row.depth ? '· ' : (isG ? '📁 ' : '')) + ev.task.subject;
-        // Group chevron toggle inline at the start of the bar — uses the global bn-group-expanded map
+        const labelText = ev.task.subject;
+        // Group chevron toggle in the LABEL column (left), uses the global bn-group-expanded map
         const gExpanded = isG ? isGroupExpanded(ev.task.id) : false;
-        const chevHtml = isG
+        const labelChev = isG
           ? '<button type="button" class="cal-group-toggle-y' + (gExpanded ? ' expanded' : '') + '" data-gid="' + ev.task.id + '" title="' + (gExpanded ? 'Collapse group' : 'Expand group') + '">▶</button>'
           : '';
         html += '<div class="cal-year-row' + (row.depth ? ' is-child' : '') + (isG ? ' is-group' : '') + '" data-tid="' + ev.task.id + '">' +
-          '<div class="cal-year-label" title="' + escapeHtml(ev.task.subject) + '" style="padding-left:' + (8 + row.depth * 14) + 'px">' + escapeHtml(labelText.slice(0,42)) + (labelText.length>42?'…':'') + '</div>' +
+          '<div class="cal-year-label" title="' + escapeHtml(ev.task.subject) + '" style="padding-left:' + (8 + row.depth * 14) + 'px">' +
+            labelChev +
+            (row.depth ? '· ' : (isG ? '<span class="folder-emoji">📁</span> ' : '')) +
+            '<span class="cal-year-label-text">' + escapeHtml(labelText.slice(0,42)) + (labelText.length>42?'…':'') + '</span>' +
+          '</div>' +
           '<div class="cal-year-track">' +
             '<div class="cal-event cal-year-bar' + (isG ? ' cal-event-group' : '') + '" data-tid="' + ev.task.id + '" title="' + escapeHtml(ev.task.subject + ' — ' + (ev.entry.startDate||'?') + ' → ' + (ev.entry.endDate||'?')) + '" style="left:' + leftPct + '%; width:' + widthPct + '%; ' + barStyle + '">' +
-              chevHtml + (continuesLeft ? '◂ ' : '') + escapeHtml(ev.task.subject) + (continuesRight ? ' ▸' : '') +
+              (continuesLeft ? '◂ ' : '') + escapeHtml(ev.task.subject) + (continuesRight ? ' ▸' : '') +
             '</div>' +
           '</div>' +
         '</div>';
@@ -6118,11 +6145,10 @@ function renderRoadmapCalendar(roadmapId) {
       const TITLE_STRIP = 22;
       const MAX_SUB_LANES_COLLAPSED = 3;       // beyond this we show "+N more" inside the group
       const normalLaneHeight = 22;
-      if (!window.__rmGroupExpanded) window.__rmGroupExpanded = {};
-      // Per-roadmap, per-group expansion state, persisted in localStorage
-      const expandedKey = 'bn-rm-expanded-' + r.id;
-      const expandedSet = new Set(window.__rmGroupExpanded[r.id] || JSON.parse(localStorage.getItem(expandedKey) || '[]'));
-      window.__rmGroupExpanded[r.id] = [...expandedSet];
+      // Group expansion state is the GLOBAL one (bn-group-expanded via isGroupExpanded) — same as year/6m and the task list.
+      // Build a quick set for repeated lookups in this render pass.
+      const expandedSet = new Set();
+      (STORE.tasks || []).forEach(g => { if (g.isGroup && isGroupExpanded(g.id)) expandedSet.add(g.id); });
       function groupVisibleSubLanesCount(groupId) {
         const all = (subLanesByParent[groupId] || []).length;
         if (expandedSet.has(groupId)) return all;
@@ -6337,7 +6363,7 @@ function renderRoadmapCalendar(roadmapId) {
       );
       // Current duration in days (inclusive) when both ends are set; otherwise empty
       const _dur = (entry.startDate && entry.endDate) ? bnDaysInclusive(entry.startDate, entry.endDate) : '';
-      return '<div class="rm-task-row ' + (ready ? "ready" : "") + '" data-tid="' + task.id + '">' +
+      return '<div class="rm-task-row ' + (ready ? "ready" : "") + '" data-tid="' + task.id + '" data-pstatus="' + escapeHtml(task.slackStatus || '') + '">' +
         '<div class="rmt-head">' +
           '<button type="button" class="rmt-title-btn" data-tid="' + task.id + '" title="' + escapeHtml(task.subject) + ' — click to edit">' + (isThisAGroup ? '📁 ' : '') + escapeHtml(task.subject.slice(0,80)) + (task.subject.length>80?'…':'') + '</button>' +
           '<button class="rm-task-del danger" data-tid="' + task.id + '" title="Remove from roadmap">×</button>' +
@@ -6525,24 +6551,17 @@ function renderRoadmapCalendar(roadmapId) {
     const old = document.querySelector('.cal-event-edit-popover');
     if (old) old.remove();
   }
-  // Helper to toggle a group's expanded state and persist to localStorage
-  function toggleGroupExpanded(gid) {
-    const key = 'bn-rm-expanded-' + r.id;
-    const cur = new Set(window.__rmGroupExpanded[r.id] || JSON.parse(localStorage.getItem(key) || '[]'));
-    if (cur.has(gid)) cur.delete(gid); else cur.add(gid);
-    const arr = [...cur];
-    window.__rmGroupExpanded[r.id] = arr;
-    localStorage.setItem(key, JSON.stringify(arr));
-    closeCalEventPopover();
-    renderRoadmapCalendar(roadmapId);
-  }
-  // Chevron toggle inside group bars (month/week view — local per-roadmap expansion)
+  // Chevron toggle inside group bars (month/week view) — uses the GLOBAL bn-group-expanded map
+  // so the same state is shared with year/6m views and the task lists.
   cont.querySelectorAll('.cal-group-toggle').forEach(btn => {
     btn.addEventListener('click', e => {
       e.preventDefault();
       e.stopPropagation();
       const gid = btn.dataset.groupToggle;
-      if (gid) toggleGroupExpanded(gid);
+      if (!gid) return;
+      window.toggleGroupExpanded(gid);
+      closeCalEventPopover();
+      renderRoadmapCalendar(roadmapId);
     });
   });
   // Chevron toggle inside YEAR/6m group bars — uses the GLOBAL bn-group-expanded map
@@ -7921,8 +7940,12 @@ function renderProfileRoadmapCard(rm, personId) {
     lanes[lane].push(p);
     p.lane = lane;
   });
-  const LANE_H = 18;   // matches CSS height 16 + 2 gap
+  const LANE_H = 20;
   const overlayHeight = lanes.length * LANE_H;
+  // Make day cells tall enough to fit every event lane (header strip ~38px + overlay + 8px padding)
+  const dayCellMinHeight = Math.max(70, 38 + overlayHeight + 10);
+  // Inject style on every .mini-day inside this card via a CSS variable on the wrap
+  html = html.replace(/<div class="mini-7day"/, '<div class="mini-7day" style="--day-min-h:' + dayCellMinHeight + 'px"');
   html += '<div class="mini-7day-events-overlay" style="height:' + overlayHeight + 'px">';
   positioned.forEach(p => {
     const { entry, task, isKid, startIdx, span, lane } = p;
@@ -7932,8 +7955,10 @@ function renderProfileRoadmapCard(rm, personId) {
     const leftPct  = (startIdx / 7) * 100;
     const widthPct = (span     / 7) * 100;
     const labelText = (isKid ? '· ' : '') + task.subject;
+    const expandedKey = rm.id + '|' + task.id;
+    const expanded = !!(window.__profileGroupExp && window.__profileGroupExp[expandedKey]);
     const chev = isG
-      ? '<button type="button" class="mini-event-caret' + (window.__profileGroupExp[rm.id + '|' + task.id] ? ' expanded' : '') + '" data-rmid="' + escapeHtml(rm.id) + '" data-gid="' + escapeHtml(task.id) + '" title="Toggle subtasks">▶</button>'
+      ? '<button type="button" class="mini-event-caret' + (expanded ? ' expanded' : '') + '" data-rmid="' + escapeHtml(rm.id) + '" data-gid="' + escapeHtml(task.id) + '" title="' + (expanded ? 'Collapse subtasks' : 'Expand subtasks') + '">▶</button>'
       : '';
     const top = lane * LANE_H;
     html += '<div class="' + cls + '" style="background:' + color + '; left:calc(' + leftPct + '% + 2px); width:calc(' + widthPct + '% - 4px); top:' + top + 'px" title="' + escapeHtml(labelText) + '" data-tid="' + task.id + '">' + chev + escapeHtml(labelText) + '</div>';
