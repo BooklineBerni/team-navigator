@@ -735,6 +735,31 @@
   .cal-toolbar-help { display: none; }
   /* Compact unscheduled rows in side panel */
   .rm-side-area .rm-unscheduled { padding: 12px; max-width: 100%; }
+  /* Archived section (under Unscheduled) — collapsible */
+  .rm-side-area .rm-archived { max-width: 100%; }
+  .rm-side-area .rm-archived-head {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%;
+    appearance: none; border: none; background: transparent;
+    padding: 10px 12px;
+    cursor: pointer; user-select: none;
+    text-align: left; font-family: inherit;
+    border-radius: 10px;
+    transition: background .12s;
+  }
+  .rm-side-area .rm-archived-head:hover { background: #ececea; }
+  .rm-side-area .rm-archived-head .rm-arch-caret {
+    font-size: 10px; color: #6b6b6b;
+    transition: transform .15s;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px;
+  }
+  .rm-side-area .rm-archived.expanded .rm-arch-caret { transform: rotate(90deg); }
+  .rm-side-area .rm-archived-body { display: flex; flex-direction: column; gap: 6px; }
+  .rm-side-area .rm-archived-body .rm-task-row {
+    background: #ebebe8 !important;
+    opacity: 0.85;
+  }
   .rm-side-area .rm-task-row {
     display: flex !important; flex-direction: column;
     gap: 6px;
@@ -5289,14 +5314,21 @@ function renderRoadmapCalendar(roadmapId) {
 
   // Unscheduled = no effective start date OR currently being edited and not yet applied.
   // Effective start respects anchors: a child anchored to a group inherits the group's dates.
+  // Archived tasks are pulled out into their own section so they don't clutter the active list.
   if (!window.__rmPendingApply) window.__rmPendingApply = new Set();
-  const unscheduled = (r.tasks || []).filter(entry => {
+  const rawUnscheduled = (r.tasks || []).filter(entry => {
     const t = STORE.tasks.find(x => x.id === entry.taskId);
     if (!t) return false;
     if (window.__rmPendingApply.has(entry.taskId)) return true;  // user is editing dates here
     const eff = effectiveDatesFor(entry);
     return !parseDate(eff.startStr);
   });
+  function entryStatus(entry) {
+    const t = STORE.tasks.find(x => x.id === entry.taskId);
+    return (t && t.slackStatus) || '';
+  }
+  const unscheduled = rawUnscheduled.filter(e => entryStatus(e) !== 'Archived');
+  const archivedEntries = rawUnscheduled.filter(e => entryStatus(e) === 'Archived');
   // Also exclude these "pending apply" entries from the calendar events
   const eventsScheduled = events.filter(e => !window.__rmPendingApply.has(e.entry.taskId));
 
@@ -5352,7 +5384,7 @@ function renderRoadmapCalendar(roadmapId) {
     '</div></div>';
 
   // Toolbar with navigation. When there's nothing in the side panel, expand calendar to full width.
-  const hasSide = unscheduled.length > 0;
+  const hasSide = unscheduled.length > 0 || archivedEntries.length > 0;
   html += '<div class="rm-content-row' + (hasSide ? '' : ' no-side') + '"><div class="rm-cal-area">';
   const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const monthLabel = monthNames[ym.month] + ' ' + ym.year;
@@ -5656,26 +5688,18 @@ function renderRoadmapCalendar(roadmapId) {
   // Close cal-area
   html += '</div>';
 
-  // Side-area only when there are unscheduled tasks
+  // Side-area only when there are unscheduled (or archived) tasks
   if (hasSide) {
     html += '<div class="rm-side-area">';
-    // "Ready" = at least a start date (end date optional → open-ended task)
-    const pendingCount = unscheduled.filter(e => parseDate(effectiveDatesFor(e).startStr)).length;
-    html += '<div class="rm-unscheduled" style="margin-top:14px; padding:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px">' +
-      '<div class="rm-unscheduled-head">' +
-        '<strong style="font-size:13px">Unscheduled (' + unscheduled.length + ')</strong>' +
-        '<button class="btn primary" id="rmApplyDatesBtn"' + (pendingCount === 0 ? ' disabled' : '') + '>Apply' + (pendingCount > 0 ? ' (' + pendingCount + ')' : '') + '</button>' +
-      '</div>';
     const minDate = r.startDate ? r.startDate : '';
-    // All groups in the store — picker options for the inline group selector
     const allGroups = (STORE.tasks || []).filter(t => t.isGroup);
-    unscheduled.forEach(entry => {
+    // Shared row builder so the same markup is used for active + archived rows.
+    function buildSideRowHtml(entry) {
       const task = STORE.tasks.find(t => t.id === entry.taskId);
-      if (!task) return;
+      if (!task) return '';
       const eff = effectiveDatesFor(entry);
       const ready = !!parseDate(eff.startStr);
       const isThisAGroup = !!task.isGroup;
-      // Anchor pins now allow linking to ANY other task on the roadmap (groups + standalone).
       const canAnchor = (r.tasks || []).filter(en => en.taskId !== task.id).length > 0;
       const sA = entry.startAnchor || '';
       const eA = entry.endAnchor   || '';
@@ -5693,14 +5717,13 @@ function renderRoadmapCalendar(roadmapId) {
           : 'Click to anchor ' + kind + ' to another task on this roadmap';
         return '<button type="button" class="rmt-pin ' + cls + (isActive ? ' active' : '') + '" title="' + escapeHtml(tooltip) + '" data-kind="' + kind + '">📌</button>';
       }
-      // Group assignment picker (only for non-group tasks)
       const groupPickerHtml = isThisAGroup ? '' : (
         '<select class="rmt-group-pick" title="Assign this task to a group">' +
           '<option value=""' + (!task.groupId ? ' selected' : '') + '>— No group —</option>' +
           allGroups.map(g => '<option value="' + escapeHtml(g.id) + '"' + (task.groupId === g.id ? ' selected' : '') + '>📁 ' + escapeHtml(g.subject||'(unnamed)') + '</option>').join('') +
         '</select>'
       );
-      html += '<div class="rm-task-row ' + (ready ? "ready" : "") + '" data-tid="' + task.id + '">' +
+      return '<div class="rm-task-row ' + (ready ? "ready" : "") + '" data-tid="' + task.id + '">' +
         '<div class="rmt-head">' +
           '<span title="' + escapeHtml(task.subject) + '">' + (isThisAGroup ? '📁 ' : '') + escapeHtml(task.subject.slice(0,80)) + (task.subject.length>80?'…':'') + '</span>' +
           '<button class="rm-task-del danger" data-tid="' + task.id + '" title="Remove from roadmap">×</button>' +
@@ -5723,8 +5746,32 @@ function renderRoadmapCalendar(roadmapId) {
           '</div>' +
         '</div>' +
       '</div>';
-    });
-    html += '</div></div>';
+    }
+    // ---- Active unscheduled ----
+    if (unscheduled.length > 0) {
+      const pendingCount = unscheduled.filter(e => parseDate(effectiveDatesFor(e).startStr)).length;
+      html += '<div class="rm-unscheduled" style="margin-top:14px; padding:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px">' +
+        '<div class="rm-unscheduled-head">' +
+          '<strong style="font-size:13px">Unscheduled (' + unscheduled.length + ')</strong>' +
+          '<button class="btn primary" id="rmApplyDatesBtn"' + (pendingCount === 0 ? ' disabled' : '') + '>Apply' + (pendingCount > 0 ? ' (' + pendingCount + ')' : '') + '</button>' +
+        '</div>';
+      unscheduled.forEach(entry => { html += buildSideRowHtml(entry); });
+      html += '</div>';
+    }
+    // ---- Archived (own collapsible section below) ----
+    if (archivedEntries.length > 0) {
+      if (!window.__rmArchivedExpanded) window.__rmArchivedExpanded = {};
+      const archExpanded = !!window.__rmArchivedExpanded[r.id];
+      html += '<div class="rm-archived' + (archExpanded ? ' expanded' : '') + '" data-rmid="' + escapeHtml(r.id) + '" style="margin-top:14px; padding:0; background:#f5f5f4; border:1px solid #d8d6d1; border-radius:10px">' +
+        '<button type="button" class="rm-archived-head" id="rmArchivedToggle">' +
+          '<span class="rm-arch-caret">▶</span>' +
+          '<strong style="font-size:13px; color:#64748b">📦 Archived (' + archivedEntries.length + ')</strong>' +
+        '</button>' +
+        '<div class="rm-archived-body" style="' + (archExpanded ? '' : 'display:none;') + ' padding:0 12px 12px">';
+      archivedEntries.forEach(entry => { html += buildSideRowHtml(entry); });
+      html += '</div></div>';
+    }
+    html += '</div>';
   }
 
   // Close row
@@ -5988,8 +6035,8 @@ function renderRoadmapCalendar(roadmapId) {
     selectedRoadmapTimelineId = null;
     renderRoadmapsTimelinePage();
   });
-  // Unscheduled inline edits — save dates without re-rendering until Apply is clicked
-  cont.querySelectorAll('.rm-unscheduled .rm-task-row').forEach(node => {
+  // Side-panel inline edits (covers both Unscheduled and Archived rows)
+  cont.querySelectorAll('.rm-unscheduled .rm-task-row, .rm-archived-body .rm-task-row').forEach(node => {
     const tid = node.dataset.tid;
     const idx = (r.tasks||[]).findIndex(e => e.taskId === tid);
     function refreshRowReadyState() {
@@ -6088,6 +6135,20 @@ function renderRoadmapCalendar(roadmapId) {
     applyBtn.addEventListener('click', () => {
       window.__rmPendingApply.clear();
       renderRoadmapCalendar(roadmapId);
+    });
+  }
+  // Archived section: expand/collapse toggle (state per roadmap, in-memory)
+  const archToggle = document.getElementById('rmArchivedToggle');
+  if (archToggle) {
+    archToggle.addEventListener('click', () => {
+      if (!window.__rmArchivedExpanded) window.__rmArchivedExpanded = {};
+      window.__rmArchivedExpanded[r.id] = !window.__rmArchivedExpanded[r.id];
+      const wrap = archToggle.closest('.rm-archived');
+      const body = wrap && wrap.querySelector('.rm-archived-body');
+      if (wrap && body) {
+        wrap.classList.toggle('expanded', !!window.__rmArchivedExpanded[r.id]);
+        body.style.display = window.__rmArchivedExpanded[r.id] ? '' : 'none';
+      }
     });
   }
 }
