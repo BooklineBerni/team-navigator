@@ -5275,7 +5275,6 @@ function renderRoadmapCalendar(roadmapId) {
   let html = '<div class="rm-summary-card">' +
     '<div class="rm-name-wrapper" style="position:relative; display:inline-block">' +
       '<div class="rm-name-trigger' + (rmOpen ? ' open' : '') + '" id="rmNameTrigger" title="Switch roadmap">' +
-        roadmapOwnerAvatarHtml(r, 28) +
         '<div class="rm-summary-name">' + escapeHtml(r.name||'(unnamed)') + '</div>' +
         '<span class="arrow">▾</span>' +
       '</div>' +
