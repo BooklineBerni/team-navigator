@@ -287,30 +287,34 @@
   }
   .rm-modal-days-cell input.rm-modal-days:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
   .rm-modal-days-unit { font-size: 10px; color: #92400e; margin-left: 2px; }
-  /* Pill that replaces the date input when a source label (start of X / N days / end of X) is set.
-     The actual resolved date moves BELOW the pill as a dim "= YYYY-MM-DD" reference. */
-  .rm-modal-pill {
-    display: inline-flex; align-items: center;
+  /* Pill that replaces the date input when a source label (start of X / end of X) is set.
+     The whole pill is a single clickable button — clicking it clears the source and reveals the
+     date input. The resolved date moves BELOW the pill as a dim "= YYYY-MM-DD" reference (also
+     clickable). */
+  .rm-modal-pill-btn {
+    appearance: none;
+    display: inline-flex; align-items: center; gap: 4px;
     background: #fef3c7; border: 1px solid #fde68a;
-    color: #78350f; font-weight: 700; font-size: 11px;
+    color: #78350f; font-weight: 700; font-size: 11px; font-family: inherit;
     padding: 2px 6px; border-radius: 6px;
     height: 22px; line-height: 18px;
     max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    cursor: pointer; transition: background .12s, border-color .12s, color .12s;
   }
-  .rm-modal-pill .bn-src-clear,
-  .rm-modal-pill .bn-days-clear {
-    background: transparent; border: none; cursor: pointer;
-    color: #78350f; font-weight: 700; padding: 0 0 0 5px; font-size: 12px;
-    line-height: 1;
-  }
-  .rm-modal-pill .bn-src-clear:hover,
-  .rm-modal-pill .bn-days-clear:hover { color: #b91c1c; }
+  .rm-modal-pill-btn:hover { background: #fde68a; border-color: #d97706; color: #5b2e02; }
+  .rm-modal-pill-btn .bn-pill-x { font-weight: 700; opacity: .65; padding-left: 2px; }
+  .rm-modal-pill-btn:hover .bn-pill-x { opacity: 1; color: #b91c1c; }
   .rm-modal-date-display {
+    appearance: none; background: transparent; border: none; padding: 0 4px;
+    font-family: inherit;
     font-size: 10px; color: #92400e; opacity: 0.75;
     font-variant-numeric: tabular-nums;
-    padding: 0 4px; margin-top: 1px;
+    margin-top: 1px;
     align-self: flex-start;
+    cursor: pointer;
+    text-align: left;
   }
+  .rm-modal-date-display:hover { opacity: 1; text-decoration: underline; }
   /* Mini avatar used in roadmap rows / picker (replaces the old pin emoji) */
   .rm-owner-mini {
     flex-shrink: 0;
@@ -5524,19 +5528,20 @@ function renderRoadmapsInModal(t) {
       // End "source" can be either a picked-task label OR a "N days" computed label
       let eSrcLbl = getRowSrc(r.id, 'end');
       if (!eSrcLbl && durVal) eSrcLbl = durVal + ' day' + (durVal === 1 ? '' : 's');
-      // Build the start cell: if there's a source label, show a pill in the input slot and the
-      // resolved date "= YYYY-MM-DD" below; otherwise show a normal date input.
-      function buildSideCell(side, val, anchored, srcLbl, isFirstInRow) {
+      // Build a start/end cell. When a source label is set, show a clickable pill (whole pill
+      // resets to date input on click) and the resolved date "= YYYY-MM-DD" below (also clickable
+      // to reset). Otherwise, show a normal date input.
+      function buildSideCell(side, val, anchored, srcLbl) {
         const pinHtml = '<button type="button" class="rm-modal-pin" data-rmid="' + escapeHtml(r.id) + '" data-side="' + side + '" title="Use another task\'s aggregated start/end as this ' + (side === 'start' ? 'Start' : 'End') + '">📌</button>';
         const dateInput = '<input type="date" class="rm-modal-date-input rm-modal-' + side + '" data-rmid="' + escapeHtml(r.id) + '" value="' + escapeHtml(val) + '" title="' + (anchored ? 'Anchored — clear via the roadmap calendar to change' : (side === 'start' ? 'Start' : 'End') + ' in this roadmap') + '"' + (anchored ? ' disabled' : '') + '>';
         const pill = srcLbl
-          ? '<span class="rm-modal-pill" data-side="' + side + '" data-rmid="' + escapeHtml(r.id) + '" title="' + escapeHtml(srcLbl) + ' — click × to edit the date directly">' +
+          ? '<button type="button" class="rm-modal-pill rm-modal-pill-btn" data-side="' + side + '" data-rmid="' + escapeHtml(r.id) + '" title="' + escapeHtml(srcLbl) + ' — click to clear and pick a date">' +
               escapeHtml(srcLbl) +
-              ' <button type="button" class="bn-src-clear" title="Clear source — restore date input">×</button>' +
-            '</span>'
+              '<span class="bn-pill-x" aria-hidden="true">×</span>' +
+            '</button>'
           : '';
         const dateBelow = srcLbl
-          ? '<span class="rm-modal-date-display">= ' + escapeHtml(val || '—') + '</span>'
+          ? '<button type="button" class="rm-modal-date-display" data-side="' + side + '" data-rmid="' + escapeHtml(r.id) + '" title="Click to clear and pick a date">= ' + escapeHtml(val || '—') + '</button>'
           : '';
         const innerInput = srcLbl ? pill : dateInput;
         // Pin position: start → left of input, end → right of input
@@ -5545,17 +5550,13 @@ function renderRoadmapsInModal(t) {
           : '<span class="rm-modal-input-wrap">' + innerInput + pinHtml + '</span>';
         return '<span class="rm-modal-cell">' + wrap + dateBelow + '</span>';
       }
-      // Days cell: when N is set, show a pill "N days" in the input slot and "= YYYY-MM-DD" of the
-      // resolved End below; otherwise show a number input.
+      // Days cell — ALWAYS a number input. User edits the number here; the End date follows.
       function buildDaysCell() {
-        const hasDays = !!durVal;
-        const inner = hasDays
-          ? '<span class="rm-modal-pill rm-modal-days-pill" data-rmid="' + escapeHtml(r.id) + '" title="' + durVal + ' day' + (durVal === 1 ? '' : 's') + ' — click × to edit days directly">' +
-              escapeHtml(String(durVal)) + ' day' + (durVal === 1 ? '' : 's') +
-              ' <button type="button" class="bn-days-clear" title="Clear duration">×</button>' +
-            '</span>'
-          : '<input type="number" class="rm-modal-days" data-rmid="' + escapeHtml(r.id) + '" value="" min="1" step="1" placeholder="N" title="Duration in days — sets End = Start + (N − 1) days"><span class="rm-modal-days-unit">days</span>';
-        return '<span class="rm-modal-cell rm-modal-days-cell">' + inner + '</span>';
+        const valHtml = durVal ? escapeHtml(String(durVal)) : '';
+        return '<span class="rm-modal-cell rm-modal-days-cell">' +
+          '<input type="number" class="rm-modal-days" data-rmid="' + escapeHtml(r.id) + '" value="' + valHtml + '" min="1" step="1" placeholder="N" title="Duration in days — sets End = Start + (N − 1) days">' +
+          '<span class="rm-modal-days-unit">days</span>' +
+        '</span>';
       }
       return '<div class="rm-modal-row" data-rmid="' + escapeHtml(r.id) + '">' +
         '<button type="button" class="rm-modal-link" data-rmid="' + escapeHtml(r.id) + '" title="Open this roadmap">' +
@@ -5685,43 +5686,29 @@ function renderRoadmapsInModal(t) {
         });
       });
     });
-    // Pill × (source-clear) — reads data-side from the parent pill to know which side to clear.
-    // For end pills driven by days, the duration is held in entry.durationDays (no rmRowSrc), so
-    // clearing that pill is handled separately by .bn-days-clear below.
-    cont.querySelectorAll('.rm-modal-pill .bn-src-clear').forEach(btn => {
-      btn.addEventListener('click', e => {
+    // Clicking ANYWHERE on the pill (or on the resolved-date row below) clears the source for that
+    // side and restores the date input — so the user can pick a date directly. The underlying date
+    // value is preserved (it remains in entry.startDate / entry.endDate), so the date input loads
+    // with that value pre-filled. For end-via-days, clearing also drops entry.durationDays.
+    function clearSideSource(rmId, side) {
+      const { entry } = entryFor(rmId);
+      if (!entry) return;
+      setRowSrc(rmId, side, '');
+      // End cleared while duration-driven? Drop the duration so the date input takes over.
+      if (side === 'end' && entry.durationDays) delete entry.durationDays;
+      saveAndSyncTaskDates();
+      renderRoadmapsInModal(t);
+    }
+    cont.querySelectorAll('.rm-modal-pill-btn').forEach(pill => {
+      pill.addEventListener('click', e => {
         e.preventDefault(); e.stopPropagation();
-        const pill = btn.closest('.rm-modal-pill');
-        const row  = btn.closest('.rm-modal-row');
-        if (!pill || !row) return;
-        const rmId = pill.dataset.rmid || row.dataset.rmid;
-        const side = pill.dataset.side;
-        if (!side) return;
-        const { entry } = entryFor(rmId);
-        if (!entry) return;
-        setRowSrc(rmId, side, '');
-        // End pill clear also drops any duration-driven label (and stored days)
-        if (side === 'end' && entry.durationDays) delete entry.durationDays;
-        saveAndSyncTaskDates();
-        renderRoadmapsInModal(t);
+        clearSideSource(pill.dataset.rmid, pill.dataset.side);
       });
     });
-    // Days pill × clears entry.durationDays and the end-date that derived from it
-    cont.querySelectorAll('.rm-modal-pill .bn-days-clear').forEach(btn => {
-      btn.addEventListener('click', e => {
+    cont.querySelectorAll('.rm-modal-date-display').forEach(disp => {
+      disp.addEventListener('click', e => {
         e.preventDefault(); e.stopPropagation();
-        const pill = btn.closest('.rm-modal-pill');
-        if (!pill) return;
-        const rmId = pill.dataset.rmid;
-        const { entry } = entryFor(rmId);
-        if (!entry) return;
-        delete entry.durationDays;
-        // Clearing days also clears the end date (the end depended on the duration)
-        entry.endDate = '';
-        entry.endAnchor = '';
-        setRowSrc(rmId, 'end', '');
-        saveAndSyncTaskDates();
-        renderRoadmapsInModal(t);
+        clearSideSource(disp.dataset.rmid, disp.dataset.side);
       });
     });
     cont.querySelectorAll('.rm-modal-x').forEach(btn => {
