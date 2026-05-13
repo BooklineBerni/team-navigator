@@ -5267,9 +5267,10 @@ window.__renderTaskAggregatedSchedule = function(t) {
       else pillEl.removeAttribute('style');
       if (valEl) valEl.classList.add('below');
     } else {
+      // Order matters: removeAttribute('style') would wipe display:none if set first.
       pillEl.textContent = '';
-      pillEl.style.display = 'none';
       pillEl.removeAttribute('style');
+      pillEl.style.display = 'none';
       if (valEl) valEl.classList.remove('below');
     }
   }
