@@ -1078,6 +1078,21 @@
     font-variant-numeric: tabular-nums;
   }
   .bn-agg-display-val.empty { color: #b3b3b3; font-weight: 500; font-style: italic; }
+  .bn-agg-display-stack {
+    display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  }
+  .bn-agg-display-pill {
+    font-size: 11px; font-weight: 700;
+    color: #78350f; background: #fef3c7;
+    border: 1px solid #fde68a; border-radius: 5px;
+    padding: 1px 6px;
+    max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bn-agg-display-stack .bn-agg-display-val {
+    font-size: 11px; font-weight: 500; opacity: 0.75; color: #92400e;
+    padding: 0 2px;
+  }
+  .bn-agg-display-stack .bn-agg-display-pill + .bn-agg-display-val::before { content: '= '; opacity: 0.6; }
   /* Task modal — Schedule sections (Apply-to-all editable + Aggregated read-only) */
   .bn-sched-section {
     background: #fbfaf6; border: 1px solid #ececea; border-radius: 10px;
@@ -2974,16 +2989,23 @@
       <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
       <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap.</div>
       <!-- Visual-only aggregated display: min Start across all roadmaps (only if every roadmap has one),
-           max End across all roadmaps (only if every roadmap has one). Blank otherwise. -->
+           max End across all roadmaps (only if every roadmap has one). Also shows source pill
+           ("start of X" / "end of Y" / "N days") when every roadmap shares the same source. -->
       <div class="f_taskOnlyRow bn-agg-display" id="f_taskDatesField">
         <span class="bn-agg-display-lbl">Aggregated</span>
         <span class="bn-agg-display-pair">
           <span class="bn-agg-display-key">Start</span>
-          <span class="bn-agg-display-val" id="f_aggMinStart">—</span>
+          <span class="bn-agg-display-stack" id="f_aggMinStartStack">
+            <span class="bn-agg-display-pill" id="f_aggMinStartPill" style="display:none"></span>
+            <span class="bn-agg-display-val" id="f_aggMinStart">—</span>
+          </span>
         </span>
         <span class="bn-agg-display-pair">
           <span class="bn-agg-display-key">End</span>
-          <span class="bn-agg-display-val" id="f_aggMaxEnd">—</span>
+          <span class="bn-agg-display-stack" id="f_aggMaxEndStack">
+            <span class="bn-agg-display-pill" id="f_aggMaxEndPill" style="display:none"></span>
+            <span class="bn-agg-display-val" id="f_aggMaxEnd">—</span>
+          </span>
         </span>
       </div>
     </div>
@@ -5028,20 +5050,18 @@ function bnEndFromStartAndDuration(startStr, n) {
       e.startAnchor = '';
       e.endDate     = endV;
       e.endAnchor   = '';
-      // Propagate the START source label (pill text). Empty label clears the row's source.
-      const sKey = t.id + '|' + rm.id + '|start';
-      if (startSrcLbl) window.__rmRowSrc[sKey] = startSrcLbl;
-      else delete window.__rmRowSrc[sKey];
-      // Days take precedence over an end pill label. If days is set, store durationDays so the
-      // row renders "N days" pill from entry.durationDays (no rmRowSrc entry needed for end).
-      const eKey = t.id + '|' + rm.id + '|end';
+      // Propagate the START source label (pill text). Persisted on the entry so it survives reopen.
+      if (startSrcLbl) e.startSrcLabel = startSrcLbl;
+      else delete e.startSrcLabel;
+      // Days take precedence over an end pill label. If days is set, store durationDays — the row
+      // renders "N days" pill from entry.durationDays. Otherwise persist the end source label.
       if (hasDays) {
         e.durationDays = daysNum;
-        delete window.__rmRowSrc[eKey];
+        delete e.endSrcLabel;
       } else {
         delete e.durationDays;
-        if (endSrcLbl) window.__rmRowSrc[eKey] = endSrcLbl;
-        else delete window.__rmRowSrc[eKey];
+        if (endSrcLbl) e.endSrcLabel = endSrcLbl;
+        else delete e.endSrcLabel;
       }
       touched++;
     });
@@ -5065,6 +5085,8 @@ window.__pendingTaskEndAnchor   = '';
 window.__renderTaskAggregatedSchedule = function(t) {
   const startEl = document.getElementById('f_aggMinStart');
   const endEl   = document.getElementById('f_aggMaxEnd');
+  const startPill = document.getElementById('f_aggMinStartPill');
+  const endPill   = document.getElementById('f_aggMaxEndPill');
   if (!startEl || !endEl || !t) return;
   const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : (STORE.roadmaps || []);
   const entries = [];
@@ -5076,9 +5098,16 @@ window.__renderTaskAggregatedSchedule = function(t) {
     if (val) { el.textContent = val; el.classList.remove('empty'); }
     else     { el.textContent = '—'; el.classList.add('empty'); }
   }
+  function setPill(pillEl, lbl) {
+    if (!pillEl) return;
+    if (lbl) { pillEl.textContent = lbl; pillEl.style.display = ''; }
+    else     { pillEl.textContent = ''; pillEl.style.display = 'none'; }
+  }
   if (entries.length === 0) {
     setVal(startEl, '');
     setVal(endEl, '');
+    setPill(startPill, '');
+    setPill(endPill, '');
     return;
   }
   const resolvedStarts = entries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).startStr);
@@ -5093,6 +5122,23 @@ window.__renderTaskAggregatedSchedule = function(t) {
     : '';
   setVal(startEl, aggStart);
   setVal(endEl, aggEnd);
+  // Pill shown ONLY when every roadmap shares the same source label for that side.
+  function commonLabel(arr) {
+    if (arr.length === 0) return '';
+    const first = arr[0];
+    if (!first) return '';
+    return arr.every(x => x === first) ? first : '';
+  }
+  const startLabels = entries.map(({ entry }) => entry.startSrcLabel || '');
+  const endLabels = entries.map(({ entry }) => {
+    if (entry.endSrcLabel) return entry.endSrcLabel;
+    if (typeof entry.durationDays === 'number' && entry.durationDays >= 1) {
+      return entry.durationDays + ' day' + (entry.durationDays === 1 ? '' : 's');
+    }
+    return '';
+  });
+  setPill(startPill, commonLabel(startLabels));
+  setPill(endPill,   commonLabel(endLabels));
 };
 (function wireTaskScheduleControls() {
   const startEl = document.getElementById("f_taskStart");
@@ -5560,11 +5606,32 @@ function renderRoadmapsInModal(t) {
   const allRoadmaps = (typeof getRoadmaps === 'function') ? getRoadmaps() : [];
   const assigned = allRoadmaps.filter(r => (r.tasks || []).some(e => e.taskId === t.id))
     .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  // Transient source-chip labels per row (rmId|side → "start of X"). Cleared on modal close.
+  // Source labels per row. Persisted on the entry (entry.startSrcLabel / entry.endSrcLabel) so
+  // they survive Save + reopen. Also mirrored to a transient in-memory cache for fast reads.
   if (!window.__rmRowSrc) window.__rmRowSrc = {};
   function srcKey(rmId, side) { return t.id + '|' + rmId + '|' + side; }
-  function getRowSrc(rmId, side) { return window.__rmRowSrc[srcKey(rmId, side)] || ''; }
+  function entryForRm(rmId) {
+    const rm = findRoadmap(rmId);
+    if (!rm) return null;
+    return (rm.tasks || []).find(en => en.taskId === t.id) || null;
+  }
+  function getRowSrc(rmId, side) {
+    // Read from entry first (persisted source); fall back to the transient cache.
+    const e = entryForRm(rmId);
+    if (e) {
+      const k = side === 'start' ? 'startSrcLabel' : 'endSrcLabel';
+      if (e[k]) return e[k];
+    }
+    return window.__rmRowSrc[srcKey(rmId, side)] || '';
+  }
   function setRowSrc(rmId, side, lbl) {
+    const e = entryForRm(rmId);
+    if (e) {
+      const k = side === 'start' ? 'startSrcLabel' : 'endSrcLabel';
+      if (lbl) e[k] = lbl;
+      else delete e[k];
+    }
+    // Keep the transient cache in sync (mostly for clarity; the entry is canonical now).
     if (lbl) window.__rmRowSrc[srcKey(rmId, side)] = lbl;
     else delete window.__rmRowSrc[srcKey(rmId, side)];
   }
@@ -5800,6 +5867,10 @@ function renderRoadmapsInModal(t) {
     sel.value = "";
     renderRoadmapsInModal(t);
   };
+  // After every render, also refresh the aggregated visual (pills + dates) so it stays in sync.
+  if (typeof window.__renderTaskAggregatedSchedule === 'function') {
+    window.__renderTaskAggregatedSchedule(t);
+  }
 }
 
 // Small avatar (18px) for a roadmap owner — used wherever we previously showed 📍.
