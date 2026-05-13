@@ -1649,6 +1649,17 @@
   .bulk-rm-row .bulk-rm-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bulk-rm-row .bulk-rm-counter { font-size: 11px; color: #9a9a9a; flex-shrink: 0; }
   .bulk-rm-popover .bulk-rm-header { font-size: 11px; color: #6b6b6b; padding: 4px 8px 8px; border-bottom: 1px solid #f0efeb; margin-bottom: 4px; }
+  .bulk-rm-popover .bulk-rm-search-wrap { padding: 4px 0 8px; }
+  .bulk-rm-popover .bulk-rm-search-wrap input {
+    width: 100%; box-sizing: border-box;
+    padding: 6px 10px; border: 1px solid #ececea; border-radius: 8px;
+    font-size: 12.5px; font-family: inherit; outline: none;
+    background: #faf9f7;
+  }
+  .bulk-rm-popover .bulk-rm-search-wrap input:focus { border-color: #1a1a1a; background: #fff; }
+  .bulk-rm-row.bulk-parent-detach { border-bottom: 1px dashed #ececea; margin-bottom: 4px; padding-bottom: 9px; border-radius: 6px 6px 0 0; color: #b91c1c; }
+  .bulk-rm-row.bulk-parent-detach .bulk-rm-cb { color: #b91c1c; border-color: #fecaca; }
+  .bulk-rm-row.bulk-parent-detach:hover { background: #fef2f2; }
 
   /* Person tags */
   .tag { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; margin-right: 3px; }
@@ -2115,6 +2126,10 @@
     <span class="sep"></span>
     <select id="bulkSetStatus" title="Set status on selected"><option value="">Set status…</option><option value="Proposed">Proposed</option><option value="Under Review">Under Review</option><option value="In Progress">In Progress</option><option value="Waiting">Waiting</option><option value="Later / Next">Later / Next</option><option value="Completed">Completed</option><option value="Archived">Archived</option><option value="Discarded">Discarded</option></select>
     <select id="bulkSetResponsible" title="Set responsible on selected"><option value="">Set responsible…</option></select>
+    <div class="bulk-rm-wrap" style="position:relative; display:inline-block">
+      <button class="bulk-rm-btn" id="bulkSetParentBtn" type="button" title="Nest selected tasks under a parent (a task with subtasks enabled)">📁 Nest under…</button>
+      <div id="bulkSetParentPopover" class="bulk-rm-popover" style="display:none"></div>
+    </div>
     <div class="bulk-rm-wrap" style="position:relative; display:inline-block">
       <button class="bulk-rm-btn" id="bulkRoadmapsBtn" type="button" title="Add/remove selected tasks to/from roadmaps">📍 Roadmaps…</button>
       <div id="bulkRoadmapsPopover" class="bulk-rm-popover" style="display:none"></div>
@@ -8373,6 +8388,133 @@ document.getElementById("bulkRoadmapsBtn").addEventListener("click", e => {
 document.addEventListener("click", e => {
   const pop = document.getElementById("bulkRoadmapsPopover");
   const btn = document.getElementById("bulkRoadmapsBtn");
+  if (!pop || !btn) return;
+  if (pop.style.display === "none") return;
+  if (pop.contains(e.target) || btn.contains(e.target)) return;
+  pop.style.display = "none";
+});
+
+// =================== BULK: nest selected tasks under a parent (a task with subtasks) ===================
+let __bulkParentSearch = "";
+function renderBulkSetParentPopover() {
+  const pop = document.getElementById("bulkSetParentPopover");
+  if (!pop) return;
+  const N = selectedTaskIds.size;
+  if (N === 0) { pop.style.display = "none"; return; }
+  // Candidates = every task with isGroup=true, EXCLUDING any task that is itself selected
+  // (otherwise you could create a cycle by parenting a selected group to itself).
+  const q = (__bulkParentSearch || "").toLowerCase().trim();
+  const candidates = (STORE.tasks || []).filter(t => {
+    if (!t.isGroup) return false;
+    if (selectedTaskIds.has(t.id)) return false;
+    if (!q) return true;
+    return (t.subject || '').toLowerCase().indexOf(q) >= 0;
+  }).sort((a, b) => (a.subject || '').localeCompare(b.subject || ''));
+  // Header text
+  let html = '<div class="bulk-rm-header">Pick a parent task. <strong>' + N + '</strong> selected task(s) will be nested under it. Click a parent to apply, or "Detach" to remove their current parent.</div>';
+  // Search box
+  html += '<div class="bulk-rm-search-wrap"><input type="text" id="bulkParentSearchInput" placeholder="Search parent tasks…" value="' + escapeHtml(__bulkParentSearch || '') + '" autocomplete="off"></div>';
+  // Detach option (clears groupId on all selected)
+  html += '<div class="bulk-rm-row bulk-parent-detach" data-action="detach">' +
+    '<span class="bulk-rm-cb">×</span>' +
+    '<span class="bulk-rm-name">Detach from any parent</span>' +
+  '</div>';
+  if (candidates.length === 0) {
+    html += '<div class="bulk-rm-empty">No parent tasks match.' + (q ? '' : ' Open a task and toggle "Subtasks — this task contains other tasks" to make one.') + '</div>';
+  } else {
+    candidates.slice(0, 50).forEach(g => {
+      // Indicate how many of the selected are already under this parent
+      let already = 0;
+      selectedTaskIds.forEach(tid => {
+        const c = STORE.tasks.find(x => x.id === tid);
+        if (c && c.groupId === g.id) already++;
+      });
+      const state = (already === N) ? 'all' : (already > 0 ? 'partial' : 'none');
+      const cls = state === 'all' ? 'checked' : (state === 'partial' ? 'partial' : '');
+      html += '<div class="bulk-rm-row ' + cls + '" data-gid="' + escapeHtml(g.id) + '" data-state="' + state + '">' +
+        '<span class="bulk-rm-cb"></span>' +
+        '<span class="bulk-rm-name">📁 ' + escapeHtml(g.subject || '(unnamed)') + '</span>' +
+        '<span class="bulk-rm-counter">' + already + '/' + N + '</span>' +
+      '</div>';
+    });
+    if (candidates.length > 50) {
+      html += '<div class="bulk-rm-empty" style="font-size:11px">… and ' + (candidates.length - 50) + ' more. Refine the search.</div>';
+    }
+  }
+  pop.innerHTML = html;
+  // Search input
+  const inp = document.getElementById("bulkParentSearchInput");
+  if (inp) {
+    inp.addEventListener("input", e => {
+      __bulkParentSearch = e.target.value;
+      renderBulkSetParentPopover();
+      // Re-focus the input after re-render
+      const newInp = document.getElementById("bulkParentSearchInput");
+      if (newInp) { newInp.focus(); newInp.setSelectionRange(newInp.value.length, newInp.value.length); }
+    });
+    inp.addEventListener("click", e => e.stopPropagation());
+    inp.addEventListener("keydown", e => {
+      if (e.key === "Escape") { pop.style.display = "none"; }
+    });
+    setTimeout(() => inp.focus(), 0);
+  }
+  // Row clicks
+  pop.querySelectorAll(".bulk-rm-row").forEach(row => {
+    row.addEventListener("click", ev => {
+      ev.stopPropagation();
+      if (row.dataset.action === "detach") {
+        let changed = 0;
+        selectedTaskIds.forEach(tid => {
+          const t = STORE.tasks.find(x => x.id === tid);
+          if (t && t.groupId) { t.groupId = ""; t._pendingSync = true; changed++; }
+        });
+        if (changed === 0) return;
+        saveStore(STORE);
+      } else {
+        const gid = row.dataset.gid;
+        const parent = STORE.tasks.find(x => x.id === gid);
+        if (!parent) return;
+        const state = row.dataset.state;
+        if (state === 'all') {
+          // Toggle off — detach all selected from this parent
+          selectedTaskIds.forEach(tid => {
+            const t = STORE.tasks.find(x => x.id === tid);
+            if (t && t.groupId === gid) { t.groupId = ""; t._pendingSync = true; }
+          });
+        } else {
+          // Nest all selected under this parent (skipping itself just in case)
+          selectedTaskIds.forEach(tid => {
+            if (tid === gid) return;
+            const t = STORE.tasks.find(x => x.id === tid);
+            if (!t) return;
+            t.groupId = gid;
+            t._pendingSync = true;
+          });
+        }
+        saveStore(STORE);
+      }
+      renderBulkSetParentPopover();
+      if (typeof renderFlatTasks === 'function' && typeof tasksViewMode !== 'undefined' && tasksViewMode === 'list') renderFlatTasks();
+      else if (typeof render === 'function') render();
+    });
+  });
+}
+function toggleBulkSetParentPopover(forceOpen) {
+  const pop = document.getElementById("bulkSetParentPopover");
+  if (!pop) return;
+  const isOpen = pop.style.display !== "none";
+  if (forceOpen === false || (forceOpen === undefined && isOpen)) { pop.style.display = "none"; return; }
+  __bulkParentSearch = "";
+  renderBulkSetParentPopover();
+  pop.style.display = "";
+}
+document.getElementById("bulkSetParentBtn").addEventListener("click", e => {
+  e.stopPropagation();
+  toggleBulkSetParentPopover();
+});
+document.addEventListener("click", e => {
+  const pop = document.getElementById("bulkSetParentPopover");
+  const btn = document.getElementById("bulkSetParentBtn");
   if (!pop || !btn) return;
   if (pop.style.display === "none") return;
   if (pop.contains(e.target) || btn.contains(e.target)) return;
