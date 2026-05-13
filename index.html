@@ -953,6 +953,37 @@
     background: #fef3c7; border-color: #f59e0b;
     filter: none; opacity: 1;
   }
+  /* Task modal — quick "Apply to all roadmaps" row at top of the Roadmaps field */
+  .bn-quick-apply {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: #f5f3ed; border: 1px solid #ececea; border-radius: 8px;
+    padding: 8px 10px; margin-bottom: 8px;
+  }
+  .bn-quick-apply-lbl {
+    font-size: 11px; font-weight: 700; color: #6b6b6b;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .bn-quick-apply-inputs {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .bn-quick-apply-input {
+    width: 140px; padding: 4px 6px; font-size: 12px;
+    background: #fff; border: 1px solid #d6d3c8; border-radius: 6px;
+  }
+  .bn-quick-apply-arrow { color: #9a9a9a; font-size: 13px; }
+  .bn-quick-apply-btn { font-size: 12px; padding: 5px 14px; }
+  .bn-quick-apply-feedback {
+    font-size: 11px; color: #16a34a; font-weight: 600;
+    background: #dcfce7; padding: 3px 8px; border-radius: 4px;
+    animation: bnFadeOut 2.4s ease-in-out forwards;
+  }
+  .bn-quick-apply-feedback.error {
+    color: #92400e; background: #fef3c7;
+  }
+  @keyframes bnFadeOut {
+    0%, 70% { opacity: 1; }
+    100% { opacity: 0; }
+  }
   /* Task modal — Schedule sections (Apply-to-all editable + Aggregated read-only) */
   .bn-sched-section {
     background: #fbfaf6; border: 1px solid #ececea; border-radius: 10px;
@@ -2814,6 +2845,17 @@
     <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
     <div class="field" id="f_roadmapsField">
       <label>Roadmaps</label>
+      <!-- Quick "Apply to all roadmaps" row — sits directly above the chips and commits IMMEDIATELY (no Save needed) -->
+      <div id="f_quickApplyRow" class="bn-quick-apply">
+        <span class="bn-quick-apply-lbl">Apply to all roadmaps</span>
+        <div class="bn-quick-apply-inputs">
+          <input type="date" id="f_quickApplyStart" class="bn-quick-apply-input" title="Start">
+          <span class="bn-quick-apply-arrow">→</span>
+          <input type="date" id="f_quickApplyEnd" class="bn-quick-apply-input" title="End">
+          <button type="button" id="f_quickApplyBtn" class="btn primary bn-quick-apply-btn" disabled>Apply</button>
+        </div>
+        <span id="f_quickApplyFeedback" class="bn-quick-apply-feedback" style="display:none"></span>
+      </div>
       <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
       <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
       <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap.</div>
@@ -4397,6 +4439,8 @@ function openModal(tid, overrides) {
   }
   // Render the visual-only aggregated view (min/max across all assigned roadmaps)
   if (typeof window.__renderTaskAggregatedSchedule === 'function') window.__renderTaskAggregatedSchedule(t);
+  // Pre-fill the quick "Apply to all roadmaps" row at top of the Roadmaps field
+  if (typeof window.__refreshQuickApplyFromTask === 'function') window.__refreshQuickApplyFromTask(t);
   document.getElementById("deleteBtn").style.display = t._isNew ? "none" : "inline-block";
   document.getElementById("modalBg").classList.add("show");
   document.getElementById("modal").__newTask = t._isNew ? t : null;
@@ -4539,6 +4583,103 @@ function bnEndFromStartAndDuration(startStr, n) {
   const d = new Date(s); d.setDate(d.getDate() + (n - 1));
   return dateKey(d);
 }
+// Quick "Apply to all roadmaps" row at the top of the Roadmaps field.
+// Commits IMMEDIATELY (no Save needed) — writes startDate/endDate to every assigned roadmap entry,
+// clears their anchors, updates task.startDate/task.endDate, then refreshes UI in place.
+(function wireQuickApplyDates() {
+  const row     = document.getElementById('f_quickApplyRow');
+  const startEl = document.getElementById('f_quickApplyStart');
+  const endEl   = document.getElementById('f_quickApplyEnd');
+  const btnEl   = document.getElementById('f_quickApplyBtn');
+  const fbEl    = document.getElementById('f_quickApplyFeedback');
+  if (!row || !startEl || !endEl || !btnEl) return;
+  function showFeedback(msg, isError) {
+    if (!fbEl) return;
+    fbEl.textContent = msg;
+    fbEl.classList.toggle('error', !!isError);
+    // Force re-trigger of the fade animation
+    fbEl.style.display = 'none';
+    fbEl.offsetHeight;  // reflow
+    fbEl.style.display = '';
+    clearTimeout(window.__quickApplyHideT);
+    window.__quickApplyHideT = setTimeout(() => { if (fbEl) fbEl.style.display = 'none'; }, 2500);
+  }
+  function refreshBtnState() {
+    if (!editingId) { btnEl.disabled = true; row.style.display = 'none'; return; }
+    const t = STORE.tasks.find(x => x.id === editingId);
+    if (!t) { btnEl.disabled = true; return; }
+    const rms = (typeof getRoadmaps === 'function' ? getRoadmaps() : (STORE.roadmaps || []))
+      .filter(r => (r.tasks || []).some(e => e.taskId === t.id));
+    const hasRoadmaps = rms.length > 0;
+    row.style.display = hasRoadmaps ? '' : 'none';
+    btnEl.disabled = !hasRoadmaps;
+    btnEl.title = hasRoadmaps
+      ? 'Write these dates to every assigned roadmap immediately'
+      : 'Task must be in at least one roadmap';
+  }
+  window.__refreshQuickApplyFromTask = function(t) {
+    if (!t) { row.style.display = 'none'; return; }
+    startEl.value = t.startDate || '';
+    endEl.value   = t.endDate   || '';
+    if (fbEl) fbEl.style.display = 'none';
+    refreshBtnState();
+  };
+  // Re-evaluate visibility whenever roadmaps change (chips added/removed)
+  const cont = document.getElementById('f_roadmapsContainer');
+  if (cont) {
+    const obs = new MutationObserver(refreshBtnState);
+    obs.observe(cont, { childList: true, subtree: true });
+  }
+  // Delete / Backspace clears the date input (mirrors other date inputs)
+  [startEl, endEl].forEach(inp => {
+    inp.addEventListener('keydown', e => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && inp.value) {
+        e.preventDefault();
+        inp.value = '';
+      }
+    });
+  });
+  // Apply button → write to every assigned roadmap, clear anchors, save immediately.
+  btnEl.addEventListener('click', () => {
+    if (!editingId) return;
+    const t = STORE.tasks.find(x => x.id === editingId);
+    if (!t) return;
+    const startV = startEl.value || '';
+    const endV   = endEl.value || '';
+    // Update the canonical task dates so the chip rows render correctly on re-render
+    t.startDate = startV;
+    t.endDate   = endV;
+    // Drop any task-level anchors — they no longer match
+    t.startAnchor = '';
+    t.endAnchor   = '';
+    // Push to every assigned roadmap (this also clears per-entry anchors)
+    const rms = (typeof getRoadmaps === 'function' ? getRoadmaps() : (STORE.roadmaps || []));
+    let touched = 0;
+    rms.forEach(rm => {
+      const e = (rm.tasks || []).find(x => x.taskId === t.id);
+      if (!e) return;
+      e.startDate   = startV;
+      e.startAnchor = '';
+      e.endDate     = endV;
+      e.endAnchor   = '';
+      touched++;
+    });
+    // Persist immediately and refresh everything in place
+    if (typeof recomputeTaskDates === 'function') recomputeTaskDates(t.id);
+    saveStore(STORE);
+    // Re-render the chips so their inputs show the new dates
+    if (typeof renderRoadmapsInModal === 'function') renderRoadmapsInModal(t);
+    // Refresh the aggregated visual section below
+    if (typeof window.__renderTaskAggregatedSchedule === 'function') window.__renderTaskAggregatedSchedule(t);
+    // Sync the lower Schedule section (if present) so it doesn't show stale staged state
+    const lowerStart = document.getElementById('f_taskStart');
+    const lowerEnd   = document.getElementById('f_taskEnd');
+    if (lowerStart) lowerStart.value = startV;
+    if (lowerEnd)   lowerEnd.value   = endV;
+    if (typeof window.__refreshSchedulePinsFromTask === 'function') window.__refreshSchedulePinsFromTask(t);
+    showFeedback(touched + ' roadmap' + (touched === 1 ? '' : 's') + ' updated · saved');
+  });
+})();
 // Anchors staged at the task level for the Apply-to-all flow.
 // These are committed to task.startAnchor / task.endAnchor on Save (via window.__pendingApplyToRoadmaps).
 window.__pendingTaskStartAnchor = '';
