@@ -446,13 +446,13 @@
   .cal-year-months-bg {
     display: grid; grid-template-columns: repeat(12, 1fr);
     grid-column: 2;
+    position: relative;
   }
   .cal-year-month-bg { border-left: 1px solid #f3f1ed; }
   .cal-year-month-bg.alt { background: #fafaf7; }
   .cal-year-today-line {
     position: absolute; top: 0; bottom: 0;
     width: 0; border-left: 2px solid #dc2626;
-    margin-left: 220px;
     pointer-events: none;
     z-index: 3;
   }
@@ -484,6 +484,17 @@
   }
   .cal-year-bar:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.18); z-index: 5; }
   .cal-year-bar.cal-event-group { font-weight: 700; line-height: 18px; padding: 0 8px; }
+  .cal-year-bar .cal-group-toggle-y {
+    display: inline-flex; width: 14px; height: 14px;
+    margin-right: 4px; vertical-align: middle;
+    align-items: center; justify-content: center;
+    border: none; background: rgba(255,255,255,0.55);
+    color: inherit; font-size: 8.5px; line-height: 1; font-weight: 700;
+    border-radius: 3px; cursor: pointer; padding: 0;
+    transition: background .12s, transform .15s;
+  }
+  .cal-year-bar .cal-group-toggle-y:hover { background: rgba(255,255,255,0.95); }
+  .cal-year-bar .cal-group-toggle-y.expanded { transform: rotate(90deg); }
   /* Side toggle (collapse Unscheduled/Archived sidebar) */
   .cal-side-toggle {
     appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a;
@@ -1637,9 +1648,48 @@
   }
   .profile-rm-card .rm-role-pill.owner { background: #1a1a1a; color: #fff; }
   .profile-rm-card .rm-role-pill.assigned { background: #f0efeb; color: #6b6b6b; }
+  .mini-7day-wrap {
+    position: relative;
+  }
   .mini-7day {
     display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 4px; margin-bottom: 0;
+  }
+  .mini-7day-events-overlay {
+    position: absolute;
+    left: 0; right: 0;
+    top: 38px;
+    pointer-events: none;
+    z-index: 4;
+  }
+  .mini-7day-events-overlay .mini-event-bar {
+    position: absolute;
+    height: 16px;
+    border-radius: 4px;
+    padding: 0 5px;
+    font-size: 9.5px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    pointer-events: auto;
+    box-sizing: border-box;
+    transition: transform .1s, box-shadow .1s;
+  }
+  .mini-7day-events-overlay .mini-event-bar:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,.18);
+    z-index: 6;
+  }
+  .mini-7day-events-overlay .mini-event-bar.is-group { font-style: italic; opacity: 0.95; }
+  .mini-7day-events-overlay .mini-event-bar.is-kid {
+    height: 14px; line-height: 14px;
+    font-size: 9px;
+    opacity: 0.92;
+    box-shadow: inset 2px 0 0 rgba(255,255,255,0.45);
   }
   .mini-7day .mini-day {
     background: #fff; border: 1px solid #ececea; border-radius: 8px;
@@ -1704,35 +1754,18 @@
     opacity: 0.92;
     box-shadow: inset 2px 0 0 rgba(255,255,255,0.45);
   }
-  /* Profile roadmap card: group expand chips */
-  .profile-rm-card .profile-rm-groups {
-    display: flex; flex-wrap: wrap; gap: 4px;
-    padding: 6px 0 4px;
-    border-top: 1px dashed #f0efeb;
-    margin-top: 6px;
+  /* Profile roadmap card: inline group expand chevron inside mini-event */
+  .mini-7day .mini-day .mini-event-caret {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 11px; height: 11px;
+    border: none; background: rgba(255,255,255,0.5);
+    color: inherit; font-size: 7px; font-weight: 700; line-height: 1;
+    border-radius: 2px; cursor: pointer; padding: 0; margin-right: 3px;
+    vertical-align: middle;
+    transition: background .12s, transform .15s;
   }
-  .profile-rm-card .profile-rm-group-toggle {
-    display: inline-flex; align-items: center; gap: 5px;
-    border: 1px solid #fde68a; background: #fffbeb;
-    color: #92400e;
-    padding: 2px 8px 2px 6px;
-    border-radius: 999px;
-    font-size: 10.5px; font-weight: 600;
-    cursor: pointer; font-family: inherit;
-    transition: background .12s, border-color .12s, transform .12s;
-  }
-  .profile-rm-card .profile-rm-group-toggle:hover { background: #fef3c7; border-color: #fcd34d; }
-  .profile-rm-card .profile-rm-group-toggle.expanded { background: #fef3c7; border-color: #d97706; }
-  .profile-rm-card .profile-rm-group-toggle .prgt-caret {
-    font-size: 8.5px; display: inline-flex; align-items: center; justify-content: center;
-    width: 10px; transition: transform .15s;
-  }
-  .profile-rm-card .profile-rm-group-toggle.expanded .prgt-caret { transform: rotate(90deg); }
-  .profile-rm-card .profile-rm-group-toggle .prgt-name { white-space: nowrap; }
-  .profile-rm-card .profile-rm-group-toggle .prgt-count {
-    background: rgba(146,64,14,0.15); padding: 0 5px; border-radius: 999px;
-    font-size: 9.5px; font-weight: 700; min-width: 14px; text-align: center;
-  }
+  .mini-7day .mini-day .mini-event-caret:hover { background: rgba(255,255,255,0.9); }
+  .mini-7day .mini-day .mini-event-caret.expanded { transform: rotate(90deg); }
   .profile-rm-card .rm-task-row {
     display: flex; align-items: center; gap: 8px; padding: 6px 0;
     border-top: 1px solid #f0efeb; font-size: 12.5px;
@@ -2604,7 +2637,6 @@
         <option value="Responsability">Responsability</option><option value="Request">Request</option>
         <option value="ERROR">ERROR</option><option value="Infinite">Infinite</option>
       </select></div>
-      <div class="field"><label>Due date</label><input type="date" id="f_dueDate"></div>
     </div>
     <div class="field-row f_taskOnlyRow">
       <div class="field"><label>Responsible</label><select id="f_responsibleId"></select></div>
@@ -2635,25 +2667,25 @@
       <div class="checkbox-field"><input type="checkbox" id="f_sharing"><label for="f_sharing" style="margin:0">Sharing on</label></div>
     </div>
     <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
-    <div class="field">
+    <div class="field" id="f_roadmapsField">
       <label>Roadmaps</label>
       <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
       <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
       <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap.</div>
-    </div>
-    <div class="field f_taskOnlyRow" id="f_taskDatesField">
-      <label>Schedule (synced with roadmaps)</label>
-      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
-        <span style="font-size:11px; color:#6b6b6b">Start</span>
-        <input type="date" id="f_taskStart" style="width:160px">
-        <span style="font-size:11px; color:#6b6b6b">End</span>
-        <input type="date" id="f_taskEnd" style="width:160px">
-        <span style="font-size:11px; color:#6b6b6b">or</span>
-        <input type="number" id="f_taskDuration" min="1" step="1" placeholder="N" style="width:62px" title="Duration in days (inclusive) — sets End = Start + N − 1 days">
-        <span style="font-size:11px; color:#6b6b6b">days</span>
-        <button type="button" id="f_taskApplyDates" class="btn primary" style="font-size:12px; padding:5px 12px" disabled>Apply to roadmaps</button>
+      <div class="f_taskOnlyRow" id="f_taskDatesField" style="margin-top:12px; padding-top:10px; border-top:1px dashed #ececea">
+        <div style="font-size:11px; color:#6b6b6b; font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px">Schedule (synced from roadmaps)</div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+          <span style="font-size:11px; color:#6b6b6b">Start</span>
+          <input type="date" id="f_taskStart" style="width:160px">
+          <span style="font-size:11px; color:#6b6b6b">End</span>
+          <input type="date" id="f_taskEnd" style="width:160px">
+          <span style="font-size:11px; color:#6b6b6b">or</span>
+          <input type="number" id="f_taskDuration" min="1" step="1" placeholder="N" style="width:62px" title="Duration in days (inclusive) — sets End = Start + N − 1 days">
+          <span style="font-size:11px; color:#6b6b6b">days</span>
+          <button type="button" id="f_taskApplyDates" class="btn primary" style="font-size:12px; padding:5px 12px" disabled>Apply to roadmaps</button>
+        </div>
+        <div style="font-size:11px; color:#6b6b6b; margin-top:4px" id="f_taskDatesHint">These dates are auto-derived from the roadmap entries above (min start / max end across all). Edit values + click <strong>Apply</strong> to push them down to every assigned roadmap. Use the 📌 pin on each roadmap row above to anchor a single roadmap to another task's start/end.</div>
       </div>
-      <div style="font-size:11px; color:#6b6b6b; margin-top:4px" id="f_taskDatesHint">Auto-computed from roadmaps: earliest start (when all have one) and latest end (when all have one). Edit a value here and click <strong>Apply</strong> to push it to every assigned roadmap.</div>
     </div>
     <div class="field f_taskOnlyRow"><label>Task tags</label>
       <div id="f_taskTagsContainer" class="person-modal-tags"></div>
@@ -4143,7 +4175,6 @@ function openModal(tid, overrides) {
   document.getElementById("f_slackStatus").value = t.slackStatus || "";
   document.getElementById("f_priority").value = t.priority || "";
   document.getElementById("f_type").value = t.type || "";
-  document.getElementById("f_dueDate").value = t.dueDate || "";
   document.getElementById("f_responsibleId").value = t.responsibleId || "";
   // Proposed By: support new array model + legacy single id
   proposedSelectedIds = Array.isArray(t.proposedByIds) && t.proposedByIds.length > 0
@@ -4232,7 +4263,6 @@ document.getElementById("saveBtn").addEventListener("click", () => {
     t.slackStatus = document.getElementById("f_slackStatus").value;
     t.priority = document.getElementById("f_priority").value;
     t.type = document.getElementById("f_type").value;
-    t.dueDate = document.getElementById("f_dueDate").value;
     t.responsibleId = document.getElementById("f_responsibleId").value;
     t.proposedByIds = [...proposedSelectedIds];
     // Keep legacy single-id field in sync (first selected) for backward compat
@@ -5286,9 +5316,10 @@ function toggleWorkedOverride(dateStr) {
 let roadmapCalState = {
   yearMonth: null,
   hideWeekends: localStorage.getItem("bookline-rm-hide-weekends") === "true",
-  viewMode: (localStorage.getItem("bookline-rm-view-mode") || "month"),    // "month" | "week" | "year"
+  viewMode: (localStorage.getItem("bookline-rm-view-mode") || "month"),    // "month" | "week" | "year" | "6m"
   weekStart: null,                                                          // Monday of the visible week (Date or null)
   year: null,                                                               // currently-shown year (number) for year view
+  halfYearAnchor: null,                                                     // Date (first-of-month) anchoring the 6-month view
   sideHidden: localStorage.getItem("bookline-rm-side-hidden") === "true",   // collapse the Unscheduled/Archived sidebar
 };
 // Helper: snap a Date to the Monday of its week (Monday-first ISO style)
@@ -5688,10 +5719,12 @@ function renderRoadmapCalendar(roadmapId) {
     "Archived": "#a98c5a", "Discarded": "#9a9a9a"
   };
 
-  // Compute calendar range based on viewMode ('month', 'week', 'year').
+  // Compute calendar range based on viewMode ('month', 'week', 'year', '6m').
   let viewMode = roadmapCalState.viewMode;
-  if (viewMode !== 'week' && viewMode !== 'year') viewMode = 'month';
+  if (viewMode !== 'week' && viewMode !== 'year' && viewMode !== '6m') viewMode = 'month';
   let firstOfMonth, lastOfMonth, gridStart, totalWeeks, startWeekday, lastWeekday;
+  // halfYear range info used inside the year/6m rendering block
+  let halfYearStartDate = null, halfYearMonthCount = 6;
   if (viewMode === 'week') {
     if (!roadmapCalState.weekStart) roadmapCalState.weekStart = bnMondayOf(new Date());
     const wkStart = bnMondayOf(roadmapCalState.weekStart);
@@ -5714,6 +5747,22 @@ function renderRoadmapCalendar(roadmapId) {
     startWeekday = 0;
     lastWeekday = 6;
     totalWeeks = 0;   // year view doesn't render the weekly grid
+  } else if (viewMode === '6m') {
+    if (!roadmapCalState.halfYearAnchor) {
+      const t = new Date();
+      roadmapCalState.halfYearAnchor = new Date(t.getFullYear(), t.getMonth(), 1);
+    }
+    const anchor = new Date(roadmapCalState.halfYearAnchor);
+    anchor.setDate(1); anchor.setHours(0,0,0,0);
+    halfYearStartDate = anchor;
+    firstOfMonth = anchor;
+    const endMonth = new Date(anchor.getFullYear(), anchor.getMonth() + 6, 0);   // last day of the 6th month
+    endMonth.setHours(0,0,0,0);
+    lastOfMonth = endMonth;
+    gridStart = firstOfMonth;
+    startWeekday = 0;
+    lastWeekday = 6;
+    totalWeeks = 0;   // 6m view doesn't render the weekly grid
   } else {
     firstOfMonth = new Date(ym.year, ym.month, 1);
     lastOfMonth = new Date(ym.year, ym.month + 1, 0);
@@ -5781,13 +5830,42 @@ function renderRoadmapCalendar(roadmapId) {
   } else if (viewMode === 'year') {
     periodLabel = String(roadmapCalState.year);
     atStart = rmStart ? (roadmapCalState.year <= rmStart.getFullYear()) : false;
+  } else if (viewMode === '6m') {
+    const a = halfYearStartDate;
+    const endMonthIdx = (a.getMonth() + 5) % 12;
+    const endYear = a.getFullYear() + Math.floor((a.getMonth() + 5) / 12);
+    const sameYear = a.getFullYear() === endYear;
+    if (sameYear) {
+      periodLabel = monthNames[a.getMonth()].slice(0,3) + ' – ' + monthNames[endMonthIdx].slice(0,3) + ' ' + a.getFullYear();
+    } else {
+      periodLabel = monthNames[a.getMonth()].slice(0,3) + ' ' + a.getFullYear() + ' – ' + monthNames[endMonthIdx].slice(0,3) + ' ' + endYear;
+    }
+    if (rmStart) {
+      const rmS = new Date(rmStart.getFullYear(), rmStart.getMonth(), 1);
+      atStart = a.getTime() <= rmS.getTime();
+    }
   } else {
     periodLabel = monthNames[ym.month] + ' ' + ym.year;
     atStart = rmStart ? (ym.year < rmStart.getFullYear() ||
                          (ym.year === rmStart.getFullYear() && ym.month <= rmStart.getMonth())) : false;
   }
-  const prevTitle = atStart ? "At roadmap start — can't go further back" : (viewMode === 'week' ? 'Previous week' : (viewMode === 'year' ? 'Previous year' : 'Previous month'));
-  const nextTitle = viewMode === 'week' ? 'Next week' : (viewMode === 'year' ? 'Next year' : 'Next month');
+  const prevTitle = atStart ? "At roadmap start — can't go further back" : (
+    viewMode === 'week' ? 'Previous week' :
+    viewMode === 'year' ? 'Previous year' :
+    viewMode === '6m'   ? 'Previous month' :
+    'Previous month'
+  );
+  const nextTitle = (
+    viewMode === 'week' ? 'Next week' :
+    viewMode === 'year' ? 'Next year' :
+    viewMode === '6m'   ? 'Next month' :
+    'Next month'
+  );
+  // "Collapse all / Expand all" — toggles every group's expansion in the global bn-group-expanded map
+  function getAllGroupIds() { return (STORE.tasks||[]).filter(t => t.isGroup).map(g => g.id); }
+  const anyGroupExpanded = getAllGroupIds().some(g => isGroupExpanded(g));
+  const collapseAllLabel = anyGroupExpanded ? '⊟ Collapse all' : '⊞ Expand all';
+  const collapseAllTitle = anyGroupExpanded ? 'Collapse every group' : 'Expand every group';
   html += '<div class="cal-toolbar">' +
     '<div class="cal-nav-group">' +
       '<button class="cal-nav-btn" id="calPrev" title="' + prevTitle + '"' + (atStart ? ' disabled' : '') + '>‹</button>' +
@@ -5796,22 +5874,35 @@ function renderRoadmapCalendar(roadmapId) {
     '</div>' +
     '<div class="cal-month-label">' + periodLabel + '</div>' +
     '<div class="cal-view-toggle" role="group" aria-label="View mode">' +
-      '<button type="button" class="cal-view-btn ' + (viewMode === 'month' ? 'active' : '') + '" id="calViewMonth" title="Month view">Month</button>' +
       '<button type="button" class="cal-view-btn ' + (viewMode === 'week'  ? 'active' : '') + '" id="calViewWeek"  title="Week view">Week</button>' +
+      '<button type="button" class="cal-view-btn ' + (viewMode === 'month' ? 'active' : '') + '" id="calViewMonth" title="Month view">Month</button>' +
       '<button type="button" class="cal-view-btn ' + (viewMode === 'year'  ? 'active' : '') + '" id="calViewYear"  title="Year view">Year</button>' +
     '</div>' +
-    (viewMode === 'year' ? '' : '<label class="cal-toggle"><input type="checkbox" id="calHideWeekends" ' + (roadmapCalState.hideWeekends ? "checked" : "") + '> <span>Hide weekends</span></label>') +
+    '<button type="button" class="cal-view-btn cal-view-6m' + (viewMode === '6m' ? ' active' : '') + '" id="calView6m" title="6-month rolling view" style="margin-left:8px">6 months</button>' +
+    ((viewMode === 'year' || viewMode === '6m') ? '' : '<label class="cal-toggle"><input type="checkbox" id="calHideWeekends" ' + (roadmapCalState.hideWeekends ? "checked" : "") + '> <span>Hide weekends</span></label>') +
+    '<button type="button" class="cal-view-btn" id="calCollapseAll" title="' + collapseAllTitle + '" style="margin-left:6px">' + collapseAllLabel + '</button>' +
     (hasSideContent
       ? '<button type="button" class="cal-side-toggle" id="calSideToggle" title="' + (roadmapCalState.sideHidden ? 'Show Unscheduled/Archived sidebar' : 'Hide sidebar (calendar full width)') + '">' + (roadmapCalState.sideHidden ? '⏴ Show side' : 'Hide side ⏵') + '</button>'
       : '') +
     '</div>';
 
-  if (viewMode === 'year') {
-    // Year view: horizontal Gantt — rows of tasks against 12-month axis.
+  if (viewMode === 'year' || viewMode === '6m') {
+    // Year/6m view: horizontal Gantt — rows of tasks against an N-month axis.
     const Y = roadmapCalState.year;
     const yearStartMs = firstOfMonth.getTime();
     const yearEndMs = lastOfMonth.getTime();
     const daysInYear = Math.round((yearEndMs - yearStartMs) / DAY_MS) + 1;
+    // Number of month columns and their start dates (proportional widths by days-in-month)
+    const monthCount = (viewMode === '6m') ? 6 : 12;
+    const monthStarts = [];
+    const monthDays   = [];
+    for (let mi = 0; mi < monthCount; mi++) {
+      const ms = new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth() + mi, 1);
+      const me = new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth() + mi + 1, 0);
+      monthStarts.push(ms);
+      monthDays.push(me.getDate());   // days in this month
+    }
+    const monthsGridTemplate = monthDays.map(d => d + 'fr').join(' ');
     // Convert hex to translucent rgba
     function _toRgba(hex, a) {
       const h = (hex && hex.length === 4) ? ('#' + hex[1]+hex[1]+hex[2]+hex[2]+hex[3]+hex[3]) : hex;
@@ -5838,6 +5929,8 @@ function renderRoadmapCalendar(roadmapId) {
         orderedRows.push({ ev: e, depth: 0 });
         seen.add(e.task.id);
         if (e.task.isGroup) {
+          // Hide kids when the group is collapsed in the global expansion map
+          if (!isGroupExpanded(e.task.id)) return;
           const kids = (childrenByParent[e.task.id] || []).slice().sort((x, y) => (x.start - y.start) || (x.task.subject || '').localeCompare(y.task.subject || ''));
           kids.forEach(c => { if (!seen.has(c.task.id)) { orderedRows.push({ ev: c, depth: 1 }); seen.add(c.task.id); } });
         }
@@ -5847,13 +5940,15 @@ function renderRoadmapCalendar(roadmapId) {
     html += '<div class="cal-year">';
     html += '<div class="cal-year-headers">' +
               '<div class="cal-year-label-spacer"></div>' +
-              '<div class="cal-year-months">';
-    for (let mi = 0; mi < 12; mi++) {
-      html += '<div class="cal-year-month-cell">' + monthNames[mi].slice(0,3) + '</div>';
+              '<div class="cal-year-months" style="grid-template-columns: ' + monthsGridTemplate + '">';
+    for (let mi = 0; mi < monthCount; mi++) {
+      const ms = monthStarts[mi];
+      const lbl = monthNames[ms.getMonth()].slice(0,3) + (viewMode === '6m' ? ' ' + String(ms.getFullYear()).slice(2) : '');
+      html += '<div class="cal-year-month-cell">' + lbl + '</div>';
     }
     html += '</div></div>';
 
-    // Rows wrapper (today line spans full height absolutely)
+    // Rows wrapper (today line spans full height absolutely INSIDE the months-bg so the % is relative to the months area only)
     let todayLineYearHtml = '';
     const yearToday = new Date(); yearToday.setHours(0,0,0,0);
     if (yearToday.getTime() >= yearStartMs && yearToday.getTime() <= yearEndMs) {
@@ -5862,15 +5957,15 @@ function renderRoadmapCalendar(roadmapId) {
       todayLineYearHtml = '<div class="cal-year-today-line" style="left:calc(' + leftPct + '% )"></div>';
     }
     html += '<div class="cal-year-rows-wrap">';
-    html += '<div class="cal-year-track-bg"><div class="cal-year-months-bg">';
-    for (let mi = 0; mi < 12; mi++) {
+    html += '<div class="cal-year-track-bg"><div class="cal-year-months-bg" style="grid-template-columns: ' + monthsGridTemplate + '">';
+    for (let mi = 0; mi < monthCount; mi++) {
       html += '<div class="cal-year-month-bg' + (mi % 2 ? ' alt' : '') + '"></div>';
     }
-    html += '</div>' + todayLineYearHtml + '</div>';
+    html += todayLineYearHtml + '</div></div>';
     html += '<div class="cal-year-rows">';
 
     if (orderedRows.length === 0) {
-      html += '<div class="rm-empty" style="margin:14px">No scheduled tasks in ' + Y + '.</div>';
+      html += '<div class="rm-empty" style="margin:14px">No scheduled tasks in ' + (viewMode === '6m' ? 'this range' : Y) + '.</div>';
     } else {
       orderedRows.forEach(row => {
         const ev = row.ev;
@@ -5892,11 +5987,16 @@ function renderRoadmapCalendar(roadmapId) {
         const continuesLeft  = ev.start.getTime() < yearStartMs;
         const continuesRight = ev.end.getTime()   > yearEndMs;
         const labelText = (row.depth ? '· ' : (isG ? '📁 ' : '')) + ev.task.subject;
+        // Group chevron toggle inline at the start of the bar — uses the global bn-group-expanded map
+        const gExpanded = isG ? isGroupExpanded(ev.task.id) : false;
+        const chevHtml = isG
+          ? '<button type="button" class="cal-group-toggle-y' + (gExpanded ? ' expanded' : '') + '" data-gid="' + ev.task.id + '" title="' + (gExpanded ? 'Collapse group' : 'Expand group') + '">▶</button>'
+          : '';
         html += '<div class="cal-year-row' + (row.depth ? ' is-child' : '') + (isG ? ' is-group' : '') + '" data-tid="' + ev.task.id + '">' +
           '<div class="cal-year-label" title="' + escapeHtml(ev.task.subject) + '" style="padding-left:' + (8 + row.depth * 14) + 'px">' + escapeHtml(labelText.slice(0,42)) + (labelText.length>42?'…':'') + '</div>' +
           '<div class="cal-year-track">' +
             '<div class="cal-event cal-year-bar' + (isG ? ' cal-event-group' : '') + '" data-tid="' + ev.task.id + '" title="' + escapeHtml(ev.task.subject + ' — ' + (ev.entry.startDate||'?') + ' → ' + (ev.entry.endDate||'?')) + '" style="left:' + leftPct + '%; width:' + widthPct + '%; ' + barStyle + '">' +
-              (continuesLeft ? '◂ ' : '') + escapeHtml(ev.task.subject) + (continuesRight ? ' ▸' : '') +
+              chevHtml + (continuesLeft ? '◂ ' : '') + escapeHtml(ev.task.subject) + (continuesRight ? ' ▸' : '') +
             '</div>' +
           '</div>' +
         '</div>';
@@ -6311,6 +6411,14 @@ function renderRoadmapCalendar(roadmapId) {
       let y = roadmapCalState.year - 1;
       if (rmStart && y < rmStart.getFullYear()) y = rmStart.getFullYear();
       roadmapCalState.year = y;
+    } else if (viewMode === '6m') {
+      const a = new Date(halfYearStartDate);
+      const next = new Date(a.getFullYear(), a.getMonth() - 1, 1);
+      if (rmStart) {
+        const rmFirst = new Date(rmStart.getFullYear(), rmStart.getMonth(), 1);
+        if (next.getTime() < rmFirst.getTime()) roadmapCalState.halfYearAnchor = rmFirst;
+        else roadmapCalState.halfYearAnchor = next;
+      } else roadmapCalState.halfYearAnchor = next;
     } else {
       let m = ym.month - 1, y = ym.year;
       if (m < 0) { m = 11; y--; }
@@ -6327,6 +6435,9 @@ function renderRoadmapCalendar(roadmapId) {
       roadmapCalState.weekStart = next;
     } else if (viewMode === 'year') {
       roadmapCalState.year = roadmapCalState.year + 1;
+    } else if (viewMode === '6m') {
+      const a = new Date(halfYearStartDate);
+      roadmapCalState.halfYearAnchor = new Date(a.getFullYear(), a.getMonth() + 1, 1);
     } else {
       let m = ym.month + 1, y = ym.year;
       if (m > 11) { m = 0; y++; }
@@ -6340,6 +6451,8 @@ function renderRoadmapCalendar(roadmapId) {
       roadmapCalState.weekStart = bnMondayOf(t);
     } else if (viewMode === 'year') {
       roadmapCalState.year = t.getFullYear();
+    } else if (viewMode === '6m') {
+      roadmapCalState.halfYearAnchor = new Date(t.getFullYear(), t.getMonth(), 1);
     } else {
       roadmapCalState.yearMonth = { year: t.getFullYear(), month: t.getMonth() };
     }
@@ -6379,6 +6492,27 @@ function renderRoadmapCalendar(roadmapId) {
     }
     renderRoadmapCalendar(roadmapId);
   });
+  const v6mBtn = document.getElementById('calView6m');
+  if (v6mBtn) v6mBtn.addEventListener('click', () => {
+    if (roadmapCalState.viewMode === '6m') return;
+    roadmapCalState.viewMode = '6m';
+    localStorage.setItem('bookline-rm-view-mode', '6m');
+    if (!roadmapCalState.halfYearAnchor) {
+      const t = new Date();
+      roadmapCalState.halfYearAnchor = new Date(t.getFullYear(), t.getMonth(), 1);
+    }
+    renderRoadmapCalendar(roadmapId);
+  });
+  // Collapse-all / Expand-all toggle — operates on the global bn-group-expanded map
+  const collapseAllBtn = document.getElementById('calCollapseAll');
+  if (collapseAllBtn) collapseAllBtn.addEventListener('click', () => {
+    const allGids = (STORE.tasks || []).filter(t => t.isGroup).map(g => g.id);
+    const anyExpanded = allGids.some(g => isGroupExpanded(g));
+    const m = (function(){ try { return JSON.parse(localStorage.getItem('bn-group-expanded')) || {}; } catch(_) { return {}; } })();
+    allGids.forEach(g => { m[g] = !anyExpanded; });
+    localStorage.setItem('bn-group-expanded', JSON.stringify(m));
+    renderRoadmapCalendar(roadmapId);
+  });
   // Side toggle (hide/show Unscheduled + Archived sidebar)
   const sideToggleBtn = document.getElementById('calSideToggle');
   if (sideToggleBtn) sideToggleBtn.addEventListener('click', () => {
@@ -6402,13 +6536,22 @@ function renderRoadmapCalendar(roadmapId) {
     closeCalEventPopover();
     renderRoadmapCalendar(roadmapId);
   }
-  // Chevron toggle inside group bars
+  // Chevron toggle inside group bars (month/week view — local per-roadmap expansion)
   cont.querySelectorAll('.cal-group-toggle').forEach(btn => {
     btn.addEventListener('click', e => {
       e.preventDefault();
       e.stopPropagation();
       const gid = btn.dataset.groupToggle;
       if (gid) toggleGroupExpanded(gid);
+    });
+  });
+  // Chevron toggle inside YEAR/6m group bars — uses the GLOBAL bn-group-expanded map
+  cont.querySelectorAll('.cal-event-group .cal-group-toggle-y, .cal-year-bar .cal-group-toggle-y').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const gid = btn.dataset.gid || btn.closest('[data-tid]')?.dataset.tid;
+      if (gid) { window.toggleGroupExpanded(gid); renderRoadmapCalendar(roadmapId); }
     });
   });
   // "+N more" pill — click to expand group
@@ -6424,6 +6567,7 @@ function renderRoadmapCalendar(roadmapId) {
     node.addEventListener('click', e => {
       // Don't open the date popover if the chevron toggle was clicked
       if (e.target.closest('.cal-group-toggle')) return;
+      if (e.target.closest('.cal-group-toggle-y')) return;
       e.stopPropagation();
       const tid = node.dataset.tid;
       const entry = (r.tasks || []).find(en => en.taskId === tid);
@@ -7717,22 +7861,8 @@ function renderProfileRoadmapCard(rm, personId) {
   html += '</div>';
   html += '<span class="rm-meta">' + personTaskEntries.length + ' task' + (personTaskEntries.length===1?'':'s') + '</span>';
   html += '</div>';
-  // Toggle chips for any groups present (lets the user reveal subtasks in the mini calendar below)
-  if (personGroupsInRm.length > 0) {
-    html += '<div class="profile-rm-groups">';
-    personGroupsInRm.forEach(g => {
-      const key = rm.id + '|' + g.id;
-      const exp = !!window.__profileGroupExp[key];
-      const childCount = (STORE.tasks || []).filter(t => !t.isGroup && t.groupId === g.id).length;
-      html += '<button type="button" class="profile-rm-group-toggle' + (exp ? ' expanded' : '') + '" data-rmid="' + escapeHtml(rm.id) + '" data-gid="' + escapeHtml(g.id) + '" title="' + (exp ? 'Hide subtasks of this group' : 'Show subtasks of this group') + '">' +
-        '<span class="prgt-caret">▶</span>' +
-        '<span class="prgt-name">📁 ' + escapeHtml((g.subject || '(unnamed)').slice(0,28)) + '</span>' +
-        (childCount > 0 ? '<span class="prgt-count">' + childCount + '</span>' : '') +
-      '</button>';
-    });
-    html += '</div>';
-  }
-  // Mini 7-day calendar
+  // Mini 7-day calendar — wrapper holds day cells + absolute overlay so multi-day bars span continuously
+  html += '<div class="mini-7day-wrap">';
   html += '<div class="mini-7day">';
   days.forEach((d, idx) => {
     const wd = d.getDay();
@@ -7753,29 +7883,64 @@ function renderProfileRoadmapCard(rm, personId) {
     if (hol && !worked) {
       html += '<div class="mini-hol" title="' + escapeHtml(hol) + '">' + escapeHtml(hol) + '</div>';
     }
-    // Events for this day — person's own tasks first, then children of expanded groups
-    function paintEvent(entry, task, isKid) {
-      const start = parseDate(entry.startDate);
-      const end = parseDate(entry.endDate) || (start ? new Date(2099,11,31) : null);
-      if (!start) return;
-      if (d >= start && d <= end) {
-        const color = statusColors[task.slackStatus] || '#94a3b8';
-        const isG = !!task.isGroup;
-        const cls = 'mini-event' + (isG ? ' is-group' : '') + (isKid ? ' is-kid' : '');
-        const label = (isG ? '📁 ' : (isKid ? '· ' : '')) + task.subject;
-        html += '<div class="' + cls + '" style="background:' + color + '" title="' + escapeHtml(label) + '" data-tid="' + task.id + '">' + escapeHtml(label) + '</div>';
-      }
-    }
-    personTaskEntries.forEach(entry => {
-      const t = STORE.tasks.find(x => x.id === entry.taskId);
-      if (!t) return;
-      paintEvent(entry, t, false);
-    });
-    expandedKidEntries.forEach(({ entry, task }) => paintEvent(entry, task, true));
-    html += '</div>';
+    html += '</div>';   // .mini-day
   });
-  html += '</div>';
-  html += '</div>';
+  html += '</div>';   // .mini-7day (grid of day cells)
+  // ----- Continuous events overlay: spans days as single bars, no gap breaks -----
+  // Build the list of (entry, task, isKid) tuples that should be drawn this week.
+  const overlayEvents = [];
+  personTaskEntries.forEach(entry => {
+    const t = STORE.tasks.find(x => x.id === entry.taskId);
+    if (!t) return;
+    overlayEvents.push({ entry, task: t, isKid: false });
+  });
+  expandedKidEntries.forEach(({ entry, task }) => overlayEvents.push({ entry, task, isKid: true }));
+  // Compute each event's startIdx (0..6) and span (1..7) within the visible 7-day window.
+  const weekStartDay = days[0];
+  const weekEndDay   = days[6];
+  const positioned = [];
+  overlayEvents.forEach(({ entry, task, isKid }) => {
+    const start = parseDate(entry.startDate);
+    const end   = parseDate(entry.endDate) || (start ? new Date(2099,11,31) : null);
+    if (!start) return;
+    if (end < weekStartDay || start > weekEndDay) return;
+    const clipStart = start < weekStartDay ? weekStartDay : start;
+    const clipEnd   = end   > weekEndDay   ? weekEndDay   : end;
+    const startIdx = Math.round((clipStart - weekStartDay) / DAY_MS);
+    const span = Math.round((clipEnd - clipStart) / DAY_MS) + 1;
+    if (span < 1) return;
+    positioned.push({ entry, task, isKid, startIdx, span });
+  });
+  // Lane assignment — stack overlapping bars vertically.
+  positioned.sort((a, b) => (a.startIdx - b.startIdx) || (b.span - a.span));
+  const lanes = [];
+  positioned.forEach(p => {
+    let lane = 0;
+    while (lanes[lane] && lanes[lane].some(o => p.startIdx < o.startIdx + o.span && o.startIdx < p.startIdx + p.span)) lane++;
+    if (!lanes[lane]) lanes[lane] = [];
+    lanes[lane].push(p);
+    p.lane = lane;
+  });
+  const LANE_H = 18;   // matches CSS height 16 + 2 gap
+  const overlayHeight = lanes.length * LANE_H;
+  html += '<div class="mini-7day-events-overlay" style="height:' + overlayHeight + 'px">';
+  positioned.forEach(p => {
+    const { entry, task, isKid, startIdx, span, lane } = p;
+    const color = statusColors[task.slackStatus] || '#94a3b8';
+    const isG = !!task.isGroup;
+    const cls = 'mini-event-bar' + (isG ? ' is-group' : '') + (isKid ? ' is-kid' : '');
+    const leftPct  = (startIdx / 7) * 100;
+    const widthPct = (span     / 7) * 100;
+    const labelText = (isKid ? '· ' : '') + task.subject;
+    const chev = isG
+      ? '<button type="button" class="mini-event-caret' + (window.__profileGroupExp[rm.id + '|' + task.id] ? ' expanded' : '') + '" data-rmid="' + escapeHtml(rm.id) + '" data-gid="' + escapeHtml(task.id) + '" title="Toggle subtasks">▶</button>'
+      : '';
+    const top = lane * LANE_H;
+    html += '<div class="' + cls + '" style="background:' + color + '; left:calc(' + leftPct + '% + 2px); width:calc(' + widthPct + '% - 4px); top:' + top + 'px" title="' + escapeHtml(labelText) + '" data-tid="' + task.id + '">' + chev + escapeHtml(labelText) + '</div>';
+  });
+  html += '</div>';   // .mini-7day-events-overlay
+  html += '</div>';   // .mini-7day-wrap
+  html += '</div>';   // .profile-rm-card
   return html;
 }
 
@@ -7916,23 +8081,22 @@ function wireProfileTasks() {
     });
   });
 
-  document.querySelectorAll('#profilePageContent .profile-rm-card .mini-event').forEach(node => {
+  // Mini event bars (continuous overlay) — click to open task; the chevron has its own handler below.
+  document.querySelectorAll('#profilePageContent .profile-rm-card .mini-event-bar').forEach(node => {
     node.addEventListener("click", e => {
+      if (e.target.closest('.mini-event-caret')) return;
       e.stopPropagation();
       if (node.dataset.tid) openModal(node.dataset.tid);
     });
   });
-  // Group toggle chips in profile rm-cards — show/hide subtasks in the 7-day mini calendar
-  document.querySelectorAll('#profilePageContent .profile-rm-group-toggle').forEach(btn => {
-    btn.addEventListener("click", e => {
+  // Inline group expand chevrons inside mini-event bars — toggle the per-roadmap profile-group expansion
+  document.querySelectorAll('#profilePageContent .profile-rm-card .mini-event-caret').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
       e.stopPropagation();
-      const rmId = btn.dataset.rmid;
-      const gid = btn.dataset.gid;
-      if (!rmId || !gid) return;
       if (!window.__profileGroupExp) window.__profileGroupExp = {};
-      const key = rmId + '|' + gid;
-      window.__profileGroupExp[key] = !window.__profileGroupExp[key];
-      // Re-render the profile page to reflect the change
+      const k = btn.dataset.rmid + '|' + btn.dataset.gid;
+      window.__profileGroupExp[k] = !window.__profileGroupExp[k];
       if (typeof renderProfilePage === 'function') renderProfilePage();
     });
   });
