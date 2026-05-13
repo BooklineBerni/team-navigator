@@ -637,6 +637,9 @@
   .rm-add-actions .selected-count { font-size: 12px; color: #6b6b6b; }
   /* Roadmap badge on tasks */
   .badge.roadmap-badge { background: #e0e7ff; color: #3730a3; }
+  .badge.roadmap-badge.scheduled { background: #d1fadf; color: #047857; }
+  .badge.roadmap-badge.partial   { background: #fef3c7; color: #92400e; }
+  .badge.roadmap-badge .rm-dates { opacity: 0.85; font-weight: 600; margin-left: 4px; }
 
 
   /* Roadmap page — full viewport, no outer scroll */
@@ -3695,7 +3698,7 @@ function taskHtml(t) {
   if (t._pendingSync) badges.push('<span class="badge pending-sync">No sync</span>');
   // Roadmap badges
   getTaskRoadmaps(t.id).forEach(rm => {
-    badges.push('<span class="badge roadmap-badge" title="In roadmap: ' + escapeHtml(rm.name||'') + '">📍 ' + escapeHtml((rm.name||'').slice(0,18)) + '</span>');
+    badges.push(roadmapBadgeHtml(t.id, rm));
   });
   // Task tags (ordered by library order, then any extras at end)
   const lib = getTaskTagLibrary();
@@ -7636,7 +7639,7 @@ function flatTaskHtml(t) {
   if (t.dueDate) badges.push('<span class="badge due">' + escapeHtml(t.dueDate) + '</span>');
   if (t._pendingSync) badges.push('<span class="badge pending-sync">No sync</span>');
   getTaskRoadmaps(t.id).forEach(rm => {
-    badges.push('<span class="badge roadmap-badge" title="In roadmap: ' + escapeHtml(rm.name||'') + '">📍 ' + escapeHtml((rm.name||'').slice(0,18)) + '</span>');
+    badges.push(roadmapBadgeHtml(t.id, rm));
   });
   const lib = getTaskTagLibrary();
   const orderedTags = lib.map(x => x.name).filter(n => Array.isArray(t.taskTags) && t.taskTags.includes(n));
@@ -7832,6 +7835,49 @@ function updateTabCounts() {
 
 function getTaskRoadmaps(taskId) {
   return getRoadmaps().filter(r => (r.tasks || []).some(e => e.taskId === taskId));
+}
+
+// Build a single roadmap-badge for `taskId` in `rm`, indicating date status:
+//   • scheduled (green + 📅) when both start and end resolve
+//   • partial   (amber + 🕒) when only one resolves
+//   • plain     (blue + 📍) when no dates yet
+function roadmapBadgeHtml(taskId, rm) {
+  const entry = (rm.tasks || []).find(e => e.taskId === taskId);
+  let startStr = '', endStr = '';
+  if (entry) {
+    if (typeof effectiveDatesForInRoadmap === 'function') {
+      const eff = effectiveDatesForInRoadmap(entry, rm);
+      startStr = eff.startStr || '';
+      endStr = eff.endStr || '';
+    } else {
+      startStr = entry.startDate || '';
+      endStr = entry.endDate || '';
+    }
+  }
+  const hasStart = !!startStr;
+  const hasEnd = !!endStr;
+  const scheduled = hasStart && hasEnd;
+  const partial = !scheduled && (hasStart || hasEnd);
+  // Compact "M/D" formatter — locale-stable since dates are stored as ISO YYYY-MM-DD
+  function compact(d) {
+    if (!d) return '?';
+    const parts = d.split('-');
+    if (parts.length !== 3) return d;
+    return parseInt(parts[1],10) + '/' + parseInt(parts[2],10);
+  }
+  let icon, cls, dateText;
+  if (scheduled) {
+    icon = '📅'; cls = 'roadmap-badge scheduled';
+    dateText = compact(startStr) + '→' + compact(endStr);
+  } else if (partial) {
+    icon = '🕒'; cls = 'roadmap-badge partial';
+    dateText = hasStart ? (compact(startStr) + '→?') : ('?→' + compact(endStr));
+  } else {
+    icon = '📍'; cls = 'roadmap-badge'; dateText = '';
+  }
+  const name = escapeHtml((rm.name || '').slice(0, 18));
+  const tip = 'In roadmap: ' + (rm.name || '') + (dateText ? ' · ' + (scheduled ? startStr + ' → ' + endStr : dateText.replace('→', ' → ')) : ' · no dates yet');
+  return '<span class="badge ' + cls + '" title="' + escapeHtml(tip) + '">' + icon + ' ' + name + (dateText ? '<span class="rm-dates">· ' + dateText + '</span>' : '') + '</span>';
 }
 
 // ---- Roadmaps ----
