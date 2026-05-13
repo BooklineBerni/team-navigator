@@ -125,15 +125,18 @@
   .task .checkbox.checked { background: #1a1a1a; border-color: #1a1a1a; color: #fff; }
   .task .checkbox.checked::before { content: "\2713"; }
   .task .badges { grid-column: 2 / -1; display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
-  /* Aggregated info row inside the task card — common source pill + min start / max end / span days */
+  /* Aggregated info card inside the task card — common source pill + min start / max end / span days */
   .task .task-agg {
     grid-column: 2 / -1;
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    margin-top: 4px; padding: 4px 8px;
-    background: rgba(255,255,255,0.55);
-    border: 1px dashed #d6d3c8;
-    border-radius: 6px;
-    font-size: 10.5px;
+    display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 6px; padding: 6px 10px;
+    background: #fff;
+    border: 1px solid #ececea;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    font-size: 11px;
+    width: fit-content;
+    max-width: 100%;
   }
   .task .task-agg .ta-key {
     font-size: 9.5px; font-weight: 700; color: #6b6b6b;
@@ -4439,16 +4442,17 @@ function taskHtml(t) {
         const stl = bnPillStyleForTaskId(tid);
         return stl ? bnPillInlineStyle(stl) : '';
       }
-      // Render: when there's a pill, stack it above a small "= YYYY-MM-DD" reference.
+      // Render: when there's a pill, stack it above a small "= DD/MM/YYYY" reference.
       // When there's NO pill, show the date directly inline (no "= " prefix, primary font size).
       function renderSide(lbl, tid, dateStr) {
+        const dateFmt = bnFormatDateDMY(dateStr);
         if (lbl) {
           return '<span class="ta-stack">' +
             '<span class="ta-pill" style="' + pillStyleFor(lbl, tid) + '">' + escapeHtml(lbl) + '</span>' +
-            '<span class="ta-val-below' + (dateStr ? '' : ' empty') + '">= ' + (dateStr ? escapeHtml(dateStr) : '—') + '</span>' +
+            '<span class="ta-val-below' + (dateStr ? '' : ' empty') + '">= ' + (dateStr ? escapeHtml(dateFmt) : '—') + '</span>' +
           '</span>';
         }
-        return '<span class="ta-val' + (dateStr ? '' : ' empty') + '">' + (dateStr ? escapeHtml(dateStr) : '—') + '</span>';
+        return '<span class="ta-val' + (dateStr ? '' : ' empty') + '">' + (dateStr ? escapeHtml(dateFmt) : '—') + '</span>';
       }
       aggHtml = '<div class="task-agg">';
       aggHtml += '<span class="ta-key">Start</span>';
@@ -6819,6 +6823,13 @@ const BN_STATUS_PILL = {
   "Discarded":    { bg: "#f5f5f4", border: "#d8d6d1", text: "#64748b" },
 };
 const BN_GRAY_PILL = { bg: "#f5f5f4", border: "#d8d6d1", text: "#52525b" };
+// Format an ISO date string (YYYY-MM-DD) as DD/MM/YYYY for display in cards.
+function bnFormatDateDMY(s) {
+  if (!s || typeof s !== 'string' || s.length !== 10) return s || '';
+  const parts = s.split('-');
+  if (parts.length !== 3) return s;
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
 function bnPillStyleForTaskId(taskId) {
   if (!taskId) return null;
   const tk = STORE.tasks.find(x => x.id === taskId);
@@ -10475,12 +10486,12 @@ function roadmapBadgeHtml(taskId, rm) {
   const hasEnd = !!endStr;
   const scheduled = hasStart && hasEnd;
   const partial = !scheduled && (hasStart || hasEnd);
-  // Compact "M/D" formatter — locale-stable since dates are stored as ISO YYYY-MM-DD
+  // "DD/MM/YYYY" formatter — locale-stable since dates are stored as ISO YYYY-MM-DD
   function compact(d) {
     if (!d) return '?';
     const parts = d.split('-');
     if (parts.length !== 3) return d;
-    return parseInt(parts[1],10) + '/' + parseInt(parts[2],10);
+    return parts[2] + '/' + parts[1] + '/' + parts[0];
   }
   let icon, cls, dateText;
   if (scheduled) {
