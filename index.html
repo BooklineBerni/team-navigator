@@ -420,6 +420,70 @@
   .cal-view-btn:hover { background: #f0efeb; }
   .cal-view-btn.active { background: #1a1a1a; color: #fff; }
   .cal-view-btn + .cal-view-btn { border-left: 1px solid #d8d6d1; }
+  /* ============ Year view (horizontal Gantt) ============ */
+  .cal-year { display: flex; flex-direction: column; background: #fff; border: 1px solid #ececea; border-radius: 12px; overflow: hidden; }
+  .cal-year-headers {
+    display: grid; grid-template-columns: 220px 1fr;
+    border-bottom: 1px solid #ececea; background: #faf9f7;
+  }
+  .cal-year-label-spacer {}
+  .cal-year-months {
+    display: grid; grid-template-columns: repeat(12, 1fr);
+  }
+  .cal-year-month-cell {
+    font-size: 11px; color: #6b6b6b; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 8px 6px; text-align: center;
+    border-left: 1px solid #ececea;
+  }
+  .cal-year-rows-wrap { position: relative; }
+  .cal-year-track-bg {
+    position: absolute; inset: 0;
+    display: grid; grid-template-columns: 220px 1fr;
+    pointer-events: none;
+  }
+  .cal-year-track-bg > :first-child { content: ""; }
+  .cal-year-months-bg {
+    display: grid; grid-template-columns: repeat(12, 1fr);
+    grid-column: 2;
+  }
+  .cal-year-month-bg { border-left: 1px solid #f3f1ed; }
+  .cal-year-month-bg.alt { background: #fafaf7; }
+  .cal-year-today-line {
+    position: absolute; top: 0; bottom: 0;
+    width: 0; border-left: 2px solid #dc2626;
+    margin-left: 220px;
+    pointer-events: none;
+    z-index: 3;
+  }
+  .cal-year-rows { position: relative; z-index: 2; }
+  .cal-year-row {
+    display: grid; grid-template-columns: 220px 1fr;
+    align-items: center; min-height: 28px;
+    border-top: 1px solid #f3f1ed;
+  }
+  .cal-year-row:first-child { border-top: none; }
+  .cal-year-row.is-child { font-size: 12px; }
+  .cal-year-label {
+    padding: 4px 8px; font-size: 12.5px; color: #1a1a1a;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border-right: 1px solid #ececea;
+  }
+  .cal-year-row.is-group .cal-year-label { font-weight: 700; color: #92400e; }
+  .cal-year-row.is-child .cal-year-label { color: #555; font-weight: 500; }
+  .cal-year-track {
+    position: relative; height: 28px;
+  }
+  .cal-year-bar {
+    position: absolute; top: 4px; height: 20px;
+    border-radius: 5px; padding: 0 6px;
+    font-size: 11px; line-height: 20px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .cal-year-bar:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.18); z-index: 5; }
+  .cal-year-bar.cal-event-group { font-weight: 700; line-height: 18px; padding: 0 8px; }
   /* Side toggle (collapse Unscheduled/Archived sidebar) */
   .cal-side-toggle {
     appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a;
@@ -817,6 +881,19 @@
   .rm-side-area .rm-task-row .rmt-group-row .rmt-group-pick {
     width: 100%; max-width: none; font-size: 11px; padding: 3px 6px;
   }
+  .rm-side-area .rm-task-row .rmt-duration-row {
+    display: flex; align-items: center; gap: 4px;
+    margin-top: 2px; font-size: 10.5px; color: #6b6b6b;
+    justify-content: flex-end;
+  }
+  .rm-side-area .rm-task-row .rmt-duration {
+    width: 44px; padding: 2px 4px; font-size: 11px;
+    border: 1px solid #ece8d8; border-radius: 4px;
+    background: #fff; font-family: inherit;
+    text-align: center;
+  }
+  .rm-side-area .rm-task-row .rmt-duration:focus { outline: none; border-color: #d97706; }
+  .rm-side-area .rm-task-row .rmt-duration:disabled { background: #f5f5f4; color: #9a9a9a; cursor: not-allowed; }
   .rm-side-area .rm-task-row .rmt-dates-grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
   }
@@ -5100,8 +5177,9 @@ function toggleWorkedOverride(dateStr) {
 let roadmapCalState = {
   yearMonth: null,
   hideWeekends: localStorage.getItem("bookline-rm-hide-weekends") === "true",
-  viewMode: (localStorage.getItem("bookline-rm-view-mode") || "month"),    // "month" | "week"
+  viewMode: (localStorage.getItem("bookline-rm-view-mode") || "month"),    // "month" | "week" | "year"
   weekStart: null,                                                          // Monday of the visible week (Date or null)
+  year: null,                                                               // currently-shown year (number) for year view
   sideHidden: localStorage.getItem("bookline-rm-side-hidden") === "true",   // collapse the Unscheduled/Archived sidebar
 };
 // Helper: snap a Date to the Monday of its week (Monday-first ISO style)
@@ -5501,25 +5579,36 @@ function renderRoadmapCalendar(roadmapId) {
     "Archived": "#a98c5a", "Discarded": "#9a9a9a"
   };
 
-  // Compute calendar range based on viewMode ('month' or 'week').
-  const viewMode = roadmapCalState.viewMode === 'week' ? 'week' : 'month';
+  // Compute calendar range based on viewMode ('month', 'week', 'year').
+  let viewMode = roadmapCalState.viewMode;
+  if (viewMode !== 'week' && viewMode !== 'year') viewMode = 'month';
   let firstOfMonth, lastOfMonth, gridStart, totalWeeks, startWeekday, lastWeekday;
   if (viewMode === 'week') {
-    // Default to current week if no anchor set
     if (!roadmapCalState.weekStart) roadmapCalState.weekStart = bnMondayOf(new Date());
     const wkStart = bnMondayOf(roadmapCalState.weekStart);
     const wkEnd = new Date(wkStart); wkEnd.setDate(wkEnd.getDate() + 6); wkEnd.setHours(0,0,0,0);
-    // The "month" clipping range becomes the week range, so events outside the week get hidden naturally
     firstOfMonth = wkStart;
     lastOfMonth = wkEnd;
     gridStart = wkStart;
     startWeekday = 0;
     lastWeekday = 6;
     totalWeeks = 1;
+  } else if (viewMode === 'year') {
+    if (!roadmapCalState.year) {
+      const start = parseDate(r.startDate);
+      roadmapCalState.year = (start || new Date()).getFullYear();
+    }
+    const Y = roadmapCalState.year;
+    firstOfMonth = new Date(Y, 0, 1);
+    lastOfMonth = new Date(Y, 11, 31);
+    gridStart = firstOfMonth;
+    startWeekday = 0;
+    lastWeekday = 6;
+    totalWeeks = 0;   // year view doesn't render the weekly grid
   } else {
     firstOfMonth = new Date(ym.year, ym.month, 1);
     lastOfMonth = new Date(ym.year, ym.month + 1, 0);
-    startWeekday = (firstOfMonth.getDay() + 6) % 7;  // Monday-first
+    startWeekday = (firstOfMonth.getDay() + 6) % 7;
     gridStart = new Date(ym.year, ym.month, 1 - startWeekday);
     lastWeekday = (lastOfMonth.getDay() + 6) % 7;
     const totalGridDays = startWeekday + lastOfMonth.getDate() + (6 - lastWeekday);
@@ -5580,13 +5669,16 @@ function renderRoadmapCalendar(roadmapId) {
       const rmStartMonday = bnMondayOf(rmStart);
       atStart = wkStart.getTime() <= rmStartMonday.getTime();
     }
+  } else if (viewMode === 'year') {
+    periodLabel = String(roadmapCalState.year);
+    atStart = rmStart ? (roadmapCalState.year <= rmStart.getFullYear()) : false;
   } else {
     periodLabel = monthNames[ym.month] + ' ' + ym.year;
     atStart = rmStart ? (ym.year < rmStart.getFullYear() ||
                          (ym.year === rmStart.getFullYear() && ym.month <= rmStart.getMonth())) : false;
   }
-  const prevTitle = atStart ? "At roadmap start — can't go further back" : (viewMode === 'week' ? 'Previous week' : 'Previous month');
-  const nextTitle = viewMode === 'week' ? 'Next week' : 'Next month';
+  const prevTitle = atStart ? "At roadmap start — can't go further back" : (viewMode === 'week' ? 'Previous week' : (viewMode === 'year' ? 'Previous year' : 'Previous month'));
+  const nextTitle = viewMode === 'week' ? 'Next week' : (viewMode === 'year' ? 'Next year' : 'Next month');
   html += '<div class="cal-toolbar">' +
     '<div class="cal-nav-group">' +
       '<button class="cal-nav-btn" id="calPrev" title="' + prevTitle + '"' + (atStart ? ' disabled' : '') + '>‹</button>' +
@@ -5597,13 +5689,114 @@ function renderRoadmapCalendar(roadmapId) {
     '<div class="cal-view-toggle" role="group" aria-label="View mode">' +
       '<button type="button" class="cal-view-btn ' + (viewMode === 'month' ? 'active' : '') + '" id="calViewMonth" title="Month view">Month</button>' +
       '<button type="button" class="cal-view-btn ' + (viewMode === 'week'  ? 'active' : '') + '" id="calViewWeek"  title="Week view">Week</button>' +
+      '<button type="button" class="cal-view-btn ' + (viewMode === 'year'  ? 'active' : '') + '" id="calViewYear"  title="Year view">Year</button>' +
     '</div>' +
-    '<label class="cal-toggle"><input type="checkbox" id="calHideWeekends" ' + (roadmapCalState.hideWeekends ? "checked" : "") + '> <span>Hide weekends</span></label>' +
+    (viewMode === 'year' ? '' : '<label class="cal-toggle"><input type="checkbox" id="calHideWeekends" ' + (roadmapCalState.hideWeekends ? "checked" : "") + '> <span>Hide weekends</span></label>') +
     (hasSideContent
       ? '<button type="button" class="cal-side-toggle" id="calSideToggle" title="' + (roadmapCalState.sideHidden ? 'Show Unscheduled/Archived sidebar' : 'Hide sidebar (calendar full width)') + '">' + (roadmapCalState.sideHidden ? '⏴ Show side' : 'Hide side ⏵') + '</button>'
       : '') +
     '</div>';
 
+  if (viewMode === 'year') {
+    // Year view: horizontal Gantt — rows of tasks against 12-month axis.
+    const Y = roadmapCalState.year;
+    const yearStartMs = firstOfMonth.getTime();
+    const yearEndMs = lastOfMonth.getTime();
+    const daysInYear = Math.round((yearEndMs - yearStartMs) / DAY_MS) + 1;
+    // Convert hex to translucent rgba
+    function _toRgba(hex, a) {
+      const h = (hex && hex.length === 4) ? ('#' + hex[1]+hex[1]+hex[2]+hex[2]+hex[3]+hex[3]) : hex;
+      if (!h || h[0] !== '#') return 'rgba(217,119,6,' + a + ')';
+      const r2 = parseInt(h.slice(1,3),16), g2 = parseInt(h.slice(3,5),16), b2 = parseInt(h.slice(5,7),16);
+      return 'rgba(' + r2 + ',' + g2 + ',' + b2 + ',' + a + ')';
+    }
+    // Sort events: groups first (with their kids right after), then orphans (children whose parent is missing) and standalone tasks.
+    const evByTaskId = {};
+    eventsScheduled.forEach(e => { evByTaskId[e.task.id] = e; });
+    const childrenByParent = {};
+    eventsScheduled.forEach(e => {
+      if (e.task.groupId && evByTaskId[e.task.groupId]) {
+        (childrenByParent[e.task.groupId] = childrenByParent[e.task.groupId] || []).push(e);
+      }
+    });
+    const orderedRows = [];
+    const seen = new Set();
+    eventsScheduled
+      .filter(e => !e.task.groupId || !evByTaskId[e.task.groupId])
+      .sort((a, b) => (a.start - b.start) || (a.task.subject || '').localeCompare(b.task.subject || ''))
+      .forEach(e => {
+        if (seen.has(e.task.id)) return;
+        orderedRows.push({ ev: e, depth: 0 });
+        seen.add(e.task.id);
+        if (e.task.isGroup) {
+          const kids = (childrenByParent[e.task.id] || []).slice().sort((x, y) => (x.start - y.start) || (x.task.subject || '').localeCompare(y.task.subject || ''));
+          kids.forEach(c => { if (!seen.has(c.task.id)) { orderedRows.push({ ev: c, depth: 1 }); seen.add(c.task.id); } });
+        }
+      });
+
+    // Month header
+    html += '<div class="cal-year">';
+    html += '<div class="cal-year-headers">' +
+              '<div class="cal-year-label-spacer"></div>' +
+              '<div class="cal-year-months">';
+    for (let mi = 0; mi < 12; mi++) {
+      html += '<div class="cal-year-month-cell">' + monthNames[mi].slice(0,3) + '</div>';
+    }
+    html += '</div></div>';
+
+    // Rows wrapper (today line spans full height absolutely)
+    let todayLineYearHtml = '';
+    const yearToday = new Date(); yearToday.setHours(0,0,0,0);
+    if (yearToday.getTime() >= yearStartMs && yearToday.getTime() <= yearEndMs) {
+      const off = Math.round((yearToday.getTime() - yearStartMs) / DAY_MS);
+      const leftPct = (off / daysInYear) * 100;
+      todayLineYearHtml = '<div class="cal-year-today-line" style="left:calc(' + leftPct + '% )"></div>';
+    }
+    html += '<div class="cal-year-rows-wrap">';
+    html += '<div class="cal-year-track-bg"><div class="cal-year-months-bg">';
+    for (let mi = 0; mi < 12; mi++) {
+      html += '<div class="cal-year-month-bg' + (mi % 2 ? ' alt' : '') + '"></div>';
+    }
+    html += '</div>' + todayLineYearHtml + '</div>';
+    html += '<div class="cal-year-rows">';
+
+    if (orderedRows.length === 0) {
+      html += '<div class="rm-empty" style="margin:14px">No scheduled tasks in ' + Y + '.</div>';
+    } else {
+      orderedRows.forEach(row => {
+        const ev = row.ev;
+        const isG = !!ev.task.isGroup;
+        const startMs = Math.max(ev.start.getTime(), yearStartMs);
+        const endMs   = Math.min(ev.end.getTime(),   yearEndMs);
+        if (endMs < startMs) return;
+        const off = Math.round((startMs - yearStartMs) / DAY_MS);
+        const span = Math.round((endMs - startMs) / DAY_MS) + 1;
+        const leftPct  = (off  / daysInYear) * 100;
+        const widthPct = (span / daysInYear) * 100;
+        const stHex = statusColors[ev.task.slackStatus] || (isG ? '#d97706' : '#1a1a1a');
+        let barStyle;
+        if (isG) {
+          barStyle = 'background:' + _toRgba(stHex, 0.18) + '; border:1.5px dashed ' + stHex + '; color:' + stHex + ';';
+        } else {
+          barStyle = 'background:' + stHex + '; color:#fff;';
+        }
+        const continuesLeft  = ev.start.getTime() < yearStartMs;
+        const continuesRight = ev.end.getTime()   > yearEndMs;
+        const labelText = (row.depth ? '· ' : (isG ? '📁 ' : '')) + ev.task.subject;
+        html += '<div class="cal-year-row' + (row.depth ? ' is-child' : '') + (isG ? ' is-group' : '') + '" data-tid="' + ev.task.id + '">' +
+          '<div class="cal-year-label" title="' + escapeHtml(ev.task.subject) + '" style="padding-left:' + (8 + row.depth * 14) + 'px">' + escapeHtml(labelText.slice(0,42)) + (labelText.length>42?'…':'') + '</div>' +
+          '<div class="cal-year-track">' +
+            '<div class="cal-event cal-year-bar' + (isG ? ' cal-event-group' : '') + '" data-tid="' + ev.task.id + '" title="' + escapeHtml(ev.task.subject + ' — ' + (ev.entry.startDate||'?') + ' → ' + (ev.entry.endDate||'?')) + '" style="left:' + leftPct + '%; width:' + widthPct + '%; ' + barStyle + '">' +
+              (continuesLeft ? '◂ ' : '') + escapeHtml(ev.task.subject) + (continuesRight ? ' ▸' : '') +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      });
+    }
+    html += '</div>';   // .cal-year-rows
+    html += '</div>';   // .cal-year-rows-wrap
+    html += '</div>';   // .cal-year
+  } else
   {
     // Day headers (Mon-first) — always render the grid
     html += '<div class="cal-grid">';
@@ -5933,6 +6126,8 @@ function renderRoadmapCalendar(roadmapId) {
           allGroups.map(g => '<option value="' + escapeHtml(g.id) + '"' + (task.groupId === g.id ? ' selected' : '') + '>📁 ' + escapeHtml(g.subject||'(unnamed)') + '</option>').join('') +
         '</select>'
       );
+      // Current duration in days (inclusive) when both ends are set; otherwise empty
+      const _dur = (entry.startDate && entry.endDate) ? bnDaysInclusive(entry.startDate, entry.endDate) : '';
       return '<div class="rm-task-row ' + (ready ? "ready" : "") + '" data-tid="' + task.id + '">' +
         '<div class="rmt-head">' +
           '<button type="button" class="rmt-title-btn" data-tid="' + task.id + '" title="' + escapeHtml(task.subject) + ' — click to edit">' + (isThisAGroup ? '📁 ' : '') + escapeHtml(task.subject.slice(0,80)) + (task.subject.length>80?'…':'') + '</button>' +
@@ -5954,6 +6149,11 @@ function renderRoadmapCalendar(roadmapId) {
               (canAnchor ? pinBtnHtml('rmt-pin-end', !!eA, 'end', eA) : '') +
             '</div>' +
           '</div>' +
+        '</div>' +
+        '<div class="rmt-duration-row">' +
+          '<span>or</span>' +
+          '<input type="number" class="rmt-duration" min="1" step="1" value="' + (_dur || '') + '" placeholder="N" title="Duration in days (inclusive). Sets End = Start + N − 1 days."' + (eA ? ' disabled' : '') + '>' +
+          '<span>days</span>' +
         '</div>' +
       '</div>';
     }
@@ -5993,17 +6193,15 @@ function renderRoadmapCalendar(roadmapId) {
     if (atStart) return;
     if (viewMode === 'week') {
       const next = new Date(gridStart); next.setDate(next.getDate() - 7);
-      // Clamp to Monday of rmStart week if needed
       if (rmStart) {
         const minWk = bnMondayOf(rmStart);
-        if (next.getTime() < minWk.getTime()) {
-          roadmapCalState.weekStart = minWk;
-        } else {
-          roadmapCalState.weekStart = next;
-        }
-      } else {
-        roadmapCalState.weekStart = next;
-      }
+        if (next.getTime() < minWk.getTime()) roadmapCalState.weekStart = minWk;
+        else roadmapCalState.weekStart = next;
+      } else roadmapCalState.weekStart = next;
+    } else if (viewMode === 'year') {
+      let y = roadmapCalState.year - 1;
+      if (rmStart && y < rmStart.getFullYear()) y = rmStart.getFullYear();
+      roadmapCalState.year = y;
     } else {
       let m = ym.month - 1, y = ym.year;
       if (m < 0) { m = 11; y--; }
@@ -6018,6 +6216,8 @@ function renderRoadmapCalendar(roadmapId) {
     if (viewMode === 'week') {
       const next = new Date(gridStart); next.setDate(next.getDate() + 7);
       roadmapCalState.weekStart = next;
+    } else if (viewMode === 'year') {
+      roadmapCalState.year = roadmapCalState.year + 1;
     } else {
       let m = ym.month + 1, y = ym.year;
       if (m > 11) { m = 0; y++; }
@@ -6029,6 +6229,8 @@ function renderRoadmapCalendar(roadmapId) {
     const t = new Date();
     if (viewMode === 'week') {
       roadmapCalState.weekStart = bnMondayOf(t);
+    } else if (viewMode === 'year') {
+      roadmapCalState.year = t.getFullYear();
     } else {
       roadmapCalState.yearMonth = { year: t.getFullYear(), month: t.getMonth() };
     }
@@ -6055,6 +6257,16 @@ function renderRoadmapCalendar(roadmapId) {
       const monthFirst = new Date(ym.year, ym.month, 1);
       const inMonth = todayMon.getFullYear() === ym.year && todayMon.getMonth() === ym.month;
       roadmapCalState.weekStart = inMonth ? todayMon : bnMondayOf(monthFirst);
+    }
+    renderRoadmapCalendar(roadmapId);
+  });
+  const vYearBtn = document.getElementById('calViewYear');
+  if (vYearBtn) vYearBtn.addEventListener('click', () => {
+    if (roadmapCalState.viewMode === 'year') return;
+    roadmapCalState.viewMode = 'year';
+    localStorage.setItem('bookline-rm-view-mode', 'year');
+    if (!roadmapCalState.year) {
+      roadmapCalState.year = (gridStart ? gridStart.getFullYear() : new Date().getFullYear());
     }
     renderRoadmapCalendar(roadmapId);
   });
@@ -6329,12 +6541,32 @@ function renderRoadmapCalendar(roadmapId) {
         applyBtn.textContent = pendingReady > 0 ? ('Apply (' + pendingReady + ')') : 'Apply';
       }
     }
+    // Helper: refresh the duration input from the row's current Start/End
+    function refreshDurInput() {
+      const di = node.querySelector('.rmt-duration');
+      if (!di) return;
+      const s = node.querySelector('.rmt-start')?.value || '';
+      const e = node.querySelector('.rmt-end')?.value || '';
+      di.value = (s && e) ? (bnDaysInclusive(s, e) || '') : '';
+    }
     node.querySelector('.rmt-start').addEventListener('change', e => {
       if (idx >= 0) {
         r.tasks[idx].startDate = e.target.value;
         r.tasks[idx].startAnchor = '';   // explicit custom date clears the anchor
-        // Pin in unscheduled (no full re-render until Apply)
+        // If a duration is set, recompute end = start + (N-1) days to preserve it
+        const durEl = node.querySelector('.rmt-duration');
+        const n = durEl ? parseInt(durEl.value, 10) : NaN;
+        if (Number.isFinite(n) && n >= 1 && r.tasks[idx].startDate) {
+          const newEnd = bnEndFromStartAndDuration(r.tasks[idx].startDate, n);
+          if (newEnd) {
+            r.tasks[idx].endDate = newEnd;
+            r.tasks[idx].endAnchor = '';
+            const eInp = node.querySelector('.rmt-end');
+            if (eInp) eInp.value = newEnd;
+          }
+        }
         if (parseDate(r.tasks[idx].startDate)) window.__rmPendingApply.add(tid);
+        refreshDurInput();
         saveAndSyncTaskDates();
         refreshRowReadyState();
       }
@@ -6344,10 +6576,38 @@ function renderRoadmapCalendar(roadmapId) {
         r.tasks[idx].endDate = e.target.value;
         r.tasks[idx].endAnchor = '';
         if (parseDate(r.tasks[idx].endDate)) window.__rmPendingApply.add(tid);
+        refreshDurInput();
         saveAndSyncTaskDates();
         refreshRowReadyState();
       }
     });
+    // Duration input (alternative to End): sets End = Start + (N − 1) days
+    const durInput = node.querySelector('.rmt-duration');
+    if (durInput) {
+      durInput.addEventListener('change', e => {
+        if (idx < 0) return;
+        const n = parseInt(durInput.value, 10);
+        const startStr = r.tasks[idx].startDate || node.querySelector('.rmt-start')?.value || '';
+        if (!Number.isFinite(n) || n < 1) {
+          // Empty/invalid → clear End
+          r.tasks[idx].endDate = '';
+          r.tasks[idx].endAnchor = '';
+          const eInp = node.querySelector('.rmt-end');
+          if (eInp) eInp.value = '';
+        } else if (startStr) {
+          const newEnd = bnEndFromStartAndDuration(startStr, n);
+          if (newEnd) {
+            r.tasks[idx].endDate = newEnd;
+            r.tasks[idx].endAnchor = '';
+            const eInp = node.querySelector('.rmt-end');
+            if (eInp) eInp.value = newEnd;
+            window.__rmPendingApply.add(tid);
+          }
+        }
+        saveAndSyncTaskDates();
+        refreshRowReadyState();
+      });
+    }
     // Anchor pin buttons → open a picker so user can pick any task's start/end (or clear).
     // In-place updates avoid a full re-render so scroll position is preserved.
     node.querySelectorAll('.rmt-pin').forEach(btn => {
