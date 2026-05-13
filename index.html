@@ -1081,6 +1081,12 @@
   .bn-agg-display-stack {
     display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px;
   }
+  /* Plain "N days" indicator between Start and End — no pill, just dim text. */
+  .bn-agg-display-span {
+    font-size: 11px; font-weight: 600; color: #6b6b6b;
+    font-variant-numeric: tabular-nums;
+    padding: 0 4px;
+  }
   .bn-agg-display-pill {
     font-size: 11px; font-weight: 700;
     color: #78350f; background: #fef3c7;
@@ -3000,6 +3006,7 @@
             <span class="bn-agg-display-val" id="f_aggMinStart">—</span>
           </span>
         </span>
+        <span class="bn-agg-display-span" id="f_aggSpan" style="display:none"></span>
         <span class="bn-agg-display-pair">
           <span class="bn-agg-display-key">End</span>
           <span class="bn-agg-display-stack" id="f_aggMaxEndStack">
@@ -5122,6 +5129,21 @@ window.__renderTaskAggregatedSchedule = function(t) {
     : '';
   setVal(startEl, aggStart);
   setVal(endEl, aggEnd);
+  // Show total days between aggStart and aggEnd in the MIDDLE (no pill, just plain text)
+  const spanEl = document.getElementById('f_aggSpan');
+  if (spanEl) {
+    if (aggStart && aggEnd) {
+      const n = bnDaysInclusive(aggStart, aggEnd);
+      if (n > 0) {
+        spanEl.textContent = n + ' day' + (n === 1 ? '' : 's');
+        spanEl.style.display = '';
+      } else {
+        spanEl.style.display = 'none';
+      }
+    } else {
+      spanEl.style.display = 'none';
+    }
+  }
   // Pill shown ONLY when every roadmap shares the same source label for that side.
   function commonLabel(arr) {
     if (arr.length === 0) return '';
