@@ -953,6 +953,108 @@
     background: #fef3c7; border-color: #f59e0b;
     filter: none; opacity: 1;
   }
+  /* Task modal — Schedule sections (Apply-to-all editable + Aggregated read-only) */
+  .bn-sched-section {
+    background: #fbfaf6; border: 1px solid #ececea; border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .bn-sched-section.bn-sched-view {
+    background: #f5f3ed; border-style: dashed;
+  }
+  .bn-sched-section-head {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .bn-sched-section-title {
+    font-size: 11.5px; font-weight: 700; color: #1a1a1a;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .bn-sched-section-sub {
+    font-size: 11px; color: #6b6b6b; font-weight: 500;
+  }
+  .bn-sched-row {
+    display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;
+  }
+  .bn-sched-cell {
+    display: flex; flex-direction: column; gap: 4px; min-width: 0;
+  }
+  .bn-sched-cell.bn-sched-dur { min-width: 120px; }
+  .bn-sched-cell.bn-sched-apply-cell { margin-left: auto; }
+  .bn-sched-cell.bn-sched-apply-cell .btn { font-size: 12px; padding: 6px 14px; white-space: nowrap; }
+  .bn-sched-lbl {
+    font-size: 10px; font-weight: 700; color: #6b6b6b;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .bn-sched-input-wrap {
+    display: flex; align-items: center; gap: 4px;
+  }
+  .bn-sched-input { width: 150px; }
+  .bn-sched-cell.bn-sched-dur input[type=number] { width: 64px; }
+  .bn-sched-pin {
+    background: #fff; border: 1px solid #d6d3c8; border-radius: 6px;
+    padding: 4px 6px; cursor: pointer;
+    font-size: 12px; line-height: 1;
+    opacity: .65; transition: all .12s;
+  }
+  .bn-sched-pin:hover { opacity: 1; border-color: #999; }
+  .bn-sched-pin.active {
+    background: #fef3c7; border-color: #f59e0b;
+    opacity: 1;
+  }
+  .bn-sched-anchor-hint {
+    font-size: 10.5px; color: #92400e; font-style: italic;
+    background: #fef3c7; padding: 2px 6px; border-radius: 4px;
+    max-width: 200px;
+  }
+  .bn-sched-hint {
+    font-size: 11px; color: #6b6b6b; margin-top: 8px;
+  }
+  .bn-sched-agg-view {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .bn-sched-agg-summary {
+    display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+    padding: 6px 0;
+    border-bottom: 1px dashed #d6d3c8;
+  }
+  .bn-sched-agg-summary .bn-agg-pair {
+    display: flex; gap: 6px; align-items: baseline;
+  }
+  .bn-sched-agg-summary .bn-agg-label {
+    font-size: 10.5px; font-weight: 700; color: #6b6b6b;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .bn-sched-agg-summary .bn-agg-value {
+    font-size: 13px; font-weight: 700; color: #1a1a1a;
+    font-variant-numeric: tabular-nums;
+  }
+  .bn-sched-agg-summary .bn-agg-value.empty { color: #b3b3b3; font-weight: 500; font-style: italic; }
+  .bn-sched-agg-rows {
+    display: flex; flex-direction: column; gap: 3px;
+    font-size: 11.5px;
+  }
+  .bn-sched-agg-row {
+    display: grid; grid-template-columns: 1fr auto auto auto;
+    gap: 8px; align-items: center;
+    padding: 3px 0;
+  }
+  .bn-sched-agg-row .bn-agg-rm-name {
+    font-weight: 600; color: #1a1a1a;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bn-sched-agg-row .bn-agg-cell {
+    font-variant-numeric: tabular-nums; color: #444;
+    min-width: 95px; text-align: right;
+  }
+  .bn-sched-agg-row .bn-agg-cell.empty { color: #b3b3b3; font-style: italic; }
+  .bn-sched-agg-row .bn-agg-anchor-tag {
+    font-size: 9.5px; padding: 1px 5px; border-radius: 3px;
+    background: #fef3c7; color: #92400e; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .03em;
+  }
+  .bn-sched-empty {
+    font-size: 11.5px; color: #9a9a9a; font-style: italic;
+  }
   /* Floating anchor picker menu — modern UI with search + filter chips + per-task start/end */
   .bn-anchor-menu {
     position: absolute; z-index: 300;
@@ -2185,6 +2287,7 @@
     <div></div>
     <div class="actions">
       <button class="btn" id="resetFiltersBtn" title="Clear all active filters">Reset filters</button>
+      <button class="btn" id="tasksCollapseAllBtn" title="Collapse / expand every group across all views (shared global state)">⊟ Collapse all</button>
       <button class="btn" id="exportCsvBtn" title="Download currently-filtered tasks as Excel-compatible CSV (or all if filters are off)">Export CSV</button>
       <button class="btn" id="manageTagsBtn" title="Create, edit, recolor and reorder member tags" style="display:none">Member Tags</button>
       <button class="btn" id="manageTaskTagsBtn" title="Create, edit, recolor and reorder task tags">Task Tags</button>
@@ -2695,19 +2798,54 @@
       <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
       <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
       <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap.</div>
-      <div class="f_taskOnlyRow" id="f_taskDatesField" style="margin-top:12px; padding-top:10px; border-top:1px dashed #ececea">
-        <div style="font-size:11px; color:#6b6b6b; font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px">Schedule (synced from roadmaps)</div>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
-          <span style="font-size:11px; color:#6b6b6b">Start</span>
-          <input type="date" id="f_taskStart" style="width:160px">
-          <span style="font-size:11px; color:#6b6b6b">End</span>
-          <input type="date" id="f_taskEnd" style="width:160px">
-          <span style="font-size:11px; color:#6b6b6b">or</span>
-          <input type="number" id="f_taskDuration" min="1" step="1" placeholder="N" style="width:62px" title="Duration in days (inclusive) — sets End = Start + N − 1 days">
-          <span style="font-size:11px; color:#6b6b6b">days</span>
-          <button type="button" id="f_taskApplyDates" class="btn primary" style="font-size:12px; padding:5px 12px" disabled>Apply to roadmaps</button>
+      <div class="f_taskOnlyRow" id="f_taskDatesField" style="margin-top:14px; padding-top:12px; border-top:1px dashed #ececea">
+        <!-- ============ Section A: Editable — apply same dates to ALL assigned roadmaps ============ -->
+        <div class="bn-sched-section bn-sched-edit">
+          <div class="bn-sched-section-head">
+            <span class="bn-sched-section-title">📅 Schedule — apply to all roadmaps</span>
+            <span class="bn-sched-section-sub">Set Start/End once and push them to every assigned roadmap row</span>
+          </div>
+          <div class="bn-sched-row">
+            <div class="bn-sched-cell">
+              <label class="bn-sched-lbl">Start</label>
+              <div class="bn-sched-input-wrap">
+                <input type="date" id="f_taskStart" class="bn-sched-input">
+                <button type="button" id="f_taskStartPin" class="bn-sched-pin" title="Anchor start to another task's start/end">📌</button>
+              </div>
+              <div id="f_taskStartHint" class="bn-sched-anchor-hint" style="display:none"></div>
+            </div>
+            <div class="bn-sched-cell">
+              <label class="bn-sched-lbl">End</label>
+              <div class="bn-sched-input-wrap">
+                <input type="date" id="f_taskEnd" class="bn-sched-input">
+                <button type="button" id="f_taskEndPin" class="bn-sched-pin" title="Anchor end to another task's start/end">📌</button>
+              </div>
+              <div id="f_taskEndHint" class="bn-sched-anchor-hint" style="display:none"></div>
+            </div>
+            <div class="bn-sched-cell bn-sched-dur">
+              <label class="bn-sched-lbl">Duration</label>
+              <div style="display:flex; gap:4px; align-items:center">
+                <input type="number" id="f_taskDuration" min="1" step="1" placeholder="N" title="Duration in days (inclusive) — sets End = Start + N − 1 days">
+                <span style="font-size:11px; color:#6b6b6b">days</span>
+              </div>
+            </div>
+            <div class="bn-sched-cell bn-sched-apply-cell">
+              <label class="bn-sched-lbl" style="visibility:hidden">.</label>
+              <button type="button" id="f_taskApplyDates" class="btn primary" disabled>Apply to all roadmaps</button>
+            </div>
+          </div>
+          <div class="bn-sched-hint" id="f_taskDatesHint">Edit values (or pin to anchor) + click <strong>Apply</strong> to push them down to every assigned roadmap. Use the 📌 pin to anchor to another task's start/end — when applied, each roadmap entry will anchor too if the target task is in that roadmap (otherwise it falls back to the resolved date).</div>
         </div>
-        <div style="font-size:11px; color:#6b6b6b; margin-top:4px" id="f_taskDatesHint">These dates are auto-derived from the roadmap entries above (min start / max end across all). Edit values + click <strong>Apply</strong> to push them down to every assigned roadmap. Use the 📌 pin on each roadmap row above to anchor a single roadmap to another task's start/end.</div>
+        <!-- ============ Section B: Visual only — aggregated from each roadmap ============ -->
+        <div class="bn-sched-section bn-sched-view" style="margin-top:12px">
+          <div class="bn-sched-section-head">
+            <span class="bn-sched-section-title">📊 Aggregated from roadmaps</span>
+            <span class="bn-sched-section-sub">Read-only: min Start / max End computed across every assigned roadmap</span>
+          </div>
+          <div id="f_taskAggregatedView" class="bn-sched-agg-view">
+            <span class="bn-sched-empty">Not in any roadmap yet.</span>
+          </div>
+        </div>
       </div>
     </div>
     <div class="field f_taskOnlyRow"><label>Task tags</label>
@@ -4232,10 +4370,14 @@ function openModal(tid, overrides) {
       if (tStartEl.value && tEndEl.value) tDurEl.value = bnDaysInclusive(tStartEl.value, tEndEl.value) || '';
       else tDurEl.value = '';
     }
+    // Sync the anchor pins from the task object
+    if (typeof window.__refreshSchedulePinsFromTask === 'function') window.__refreshSchedulePinsFromTask(t);
     // Reset any leftover "Pending" visual state from a previous modal session
     window.__pendingApplyToRoadmaps = false;
     if (typeof window.__resetApplyToRoadmapsState === 'function') window.__resetApplyToRoadmapsState();
   }
+  // Render the visual-only aggregated view (min/max across all assigned roadmaps)
+  if (typeof window.__renderTaskAggregatedSchedule === 'function') window.__renderTaskAggregatedSchedule(t);
   document.getElementById("deleteBtn").style.display = t._isNew ? "none" : "inline-block";
   document.getElementById("modalBg").classList.add("show");
   document.getElementById("modal").__newTask = t._isNew ? t : null;
@@ -4303,6 +4445,11 @@ document.getElementById("saveBtn").addEventListener("click", () => {
     const taskEndV   = document.getElementById("f_taskEnd");
     if (taskStartV) t.startDate = taskStartV.value || "";
     if (taskEndV)   t.endDate   = taskEndV.value || "";
+    // Persist the task-level anchors (used by Apply-to-all and as the preferred anchor when in roadmaps)
+    if (window.__pendingApplyToRoadmaps) {
+      t.startAnchor = window.__pendingTaskStartAnchor || '';
+      t.endAnchor   = window.__pendingTaskEndAnchor || '';
+    }
   }
   t.extraComments = document.getElementById("f_extraComments").value;
   t._pendingSync = true;
@@ -4373,17 +4520,95 @@ function bnEndFromStartAndDuration(startStr, n) {
   const d = new Date(s); d.setDate(d.getDate() + (n - 1));
   return dateKey(d);
 }
+// Anchors staged at the task level for the Apply-to-all flow.
+// These are committed to task.startAnchor / task.endAnchor on Save (via window.__pendingApplyToRoadmaps).
+window.__pendingTaskStartAnchor = '';
+window.__pendingTaskEndAnchor   = '';
+// Renders the visual-only "Aggregated from roadmaps" section in the task modal.
+// Shows per-roadmap start/end (and a tag if anchored) plus the aggregated min/max footer.
+window.__renderTaskAggregatedSchedule = function(t) {
+  const cont = document.getElementById('f_taskAggregatedView');
+  if (!cont || !t) return;
+  const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : (STORE.roadmaps || []);
+  const entries = [];
+  rms.forEach(rm => {
+    const e = (rm.tasks || []).find(x => x.taskId === t.id);
+    if (e) entries.push({ entry: e, rm });
+  });
+  if (entries.length === 0) {
+    cont.innerHTML = '<span class="bn-sched-empty">Not in any roadmap yet. Add the task to one above to see its aggregated dates here.</span>';
+    return;
+  }
+  function fmtDate(s) {
+    return s || '—';
+  }
+  const resolvedStarts = entries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).startStr);
+  const resolvedEnds   = entries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).endStr);
+  const aggStart = resolvedStarts.every(s => !!s)
+    ? resolvedStarts.reduce((m, s) => (!m || s < m) ? s : m, '')
+    : '';
+  const aggEnd = resolvedEnds.every(s => !!s)
+    ? resolvedEnds.reduce((m, s) => (!m || s > m) ? s : m, '')
+    : '';
+  let html = '';
+  html += '<div class="bn-sched-agg-summary">';
+  html += '<div class="bn-agg-pair"><span class="bn-agg-label">Min start</span><span class="bn-agg-value' + (aggStart ? '' : ' empty') + '">' + escapeHtml(fmtDate(aggStart)) + '</span></div>';
+  html += '<div class="bn-agg-pair"><span class="bn-agg-label">Max end</span><span class="bn-agg-value' + (aggEnd ? '' : ' empty') + '">' + escapeHtml(fmtDate(aggEnd)) + '</span></div>';
+  if (aggStart && aggEnd) {
+    const n = bnDaysInclusive(aggStart, aggEnd);
+    if (n > 0) html += '<div class="bn-agg-pair"><span class="bn-agg-label">Span</span><span class="bn-agg-value">' + n + ' day' + (n === 1 ? '' : 's') + '</span></div>';
+  }
+  html += '</div>';
+  html += '<div class="bn-sched-agg-rows">';
+  entries.forEach(({ entry, rm }) => {
+    const dates = effectiveDatesForInRoadmap(entry, rm);
+    const sAnchored = !!entry.startAnchor;
+    const eAnchored = !!entry.endAnchor;
+    html += '<div class="bn-sched-agg-row">';
+    html += '<span class="bn-agg-rm-name" title="' + escapeHtml(rm.name || '(unnamed)') + '">' + escapeHtml(rm.name || '(unnamed)') + '</span>';
+    html += '<span class="bn-agg-cell' + (dates.startStr ? '' : ' empty') + '">' + escapeHtml(dates.startStr || '—') + (sAnchored ? ' <span class="bn-agg-anchor-tag" title="Anchored">⚓</span>' : '') + '</span>';
+    html += '<span class="bn-agg-cell' + (dates.endStr ? '' : ' empty') + '">' + escapeHtml(dates.endStr || '—') + (eAnchored ? ' <span class="bn-agg-anchor-tag" title="Anchored">⚓</span>' : '') + '</span>';
+    const n = (dates.startStr && dates.endStr) ? bnDaysInclusive(dates.startStr, dates.endStr) : 0;
+    html += '<span class="bn-agg-cell' + (n > 0 ? '' : ' empty') + '">' + (n > 0 ? (n + 'd') : '—') + '</span>';
+    html += '</div>';
+  });
+  html += '</div>';
+  cont.innerHTML = html;
+};
 (function wireTaskScheduleControls() {
   const startEl = document.getElementById("f_taskStart");
   const endEl   = document.getElementById("f_taskEnd");
   const durEl   = document.getElementById("f_taskDuration");
   const applyEl = document.getElementById("f_taskApplyDates");
   const hintEl  = document.getElementById("f_taskDatesHint");
+  const startPinEl = document.getElementById("f_taskStartPin");
+  const endPinEl   = document.getElementById("f_taskEndPin");
+  const startHintEl = document.getElementById("f_taskStartHint");
+  const endHintEl   = document.getElementById("f_taskEndHint");
   if (!startEl || !endEl || !applyEl) return;
   const defaultHint = hintEl ? hintEl.innerHTML : '';
+  function refreshPinVisual(pin, anchorVal, kind, inp, hint) {
+    if (!pin) return;
+    const active = !!anchorVal;
+    pin.classList.toggle('active', active);
+    if (inp) inp.disabled = active;
+    if (hint) {
+      if (active) {
+        const lbl = bnTaskAnchorLabel(anchorVal) || 'another task';
+        hint.style.display = '';
+        hint.innerHTML = '🔗 Anchored to <strong>' + escapeHtml(lbl) + '</strong>';
+      } else {
+        hint.style.display = 'none';
+        hint.innerHTML = '';
+      }
+    }
+    pin.title = active
+      ? 'Anchored to ' + bnTaskAnchorLabel(anchorVal) + ' — click to change or unlock'
+      : 'Click to anchor ' + kind + ' to another task\'s start/end';
+  }
   function clearPendingApplyVisual() {
     window.__pendingApplyToRoadmaps = false;
-    applyEl.textContent = 'Apply to roadmaps';
+    applyEl.textContent = 'Apply to all roadmaps';
     if (hintEl) hintEl.innerHTML = defaultHint;
   }
   // Expose so closeModal / saveBtn can reset it
@@ -4395,14 +4620,42 @@ function bnEndFromStartAndDuration(startStr, n) {
     const rms = getRoadmaps().filter(r => (r.tasks || []).some(e => e.taskId === t.id));
     const hasRoadmaps = rms.length > 0;
     const hasDate = !!(startEl.value || endEl.value);
+    const hasAnchor = !!(window.__pendingTaskStartAnchor || window.__pendingTaskEndAnchor);
     // Enabled whenever the task is in at least one roadmap — empty dates are a valid "clear" payload.
     applyEl.disabled = !hasRoadmaps;
     applyEl.title = !hasRoadmaps
       ? 'Task must be in at least one roadmap to apply'
-      : (hasDate
-          ? 'Stage these dates for all assigned roadmaps (saved when you click Save)'
+      : ((hasDate || hasAnchor)
+          ? 'Stage these dates/anchors for all assigned roadmaps (saved when you click Save)'
           : 'Apply with empty dates to clear the schedule in every assigned roadmap');
   }
+  // Pin click handlers — pick an anchor, refresh visuals, mark Apply state.
+  function wireSchedulePin(pin, kind, inp, hint) {
+    if (!pin) return;
+    pin.addEventListener('click', ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (!editingId) return;
+      const currentAnchor = (kind === 'start' ? window.__pendingTaskStartAnchor : window.__pendingTaskEndAnchor) || '';
+      openTaskScheduleAnchorPicker(pin, editingId, kind, currentAnchor, newVal => {
+        if (kind === 'start') window.__pendingTaskStartAnchor = newVal || '';
+        else                  window.__pendingTaskEndAnchor   = newVal || '';
+        refreshPinVisual(pin, newVal, kind, inp, hint);
+        // Editing anchors after staging cancels the pending apply
+        if (window.__pendingApplyToRoadmaps) clearPendingApplyVisual();
+        bumpApplyState();
+      });
+    });
+  }
+  wireSchedulePin(startPinEl, 'start', startEl, startHintEl);
+  wireSchedulePin(endPinEl,   'end',   endEl,   endHintEl);
+  // Refresh pin visuals from a task object (called on modal open and after Save).
+  window.__refreshSchedulePinsFromTask = function(t) {
+    window.__pendingTaskStartAnchor = (t && t.startAnchor) || '';
+    window.__pendingTaskEndAnchor   = (t && t.endAnchor)   || '';
+    refreshPinVisual(startPinEl, window.__pendingTaskStartAnchor, 'start', startEl, startHintEl);
+    refreshPinVisual(endPinEl,   window.__pendingTaskEndAnchor,   'end',   endEl,   endHintEl);
+  };
   // Bidirectional sync between End date and Duration (days). Each follows from Start.
   let __durSyncing = false;
   function refreshDurationFromDates() {
@@ -4478,19 +4731,24 @@ function bnEndFromStartAndDuration(startStr, n) {
     if (!editingId) return;
     const startV = startEl.value || '';
     const endV   = endEl.value || '';
+    const sA = window.__pendingTaskStartAnchor || '';
+    const eA = window.__pendingTaskEndAnchor || '';
     // Flag as pending — the actual STORE mutation happens in the modal's Save handler
     window.__pendingApplyToRoadmaps = true;
     // Visual preview: update the per-roadmap row inputs in place (no STORE write)
     document.querySelectorAll('#modal .rm-modal-row').forEach(row => {
       const sInp = row.querySelector('.rm-modal-start');
       const eInp = row.querySelector('.rm-modal-end');
-      if (sInp && startV) { sInp.value = startV; sInp.disabled = false; }
-      if (eInp && endV)   { eInp.value = endV;   eInp.disabled = false; }
+      if (sInp && startV && !sA) { sInp.value = startV; sInp.disabled = false; }
+      if (eInp && endV && !eA)   { eInp.value = endV;   eInp.disabled = false; }
     });
     // Cue: change button label + hint so the user knows it's staged
     applyEl.textContent = 'Pending — click Save to persist';
     applyEl.disabled = true;
-    if (hintEl) hintEl.innerHTML = '<strong style="color:#92400e">Staged.</strong> These dates will be written to every assigned roadmap (clearing anchors) when you click <strong>Save</strong>. Click <strong>Cancel</strong> to discard.';
+    const anchorNote = (sA || eA)
+      ? ' Anchors will be applied to every roadmap that also contains the target task; the rest fall back to the resolved date.'
+      : '';
+    if (hintEl) hintEl.innerHTML = '<strong style="color:#92400e">Staged.</strong> These dates/anchors will be written to every assigned roadmap when you click <strong>Save</strong>.' + anchorNote + ' Click <strong>Cancel</strong> to discard.';
   });
 })();
 
@@ -5434,23 +5692,186 @@ function saveAndSyncTaskDates() {
   recomputeAllTaskDates();
   saveStore(STORE);
 }
-// Apply task.startDate / task.endDate to all roadmap entries (clears anchors).
-// Always overwrites both sides — passing empty strings is a valid way to clear roadmap dates.
+// Apply task.startDate / task.endDate to all roadmap entries.
+// If task.startAnchor / task.endAnchor is set AND the target task is also in the same roadmap,
+// the entry inherits the anchor; otherwise it falls back to the absolute date.
+// Passing empty strings is a valid way to clear roadmap dates.
 function applyTaskDatesToRoadmaps(taskId) {
   const task = STORE.tasks.find(t => t.id === taskId);
   if (!task) return 0;
   const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : (STORE.roadmaps || []);
   let touched = 0;
+  function anchorTargetInRoadmap(anchorVal, rm) {
+    if (!anchorVal) return null;
+    const ref = parseAnchorRefGlobal({ taskId }, anchorVal);
+    if (!ref) return null;
+    const inRm = (rm.tasks || []).some(x => x.taskId === ref.taskId);
+    return inRm ? anchorVal : null;
+  }
   rms.forEach(rm => {
     const e = (rm.tasks || []).find(x => x.taskId === taskId);
     if (!e) return;
-    e.startDate   = task.startDate || '';
-    e.startAnchor = '';
-    e.endDate     = task.endDate || '';
-    e.endAnchor   = '';
+    const sAnchor = anchorTargetInRoadmap(task.startAnchor, rm);
+    const eAnchor = anchorTargetInRoadmap(task.endAnchor, rm);
+    if (sAnchor) {
+      e.startAnchor = sAnchor;
+      e.startDate   = '';
+    } else {
+      e.startAnchor = '';
+      e.startDate   = task.startDate || '';
+    }
+    if (eAnchor) {
+      e.endAnchor = eAnchor;
+      e.endDate   = '';
+    } else {
+      e.endAnchor = '';
+      e.endDate   = task.endDate || '';
+    }
     touched++;
   });
   return touched;
+}
+// Task-level anchor picker — same UI as openAnchorPicker but works against ALL STORE tasks.
+// Used by the Schedule field in the task edit modal so you can anchor the task's Start/End
+// to another task's start/end regardless of which roadmap they share.
+function openTaskScheduleAnchorPicker(anchorBtn, selfTaskId, kind /* 'start'|'end' */, currentValue, onPicked) {
+  document.querySelectorAll('.bn-anchor-menu').forEach(n => n.remove());
+  const others = (STORE.tasks || []).filter(t => t.id !== selfTaskId);
+  if (others.length === 0) return;
+  const ownTask = STORE.tasks.find(t => t.id === selfTaskId);
+  others.sort((a, b) => {
+    const ap = ownTask && ownTask.groupId === a.id ? 0 : (a.isGroup ? 1 : 2);
+    const bp = ownTask && ownTask.groupId === b.id ? 0 : (b.isGroup ? 1 : 2);
+    if (ap !== bp) return ap - bp;
+    return (a.subject || '').localeCompare(b.subject || '');
+  });
+  const groupCount = others.filter(t => t.isGroup).length;
+  const taskCount = others.length - groupCount;
+  const menu = document.createElement('div');
+  menu.className = 'bn-anchor-menu';
+  menu.innerHTML =
+    '<div class="bam-head">' +
+      '<strong>Anchor ' + (kind === 'start' ? 'start' : 'end') + ' to…</strong>' +
+      '<button type="button" class="bam-close" title="Close">✕</button>' +
+    '</div>' +
+    '<div class="bam-search-wrap">' +
+      '<span class="bam-search-icon">🔍</span>' +
+      '<input type="text" class="bam-search" placeholder="Search tasks…" autocomplete="off">' +
+    '</div>' +
+    '<div class="bam-filters">' +
+      '<button type="button" class="bam-chip active" data-filter="all">All <span class="bam-count">' + others.length + '</span></button>' +
+      '<button type="button" class="bam-chip" data-filter="groups">📁 Groups <span class="bam-count">' + groupCount + '</span></button>' +
+      '<button type="button" class="bam-chip" data-filter="tasks">Tasks <span class="bam-count">' + taskCount + '</span></button>' +
+    '</div>' +
+    '<div class="bam-list">' +
+      '<div class="bam-row bam-custom' + (currentValue === '' ? ' selected' : '') + '" data-val="">' +
+        '<span class="bam-row-name"><span class="bam-icon-custom">○</span> Custom date</span>' +
+      '</div>' +
+      others.map(task => {
+        const isG = !!task.isGroup;
+        const isParent = ownTask && ownTask.groupId === task.id;
+        const name = task.subject || '(unnamed)';
+        const valS = 'task:' + task.id + ':start';
+        const valE = 'task:' + task.id + ':end';
+        return '<div class="bam-row" data-type="' + (isG ? 'group' : 'task') + '" data-name="' + escapeHtml(name.toLowerCase()) + '">' +
+          '<span class="bam-row-name">' +
+            (isG ? '<span class="bam-icon">📁</span>' : '<span class="bam-icon-task">·</span>') +
+            '<span class="bam-row-label" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span>' +
+            (isParent ? '<span class="bam-parent-tag">parent</span>' : '') +
+          '</span>' +
+          '<span class="bam-row-actions">' +
+            '<button type="button" class="bam-side-btn' + (currentValue === valS ? ' selected' : '') + '" data-val="' + escapeHtml(valS) + '" title="Anchor to this task\'s start date">start</button>' +
+            '<button type="button" class="bam-side-btn' + (currentValue === valE ? ' selected' : '') + '" data-val="' + escapeHtml(valE) + '" title="Anchor to this task\'s end date">end</button>' +
+          '</span>' +
+        '</div>';
+      }).join('') +
+    '</div>' +
+    '<div class="bam-empty" style="display:none">No matches</div>';
+  document.body.appendChild(menu);
+  const rect = anchorBtn.getBoundingClientRect();
+  menu.style.left = (rect.left + window.scrollX) + 'px';
+  menu.style.top  = (rect.bottom + window.scrollY + 6) + 'px';
+  setTimeout(() => {
+    const mr = menu.getBoundingClientRect();
+    if (mr.right > window.innerWidth - 8) {
+      menu.style.left = Math.max(8, window.innerWidth - mr.width - 8 + window.scrollX) + 'px';
+    }
+    if (mr.bottom > window.innerHeight - 8) {
+      const above = rect.top - mr.height - 6;
+      menu.style.top = (Math.max(8, above) + window.scrollY) + 'px';
+    }
+  }, 0);
+  let activeFilter = 'all';
+  let activeQuery = '';
+  function applyFilter() {
+    let visibleCount = 0;
+    menu.querySelectorAll('.bam-row').forEach(row => {
+      if (row.classList.contains('bam-custom')) {
+        const show = activeQuery === '';
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+        return;
+      }
+      const type = row.dataset.type;
+      const name = row.dataset.name || '';
+      const filterMatch = activeFilter === 'all' || activeFilter === (type === 'group' ? 'groups' : 'tasks');
+      const queryMatch = !activeQuery || name.indexOf(activeQuery) >= 0;
+      const show = filterMatch && queryMatch;
+      row.style.display = show ? '' : 'none';
+      if (show) visibleCount++;
+    });
+    menu.querySelector('.bam-empty').style.display = visibleCount === 0 ? '' : 'none';
+  }
+  const searchInput = menu.querySelector('.bam-search');
+  searchInput.addEventListener('input', () => {
+    activeQuery = searchInput.value.trim().toLowerCase();
+    applyFilter();
+  });
+  setTimeout(() => searchInput.focus(), 30);
+  menu.querySelectorAll('.bam-chip').forEach(chip => {
+    chip.addEventListener('click', ev => {
+      ev.stopPropagation();
+      menu.querySelectorAll('.bam-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeFilter = chip.dataset.filter;
+      applyFilter();
+    });
+  });
+  function pick(v) {
+    menu.remove();
+    if (typeof onPicked === 'function') onPicked(v);
+  }
+  menu.querySelector('.bam-custom').addEventListener('click', ev => {
+    ev.preventDefault(); ev.stopPropagation();
+    pick('');
+  });
+  menu.querySelectorAll('.bam-side-btn').forEach(btn => {
+    btn.addEventListener('click', ev => {
+      ev.preventDefault(); ev.stopPropagation();
+      pick(btn.dataset.val || '');
+    });
+  });
+  menu.querySelector('.bam-close').addEventListener('click', ev => {
+    ev.preventDefault(); ev.stopPropagation();
+    menu.remove();
+  });
+  // Click outside closes the picker
+  setTimeout(() => {
+    const closer = e => {
+      if (menu.contains(e.target) || e.target === anchorBtn) return;
+      menu.remove();
+      document.removeEventListener('click', closer, true);
+    };
+    document.addEventListener('click', closer, true);
+  }, 0);
+}
+// Format the human-readable label for a task-level anchor value.
+function bnTaskAnchorLabel(anchorVal) {
+  if (!anchorVal) return '';
+  const ref = parseAnchorRefGlobal({ taskId: '' }, anchorVal);
+  if (!ref) return '';
+  const t = STORE.tasks.find(x => x.id === ref.taskId);
+  return (t ? (t.subject || '(unnamed)') : '?') + ' — ' + ref.side;
 }
 
 function renderRoadmapCalendar(roadmapId) {
@@ -6156,13 +6577,19 @@ function renderRoadmapCalendar(roadmapId) {
       }
       const laneHeights = lanes.map(laneSegs => {
         let maxSub = 0;
+        let needsMorePill = false;   // whether any group in this lane has overflow children
         laneSegs.forEach(s => {
           if (!s.event.task.isGroup) return;
           const visibleSub = groupVisibleSubLanesCount(s.event.task.id);
           if (visibleSub > maxSub) maxSub = visibleSub;
+          const totalSub = (subLanesByParent[s.event.task.id] || []).length;
+          if (totalSub > visibleSub) needsMorePill = true;
         });
         if (maxSub === 0) return normalLaneHeight;
-        return TITLE_STRIP + maxSub * (SUB_H + SUB_GAP) + 4;
+        // Reserve extra space at the bottom of the lane when a "+N more" pill is needed,
+        // so the pill never overlaps the next lane's events.
+        const extraForPill = needsMorePill ? 14 : 0;
+        return TITLE_STRIP + maxSub * (SUB_H + SUB_GAP) + 4 + extraForPill;
       });
       // Pre-compute Y offset for each lane
       const laneTop = [];
@@ -6362,7 +6789,9 @@ function renderRoadmapCalendar(roadmapId) {
         '</select>'
       );
       // Current duration in days (inclusive) when both ends are set; otherwise empty
-      const _dur = (entry.startDate && entry.endDate) ? bnDaysInclusive(entry.startDate, entry.endDate) : '';
+      // Prefer the stored duration if present (preserves it across start-date changes); fall back to computed.
+      const _storedDur = (typeof entry.durationDays === 'number' && entry.durationDays >= 1) ? entry.durationDays : null;
+      const _dur = _storedDur || ((entry.startDate && entry.endDate) ? bnDaysInclusive(entry.startDate, entry.endDate) : '');
       return '<div class="rm-task-row ' + (ready ? "ready" : "") + '" data-tid="' + task.id + '" data-pstatus="' + escapeHtml(task.slackStatus || '') + '">' +
         '<div class="rmt-head">' +
           '<button type="button" class="rmt-title-btn" data-tid="' + task.id + '" title="' + escapeHtml(task.subject) + ' — click to edit">' + (isThisAGroup ? '📁 ' : '') + escapeHtml(task.subject.slice(0,80)) + (task.subject.length>80?'…':'') + '</button>' +
@@ -6489,10 +6918,17 @@ function renderRoadmapCalendar(roadmapId) {
   const vWeekBtn  = document.getElementById('calViewWeek');
   if (vMonthBtn) vMonthBtn.addEventListener('click', () => {
     if (roadmapCalState.viewMode === 'month') return;
+    const prev = roadmapCalState.viewMode;
     roadmapCalState.viewMode = 'month';
     localStorage.setItem('bookline-rm-view-mode', 'month');
-    // If we were in week view, snap the month to the visible week's month
-    if (gridStart) roadmapCalState.yearMonth = { year: gridStart.getFullYear(), month: gridStart.getMonth() };
+    // Always snap to the current month when switching INTO month view from year/6m (parity with the week button)
+    if (prev === 'year' || prev === '6m') {
+      const t = new Date();
+      roadmapCalState.yearMonth = { year: t.getFullYear(), month: t.getMonth() };
+    } else if (gridStart) {
+      // Coming from week view: anchor to the visible week's month
+      roadmapCalState.yearMonth = { year: gridStart.getFullYear(), month: gridStart.getMonth() };
+    }
     renderRoadmapCalendar(roadmapId);
   });
   if (vWeekBtn) vWeekBtn.addEventListener('click', () => {
@@ -6564,8 +7000,8 @@ function renderRoadmapCalendar(roadmapId) {
       renderRoadmapCalendar(roadmapId);
     });
   });
-  // Chevron toggle inside YEAR/6m group bars — uses the GLOBAL bn-group-expanded map
-  cont.querySelectorAll('.cal-event-group .cal-group-toggle-y, .cal-year-bar .cal-group-toggle-y').forEach(btn => {
+  // Chevron toggle inside YEAR/6m group bars / labels — uses the GLOBAL bn-group-expanded map
+  cont.querySelectorAll('.cal-event-group .cal-group-toggle-y, .cal-year-bar .cal-group-toggle-y, .cal-year-label .cal-group-toggle-y').forEach(btn => {
     btn.addEventListener('click', e => {
       e.preventDefault();
       e.stopPropagation();
@@ -6579,7 +7015,7 @@ function renderRoadmapCalendar(roadmapId) {
       e.preventDefault();
       e.stopPropagation();
       const gid = node.dataset.expandGroup;
-      if (gid) toggleGroupExpanded(gid);
+      if (gid) { window.toggleGroupExpanded(gid); renderRoadmapCalendar(roadmapId); }
     });
   });
   cont.querySelectorAll('.cal-event').forEach(node => {
@@ -6813,23 +7249,27 @@ function renderRoadmapCalendar(roadmapId) {
         applyBtn.textContent = pendingReady > 0 ? ('Apply (' + pendingReady + ')') : 'Apply';
       }
     }
-    // Helper: refresh the duration input from the row's current Start/End
+    // Helper: refresh duration input from stored entry.durationDays or computed from Start/End
     function refreshDurInput() {
       const di = node.querySelector('.rmt-duration');
-      if (!di) return;
-      const s = node.querySelector('.rmt-start')?.value || '';
-      const e = node.querySelector('.rmt-end')?.value || '';
-      di.value = (s && e) ? (bnDaysInclusive(s, e) || '') : '';
+      if (!di || idx < 0) return;
+      const ent = r.tasks[idx];
+      if (typeof ent.durationDays === 'number' && ent.durationDays >= 1) {
+        di.value = ent.durationDays;
+      } else if (ent.startDate && ent.endDate) {
+        di.value = bnDaysInclusive(ent.startDate, ent.endDate) || '';
+      } else {
+        di.value = '';
+      }
     }
     node.querySelector('.rmt-start').addEventListener('change', e => {
       if (idx >= 0) {
         r.tasks[idx].startDate = e.target.value;
-        r.tasks[idx].startAnchor = '';   // explicit custom date clears the anchor
-        // If a duration is set, recompute end = start + (N-1) days to preserve it
-        const durEl = node.querySelector('.rmt-duration');
-        const n = durEl ? parseInt(durEl.value, 10) : NaN;
-        if (Number.isFinite(n) && n >= 1 && r.tasks[idx].startDate) {
-          const newEnd = bnEndFromStartAndDuration(r.tasks[idx].startDate, n);
+        r.tasks[idx].startAnchor = '';
+        // If a stored duration exists, ALWAYS recompute end = start + (N − 1) days.
+        const storedN = r.tasks[idx].durationDays;
+        if (typeof storedN === 'number' && storedN >= 1 && r.tasks[idx].startDate) {
+          const newEnd = bnEndFromStartAndDuration(r.tasks[idx].startDate, storedN);
           if (newEnd) {
             r.tasks[idx].endDate = newEnd;
             r.tasks[idx].endAnchor = '';
@@ -6847,13 +7287,15 @@ function renderRoadmapCalendar(roadmapId) {
       if (idx >= 0) {
         r.tasks[idx].endDate = e.target.value;
         r.tasks[idx].endAnchor = '';
+        // Manually editing the End clears any stored duration (override).
+        delete r.tasks[idx].durationDays;
         if (parseDate(r.tasks[idx].endDate)) window.__rmPendingApply.add(tid);
         refreshDurInput();
         saveAndSyncTaskDates();
         refreshRowReadyState();
       }
     });
-    // Duration input (alternative to End): sets End = Start + (N − 1) days
+    // Duration input (persistent — stored on entry.durationDays) — sets End = Start + (N − 1) days
     const durInput = node.querySelector('.rmt-duration');
     if (durInput) {
       durInput.addEventListener('change', e => {
@@ -6861,19 +7303,24 @@ function renderRoadmapCalendar(roadmapId) {
         const n = parseInt(durInput.value, 10);
         const startStr = r.tasks[idx].startDate || node.querySelector('.rmt-start')?.value || '';
         if (!Number.isFinite(n) || n < 1) {
-          // Empty/invalid → clear End
+          // Empty/invalid → clear stored duration AND end
+          delete r.tasks[idx].durationDays;
           r.tasks[idx].endDate = '';
           r.tasks[idx].endAnchor = '';
           const eInp = node.querySelector('.rmt-end');
           if (eInp) eInp.value = '';
-        } else if (startStr) {
-          const newEnd = bnEndFromStartAndDuration(startStr, n);
-          if (newEnd) {
-            r.tasks[idx].endDate = newEnd;
-            r.tasks[idx].endAnchor = '';
-            const eInp = node.querySelector('.rmt-end');
-            if (eInp) eInp.value = newEnd;
-            window.__rmPendingApply.add(tid);
+        } else {
+          // Persist the duration so it survives start-date changes
+          r.tasks[idx].durationDays = n;
+          if (startStr) {
+            const newEnd = bnEndFromStartAndDuration(startStr, n);
+            if (newEnd) {
+              r.tasks[idx].endDate = newEnd;
+              r.tasks[idx].endAnchor = '';
+              const eInp = node.querySelector('.rmt-end');
+              if (eInp) eInp.value = newEnd;
+              window.__rmPendingApply.add(tid);
+            }
           }
         }
         saveAndSyncTaskDates();
@@ -7080,6 +7527,29 @@ renderRoadmapsTimelinePage = function() {
 
 document.getElementById("showCountsChk").checked = showCounts;
 document.getElementById("teamOnlyChk").checked = teamOnly;
+
+// Collapse-all / Expand-all toggle in the Tasks toolbar — operates on the global bn-group-expanded
+(function wireTasksCollapseAll() {
+  const btn = document.getElementById("tasksCollapseAllBtn");
+  if (!btn) return;
+  function refreshLabel() {
+    const allGids = (STORE.tasks || []).filter(t => t.isGroup).map(g => g.id);
+    const anyExpanded = allGids.some(g => isGroupExpanded(g));
+    btn.textContent = anyExpanded ? '⊟ Collapse all' : '⊞ Expand all';
+  }
+  refreshLabel();
+  btn.addEventListener("click", () => {
+    const allGids = (STORE.tasks || []).filter(t => t.isGroup).map(g => g.id);
+    const anyExpanded = allGids.some(g => isGroupExpanded(g));
+    const m = (function(){ try { return JSON.parse(localStorage.getItem('bn-group-expanded')) || {}; } catch(_) { return {}; } })();
+    allGids.forEach(g => { m[g] = !anyExpanded; });
+    localStorage.setItem('bn-group-expanded', JSON.stringify(m));
+    refreshLabel();
+    render();
+  });
+  // Re-evaluate when other renders may have changed state
+  document.addEventListener('click', () => setTimeout(refreshLabel, 0), { capture: true });
+})();
 
 // Reset filters button
 document.getElementById("resetFiltersBtn").addEventListener("click", () => {
@@ -7613,11 +8083,14 @@ function renderProfilePage() {
   html += '</div>';
   html += '</div>';
 
-  // Stats
+  // Stats — current statuses (Proposed/Waiting/In Progress/Under Review/Later-Next/Completed)
   html += '<div class="profile-stats">';
   html += '<div class="profile-stat-card"><div class="num">' + counts.total + '</div><div class="lbl">Tasks</div><div class="sub">all time</div></div>';
   html += '<div class="profile-stat-card"><div class="num">' + counts.in_progress + '</div><div class="lbl">In progress</div></div>';
-  html += '<div class="profile-stat-card"><div class="num">' + counts.pending + '</div><div class="lbl">Pending</div></div>';
+  html += '<div class="profile-stat-card"><div class="num">' + counts.proposed + '</div><div class="lbl">Proposed</div></div>';
+  html += '<div class="profile-stat-card"><div class="num">' + counts.waiting + '</div><div class="lbl">Waiting</div></div>';
+  html += '<div class="profile-stat-card"><div class="num">' + counts.under_review + '</div><div class="lbl">Under review</div></div>';
+  html += '<div class="profile-stat-card"><div class="num">' + counts.later_next + '</div><div class="lbl">Later / Next</div></div>';
   html += '<div class="profile-stat-card"><div class="num">' + counts.completed + '</div><div class="lbl">Completed</div></div>';
   html += '<div class="profile-stat-card"><div class="num">' + personRoadmaps.length + '</div><div class="lbl">Roadmaps</div></div>';
   html += '</div>';
@@ -7915,12 +8388,16 @@ function renderProfileRoadmapCard(rm, personId) {
   });
   expandedKidEntries.forEach(({ entry, task }) => overlayEvents.push({ entry, task, isKid: true }));
   // Compute each event's startIdx (0..6) and span (1..7) within the visible 7-day window.
+  // Use effectiveDatesForInRoadmap to follow anchors (kids might only have anchored dates).
   const weekStartDay = days[0];
   const weekEndDay   = days[6];
   const positioned = [];
   overlayEvents.forEach(({ entry, task, isKid }) => {
-    const start = parseDate(entry.startDate);
-    const end   = parseDate(entry.endDate) || (start ? new Date(2099,11,31) : null);
+    const dates = (typeof effectiveDatesForInRoadmap === 'function')
+      ? effectiveDatesForInRoadmap(entry, rm)
+      : { startStr: entry.startDate || '', endStr: entry.endDate || '' };
+    const start = parseDate(dates.startStr);
+    const end   = parseDate(dates.endStr) || (start ? new Date(2099,11,31) : null);
     if (!start) return;
     if (end < weekStartDay || start > weekEndDay) return;
     const clipStart = start < weekStartDay ? weekStartDay : start;
