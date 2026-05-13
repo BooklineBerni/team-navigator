@@ -6971,11 +6971,11 @@ function renderRoadmapCalendar(roadmapId) {
         }
       });
       // Determine each lane's height. For a lane containing a group with N nested sub-lanes,
-      // expand it so children fit INSIDE the group's bar (capped to MAX_SUB_LANES_COLLAPSED unless user expanded that group).
+      // expand it so children fit INSIDE the group's bar (or collapse it to just the title strip
+      // when the group is collapsed — no kids shown at all, no "+N more" pill).
       const SUB_H = 12;
       const SUB_GAP = 2;
       const TITLE_STRIP = 22;
-      const MAX_SUB_LANES_COLLAPSED = 3;       // beyond this we show "+N more" inside the group
       const normalLaneHeight = 22;
       // Group expansion state is the GLOBAL one (bn-group-expanded via isGroupExpanded) — same as year/6m and the task list.
       // Build a quick set for repeated lookups in this render pass.
@@ -6983,30 +6983,26 @@ function renderRoadmapCalendar(roadmapId) {
       (STORE.tasks || []).forEach(g => { if (g.isGroup && isGroupExpanded(g.id)) expandedSet.add(g.id); });
       function groupVisibleSubLanesCount(groupId) {
         const all = (subLanesByParent[groupId] || []).length;
-        if (expandedSet.has(groupId)) return all;
-        return Math.min(all, MAX_SUB_LANES_COLLAPSED);
+        // Collapsed groups show 0 kids; expanded groups show ALL kids.
+        if (!expandedSet.has(groupId)) return 0;
+        return all;
       }
       const laneHeights = lanes.map(laneSegs => {
         let maxSub = 0;
-        let needsMorePill = false;   // whether any group in this lane has overflow children
         laneSegs.forEach(s => {
           if (!s.event.task.isGroup) return;
           const visibleSub = groupVisibleSubLanesCount(s.event.task.id);
           if (visibleSub > maxSub) maxSub = visibleSub;
-          const totalSub = (subLanesByParent[s.event.task.id] || []).length;
-          if (totalSub > visibleSub) needsMorePill = true;
         });
         if (maxSub === 0) return normalLaneHeight;
-        // Reserve extra space at the bottom of the lane when a "+N more" pill is needed,
-        // so the pill never overlaps the next lane's events.
-        const extraForPill = needsMorePill ? 14 : 0;
-        return TITLE_STRIP + maxSub * (SUB_H + SUB_GAP) + 4 + extraForPill;
+        return TITLE_STRIP + maxSub * (SUB_H + SUB_GAP) + 4;
       });
       // Pre-compute Y offset for each lane
       const laneTop = [];
       let acc = 0;
       laneHeights.forEach((h,i) => { laneTop[i] = acc; acc += h; });
-      const maxLanesShown = 3;
+      // No lane cap — day height grows to fit every visible task (no "+X more" overflow pill).
+      const maxLanesShown = Infinity;
       const minHeight = 110;
       const calculatedHeight = Math.max(minHeight, 36 + acc);
 
@@ -7064,10 +7060,10 @@ function renderRoadmapCalendar(roadmapId) {
         const cls = ['cal-event'];
         let top, height, color, fontSize, label, extraHtml = '', extraStyle = '';
         if (isNested) {
-          // Hide overflow children when group is collapsed — they'll be summarized by a "+N more" pill
+          // Hide ALL children when group is collapsed (no "+N more" — kids vanish entirely).
           const parentId = s.event.task.groupId;
           const isParentExpanded = expandedSet.has(parentId);
-          if (!isParentExpanded && s.subLane >= MAX_SUB_LANES_COLLAPSED) return;
+          if (!isParentExpanded) return;
           // Mini chip inside the parent group's expanded lane
           const baseTop = laneTop[s.lane] + TITLE_STRIP;          // first 22px = the group title strip
           top = baseTop + (s.subLane * (SUB_H + SUB_GAP));
@@ -7094,14 +7090,15 @@ function renderRoadmapCalendar(roadmapId) {
           fontSize = 11;
           cls.push('cal-event-group');
           const totalSubLanes = (subLanesByParent[gid] || []).length;
-          const canExpand = totalSubLanes > MAX_SUB_LANES_COLLAPSED;
+          const canExpand = totalSubLanes > 0;
           const isExpanded = expandedSet.has(gid);
           if (isExpanded) cls.push('expanded');
           label = '📁 ' + escapeHtml(s.event.task.subject);
           if (canExpand) {
-            // Chevron toggle inline with the title — appears on every week the group spans
+            // Chevron toggle inline with the title — appears on every week the group spans.
+            // Always rendered when the group has kids (collapsed = no kids shown, expanded = all kids shown).
             const chev = isExpanded ? '▾' : '▸';
-            const ttl = isExpanded ? 'Collapse group' : 'Expand group (show all ' + totalSubLanes + ' rows)';
+            const ttl = isExpanded ? 'Collapse group (hide all rows)' : 'Expand group (show all ' + totalSubLanes + ' rows)';
             label += ' <button type="button" class="cal-group-toggle" data-group-toggle="' + gid + '" title="' + ttl + '">' + chev + '</button>';
           }
         } else {
@@ -7129,33 +7126,7 @@ function renderRoadmapCalendar(roadmapId) {
       // Render parents first (so children draw on top)
       parentSegs.forEach(s => renderSeg(s, { nested: false }));
       childSegs.forEach(s => renderSeg(s, { nested: !!parentSegByTaskId[s.event.task.groupId] }));
-      // "+N more" indicator inside groups with too many nested children (only when collapsed)
-      Object.entries(subLanesByParent).forEach(([groupId, subLanes]) => {
-        if (subLanes.length <= MAX_SUB_LANES_COLLAPSED) return;
-        if (expandedSet.has(groupId)) return;   // skip pill when expanded — all rows visible
-        const parentSeg = parentSegByTaskId[groupId];
-        if (!parentSeg) return;
-        const extra = subLanes.length - MAX_SUB_LANES_COLLAPSED;
-        const left = (parentSeg.startCol / nDays) * 100;
-        const width = (parentSeg.span / nDays) * 100;
-        const top = laneTop[parentSeg.lane] + TITLE_STRIP + MAX_SUB_LANES_COLLAPSED * (SUB_H + SUB_GAP);
-        html += '<div class="cal-event-child-overflow" data-expand-group="' + groupId + '" title="Click to expand group" style="left:calc(' + left + '% + 8px); width:calc(' + width + '% - 16px); top:' + top + 'px">+' + extra + ' more</div>';
-      });
-      // "X more" indicator if exceeds maxLanesShown
-      const overflowCount = lanes.length - maxLanesShown;
-      if (overflowCount > 0) {
-        for (let d = 0; d < nDays; d++) {
-          let cnt = 0;
-          segments.forEach(s => {
-            if (s.lane >= maxLanesShown && s.startCol <= d && d < s.startCol + s.span) cnt++;
-          });
-          if (cnt > 0) {
-            const left = (d / nDays) * 100;
-            const top = laneTop[maxLanesShown] || (maxLanesShown * 22);
-            html += '<div class="cal-more-events" style="left:calc(' + left + '% + 4px); top:' + top + 'px">+' + cnt + ' more</div>';
-          }
-        }
-      }
+      // No "+N more" pills — collapsed groups hide kids entirely, day height grows to fit all visible lanes.
       html += '</div>'; // .cal-events-overlay
       html += '</div>'; // .cal-week
     }
