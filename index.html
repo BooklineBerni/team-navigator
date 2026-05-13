@@ -406,6 +406,28 @@
     padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit;
   }
   .cal-today-btn:hover { background: #f0efeb; }
+  /* View toggle (Month / Week) */
+  .cal-view-toggle {
+    display: inline-flex; border: 1px solid #d8d6d1; border-radius: 8px; overflow: hidden;
+    background: #fff;
+  }
+  .cal-view-btn {
+    appearance: none; border: none; background: transparent;
+    padding: 6px 12px; font-size: 12px; font-weight: 600;
+    color: #1a1a1a; cursor: pointer; font-family: inherit;
+    transition: background .12s, color .12s;
+  }
+  .cal-view-btn:hover { background: #f0efeb; }
+  .cal-view-btn.active { background: #1a1a1a; color: #fff; }
+  .cal-view-btn + .cal-view-btn { border-left: 1px solid #d8d6d1; }
+  /* Side toggle (collapse Unscheduled/Archived sidebar) */
+  .cal-side-toggle {
+    appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a;
+    padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600;
+    font-family: inherit; margin-left: auto;
+    transition: background .12s;
+  }
+  .cal-side-toggle:hover { background: #f0efeb; }
   .cal-grid {
     display: flex; flex-direction: column;
     background: transparent;
@@ -4986,7 +5008,21 @@ function toggleWorkedOverride(dateStr) {
 }
 
 // ---- Roadmap Calendar (Google Calendar-style) ----
-let roadmapCalState = { yearMonth: null, hideWeekends: localStorage.getItem("bookline-rm-hide-weekends") === "true" };
+let roadmapCalState = {
+  yearMonth: null,
+  hideWeekends: localStorage.getItem("bookline-rm-hide-weekends") === "true",
+  viewMode: (localStorage.getItem("bookline-rm-view-mode") || "month"),    // "month" | "week"
+  weekStart: null,                                                          // Monday of the visible week (Date or null)
+  sideHidden: localStorage.getItem("bookline-rm-side-hidden") === "true",   // collapse the Unscheduled/Archived sidebar
+};
+// Helper: snap a Date to the Monday of its week (Monday-first ISO style)
+function bnMondayOf(d) {
+  const r = new Date(d);
+  r.setHours(0,0,0,0);
+  const dow = (r.getDay() + 6) % 7;   // 0=Mon … 6=Sun
+  r.setDate(r.getDate() - dow);
+  return r;
+}
 
 // ---- Module-level anchor resolution (used by renderRoadmapCalendar and recomputeTaskDates) ----
 // Same logic as the inlined functions inside renderRoadmapCalendar, but parameterized by roadmap.
@@ -5376,15 +5412,30 @@ function renderRoadmapCalendar(roadmapId) {
     "Archived": "#a98c5a", "Discarded": "#9a9a9a"
   };
 
-  // Compute calendar range: first day of grid (Monday) to last day
-  const firstOfMonth = new Date(ym.year, ym.month, 1);
-  const lastOfMonth = new Date(ym.year, ym.month + 1, 0);
-  // Monday-first: getDay() returns 0=Sun..6=Sat. Convert to 0=Mon..6=Sun
-  const startWeekday = (firstOfMonth.getDay() + 6) % 7;
-  const gridStart = new Date(ym.year, ym.month, 1 - startWeekday);
-  const lastWeekday = (lastOfMonth.getDay() + 6) % 7;
-  const totalGridDays = startWeekday + lastOfMonth.getDate() + (6 - lastWeekday);
-  const totalWeeks = totalGridDays / 7;
+  // Compute calendar range based on viewMode ('month' or 'week').
+  const viewMode = roadmapCalState.viewMode === 'week' ? 'week' : 'month';
+  let firstOfMonth, lastOfMonth, gridStart, totalWeeks, startWeekday, lastWeekday;
+  if (viewMode === 'week') {
+    // Default to current week if no anchor set
+    if (!roadmapCalState.weekStart) roadmapCalState.weekStart = bnMondayOf(new Date());
+    const wkStart = bnMondayOf(roadmapCalState.weekStart);
+    const wkEnd = new Date(wkStart); wkEnd.setDate(wkEnd.getDate() + 6); wkEnd.setHours(0,0,0,0);
+    // The "month" clipping range becomes the week range, so events outside the week get hidden naturally
+    firstOfMonth = wkStart;
+    lastOfMonth = wkEnd;
+    gridStart = wkStart;
+    startWeekday = 0;
+    lastWeekday = 6;
+    totalWeeks = 1;
+  } else {
+    firstOfMonth = new Date(ym.year, ym.month, 1);
+    lastOfMonth = new Date(ym.year, ym.month + 1, 0);
+    startWeekday = (firstOfMonth.getDay() + 6) % 7;  // Monday-first
+    gridStart = new Date(ym.year, ym.month, 1 - startWeekday);
+    lastWeekday = (lastOfMonth.getDay() + 6) % 7;
+    const totalGridDays = startWeekday + lastOfMonth.getDate() + (6 - lastWeekday);
+    totalWeeks = totalGridDays / 7;
+  }
 
   // Build summary
   const completedCount = events.filter(e => e.task.slackStatus === 'Completed').length;
@@ -5419,23 +5470,49 @@ function renderRoadmapCalendar(roadmapId) {
       '<button class="btn danger" id="rmDeleteBtn">Delete</button>' +
     '</div></div>';
 
-  // Toolbar with navigation. When there's nothing in the side panel, expand calendar to full width.
-  const hasSide = unscheduled.length > 0 || archivedEntries.length > 0;
+  // Toolbar with navigation. The user can hide the side panel; when empty OR hidden we expand calendar full width.
+  const hasSide = (unscheduled.length > 0 || archivedEntries.length > 0) && !roadmapCalState.sideHidden;
+  const hasSideContent = unscheduled.length > 0 || archivedEntries.length > 0;
   html += '<div class="rm-content-row' + (hasSide ? '' : ' no-side') + '"><div class="rm-cal-area">';
   const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const monthLabel = monthNames[ym.month] + ' ' + ym.year;
-  // Compute whether the calendar is at (or before) the roadmap's start month → disable Prev
+  let periodLabel;
+  let atStart = false;
   const rmStart = parseDate(r.startDate);
-  const atStart = rmStart ? (ym.year < rmStart.getFullYear() ||
-                             (ym.year === rmStart.getFullYear() && ym.month <= rmStart.getMonth())) : false;
+  if (viewMode === 'week') {
+    const wkStart = gridStart, wkEnd = new Date(gridStart); wkEnd.setDate(wkEnd.getDate() + 6);
+    const sameMonth = wkStart.getMonth() === wkEnd.getMonth();
+    if (sameMonth) {
+      periodLabel = wkStart.getDate() + '–' + wkEnd.getDate() + ' ' + monthNames[wkStart.getMonth()] + ' ' + wkStart.getFullYear();
+    } else {
+      periodLabel = wkStart.getDate() + ' ' + monthNames[wkStart.getMonth()].slice(0,3) + '. – ' +
+                    wkEnd.getDate() + ' ' + monthNames[wkEnd.getMonth()].slice(0,3) + '. ' + wkEnd.getFullYear();
+    }
+    if (rmStart) {
+      const rmStartMonday = bnMondayOf(rmStart);
+      atStart = wkStart.getTime() <= rmStartMonday.getTime();
+    }
+  } else {
+    periodLabel = monthNames[ym.month] + ' ' + ym.year;
+    atStart = rmStart ? (ym.year < rmStart.getFullYear() ||
+                         (ym.year === rmStart.getFullYear() && ym.month <= rmStart.getMonth())) : false;
+  }
+  const prevTitle = atStart ? "At roadmap start — can't go further back" : (viewMode === 'week' ? 'Previous week' : 'Previous month');
+  const nextTitle = viewMode === 'week' ? 'Next week' : 'Next month';
   html += '<div class="cal-toolbar">' +
     '<div class="cal-nav-group">' +
-      '<button class="cal-nav-btn" id="calPrev" title="' + (atStart ? "At roadmap start — can't go further back" : "Previous month") + '"' + (atStart ? ' disabled' : '') + '>‹</button>' +
+      '<button class="cal-nav-btn" id="calPrev" title="' + prevTitle + '"' + (atStart ? ' disabled' : '') + '>‹</button>' +
       '<button class="cal-today-btn" id="calToday">Today</button>' +
-      '<button class="cal-nav-btn" id="calNext" title="Next month">›</button>' +
+      '<button class="cal-nav-btn" id="calNext" title="' + nextTitle + '">›</button>' +
     '</div>' +
-    '<div class="cal-month-label">' + monthLabel + '</div>' +
+    '<div class="cal-month-label">' + periodLabel + '</div>' +
+    '<div class="cal-view-toggle" role="group" aria-label="View mode">' +
+      '<button type="button" class="cal-view-btn ' + (viewMode === 'month' ? 'active' : '') + '" id="calViewMonth" title="Month view">Month</button>' +
+      '<button type="button" class="cal-view-btn ' + (viewMode === 'week'  ? 'active' : '') + '" id="calViewWeek"  title="Week view">Week</button>' +
+    '</div>' +
     '<label class="cal-toggle"><input type="checkbox" id="calHideWeekends" ' + (roadmapCalState.hideWeekends ? "checked" : "") + '> <span>Hide weekends</span></label>' +
+    (hasSideContent
+      ? '<button type="button" class="cal-side-toggle" id="calSideToggle" title="' + (roadmapCalState.sideHidden ? 'Show Unscheduled/Archived sidebar' : 'Hide sidebar (calendar full width)') + '">' + (roadmapCalState.sideHidden ? '⏴ Show side' : 'Hide side ⏵') + '</button>'
+      : '') +
     '</div>';
 
   {
@@ -5814,27 +5891,81 @@ function renderRoadmapCalendar(roadmapId) {
   html += '</div>';
   cont.innerHTML = html;
 
-  // Wire up navigation
+  // Wire up navigation — behavior depends on viewMode
   document.getElementById('calPrev').addEventListener('click', () => {
-    if (atStart) return;   // safety: don't go past roadmap start
-    let m = ym.month - 1, y = ym.year;
-    if (m < 0) { m = 11; y--; }
-    // If new target is still before roadmap start, clamp to start month
-    if (rmStart && (y < rmStart.getFullYear() || (y === rmStart.getFullYear() && m < rmStart.getMonth()))) {
-      y = rmStart.getFullYear(); m = rmStart.getMonth();
+    if (atStart) return;
+    if (viewMode === 'week') {
+      const next = new Date(gridStart); next.setDate(next.getDate() - 7);
+      // Clamp to Monday of rmStart week if needed
+      if (rmStart) {
+        const minWk = bnMondayOf(rmStart);
+        if (next.getTime() < minWk.getTime()) {
+          roadmapCalState.weekStart = minWk;
+        } else {
+          roadmapCalState.weekStart = next;
+        }
+      } else {
+        roadmapCalState.weekStart = next;
+      }
+    } else {
+      let m = ym.month - 1, y = ym.year;
+      if (m < 0) { m = 11; y--; }
+      if (rmStart && (y < rmStart.getFullYear() || (y === rmStart.getFullYear() && m < rmStart.getMonth()))) {
+        y = rmStart.getFullYear(); m = rmStart.getMonth();
+      }
+      roadmapCalState.yearMonth = { year: y, month: m };
     }
-    roadmapCalState.yearMonth = { year: y, month: m };
     renderRoadmapCalendar(roadmapId);
   });
   document.getElementById('calNext').addEventListener('click', () => {
-    let m = ym.month + 1, y = ym.year;
-    if (m > 11) { m = 0; y++; }
-    roadmapCalState.yearMonth = { year: y, month: m };
+    if (viewMode === 'week') {
+      const next = new Date(gridStart); next.setDate(next.getDate() + 7);
+      roadmapCalState.weekStart = next;
+    } else {
+      let m = ym.month + 1, y = ym.year;
+      if (m > 11) { m = 0; y++; }
+      roadmapCalState.yearMonth = { year: y, month: m };
+    }
     renderRoadmapCalendar(roadmapId);
   });
   document.getElementById('calToday').addEventListener('click', () => {
     const t = new Date();
-    roadmapCalState.yearMonth = { year: t.getFullYear(), month: t.getMonth() };
+    if (viewMode === 'week') {
+      roadmapCalState.weekStart = bnMondayOf(t);
+    } else {
+      roadmapCalState.yearMonth = { year: t.getFullYear(), month: t.getMonth() };
+    }
+    renderRoadmapCalendar(roadmapId);
+  });
+  // View mode toggle (Month / Week)
+  const vMonthBtn = document.getElementById('calViewMonth');
+  const vWeekBtn  = document.getElementById('calViewWeek');
+  if (vMonthBtn) vMonthBtn.addEventListener('click', () => {
+    if (roadmapCalState.viewMode === 'month') return;
+    roadmapCalState.viewMode = 'month';
+    localStorage.setItem('bookline-rm-view-mode', 'month');
+    // If we were in week view, snap the month to the visible week's month
+    if (gridStart) roadmapCalState.yearMonth = { year: gridStart.getFullYear(), month: gridStart.getMonth() };
+    renderRoadmapCalendar(roadmapId);
+  });
+  if (vWeekBtn) vWeekBtn.addEventListener('click', () => {
+    if (roadmapCalState.viewMode === 'week') return;
+    roadmapCalState.viewMode = 'week';
+    localStorage.setItem('bookline-rm-view-mode', 'week');
+    // Anchor the week at the Monday of today (or current month's 1st week if today is outside the month)
+    if (!roadmapCalState.weekStart) {
+      const todayMon = bnMondayOf(new Date());
+      const monthFirst = new Date(ym.year, ym.month, 1);
+      const inMonth = todayMon.getFullYear() === ym.year && todayMon.getMonth() === ym.month;
+      roadmapCalState.weekStart = inMonth ? todayMon : bnMondayOf(monthFirst);
+    }
+    renderRoadmapCalendar(roadmapId);
+  });
+  // Side toggle (hide/show Unscheduled + Archived sidebar)
+  const sideToggleBtn = document.getElementById('calSideToggle');
+  if (sideToggleBtn) sideToggleBtn.addEventListener('click', () => {
+    roadmapCalState.sideHidden = !roadmapCalState.sideHidden;
+    localStorage.setItem('bookline-rm-side-hidden', roadmapCalState.sideHidden ? 'true' : 'false');
     renderRoadmapCalendar(roadmapId);
   });
   // Event clicks → open a small popover to edit roadmap dates (and a link to open the task modal)
