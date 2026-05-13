@@ -40,6 +40,8 @@
   .filters { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
   .filters .label { font-size: 12px; color: #6b6b6b; margin-right: 4px; }
   .pill { appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a; padding: 4px 10px; border-radius: 999px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .rm-filter-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px 3px 5px; }
+  .rm-filter-pill .rm-owner-mini { flex: 0 0 auto; }
   .pill.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
   .pill.excluded { background: #fef3f2; color: #b42318; border-color: #fecdca; text-decoration: line-through; }
   .pill .count-badge { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: rgba(0,0,0,0.08); font-size: 10px; font-weight: 700; min-width: 16px; text-align: center; }
@@ -146,11 +148,17 @@
     padding: 0 5px;
     max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
+  .task-agg .ta-stack { display: inline-flex; flex-direction: column; align-items: center; gap: 0; line-height: 1; }
   .task-agg .ta-val {
     font-size: 9.5px; font-weight: 600; color: #1a1a1a;
     font-variant-numeric: tabular-nums;
   }
   .task-agg .ta-val.empty { color: #b3b3b3; font-style: italic; }
+  .task-agg .ta-val-mini {
+    font-size: 8px; font-weight: 500; color: #9a9a9a; opacity: 0.85;
+    font-variant-numeric: tabular-nums;
+    margin-top: 1px;
+  }
   .task-agg .ta-span {
     font-size: 9px; font-weight: 700; color: #6b6b6b;
     font-variant-numeric: tabular-nums;
@@ -3749,8 +3757,7 @@ const PRIORITIES = [
   { key: "Alta",     label: "Alta",     bg: "#fef0c7", color: "#b54708" },
   { key: "Media",    label: "Media",    bg: "#d1fadf", color: "#027a48" },
   { key: "Baja",     label: "Baja",     bg: "#eaecf0", color: "#475467" },
-  { key: "Muy Baja", label: "Muy Baja", bg: "#f2f4f7", color: "#98a2b3" },
-  { key: "__none",   label: "(no priority)", bg: "#fff", color: "#9a9a9a" }
+  { key: "Muy Baja", label: "Muy Baja", bg: "#f2f4f7", color: "#98a2b3" }
 ];
 
 function countTasksForPersonContextual(personId) {
@@ -3971,11 +3978,12 @@ function renderRoadmapFilter() {
   rms.forEach(r => {
     const incl = roadmapInclude.has(r.id);
     const excl = roadmapExclude.has(r.id);
-    let cls = 'pill';
+    let cls = 'pill rm-filter-pill';
     let prefix = '';
     if (incl) cls += ' active';
     else if (excl) { cls += ' excluded'; prefix = '− '; }
-    inner += '<button class="' + cls + '" data-rm-filter="' + escapeHtml(r.id) + '" title="Click cycles: include &rarr; exclude &rarr; off">📍 ' + prefix + escapeHtml(r.name || '(unnamed)') + countBadge(countTasksMatchingExcept("roadmap", r.id)) + '</button>';
+    const ownerHtml = (typeof roadmapOwnerAvatarHtml === 'function') ? roadmapOwnerAvatarHtml(r, 16) : '📍';
+    inner += '<button class="' + cls + '" data-rm-filter="' + escapeHtml(r.id) + '" title="Click cycles: include &rarr; exclude &rarr; off">' + ownerHtml + ' ' + prefix + escapeHtml(r.name || '(unnamed)') + countBadge(countTasksMatchingExcept("roadmap", r.id)) + '</button>';
   });
   {
     const ni = roadmapInclude.has("__none");
@@ -4010,8 +4018,11 @@ function renderTagFilter() {
     const visibleMembers = TEAM.filter(p => personMatchesTagFilter(p.id)).length;
     inner += '<button class="pill ' + (!anyActive ? 'active' : '') + '" data-tag-filter="__all">All' + countBadgePair(visibleMembers, TEAM.length) + '</button>';
     lib.forEach(t => {
+      // Hide tags that no team member currently has (and that aren't already selected as a filter).
+      const tagMemberCount = countMembersWithTag(t.name);
       const incl = tagInclude.has(t.name);
       const excl = tagExclude.has(t.name);
+      if (tagMemberCount === 0 && !incl && !excl) return;
       let cls = 'pill';
       let styleAttr = '';
       if (incl) {
@@ -4022,7 +4033,7 @@ function renderTagFilter() {
       } else {
         styleAttr = 'style="background:' + t.bg + ';color:' + t.fg + ';border-color:' + t.bg + '"';
       }
-      inner += '<button class="' + cls + '" data-tag-filter="' + escapeHtml(t.name) + '" ' + styleAttr + ' title="Click cycles: include &rarr; exclude &rarr; off">' + (excl ? '−' : '') + escapeHtml(t.name) + countBadge(countMembersWithTag(t.name)) + '</button>';
+      inner += '<button class="' + cls + '" data-tag-filter="' + escapeHtml(t.name) + '" ' + styleAttr + ' title="Click cycles: include &rarr; exclude &rarr; off">' + (excl ? '−' : '') + escapeHtml(t.name) + countBadge(tagMemberCount) + '</button>';
     });
     {
       const ni = tagInclude.has("__none");
@@ -6835,7 +6846,11 @@ function bnRenderTaskAggBadge(t) {
   function renderSide(lbl, tid, dateStr) {
     const dateFmt = bnFormatDateDMY(dateStr);
     if (lbl) {
-      return '<span class="ta-pill" style="' + pillStyleFor(lbl, tid) + '" title="' + escapeHtml(lbl) + (dateStr ? ' = ' + escapeHtml(dateFmt) : '') + '">' + escapeHtml(lbl) + '</span>';
+      // Pill on top + tiny "= DD/MM/YYYY" stacked underneath as the resolved-date reference.
+      return '<span class="ta-stack">' +
+        '<span class="ta-pill" style="' + pillStyleFor(lbl, tid) + '" title="' + escapeHtml(lbl) + (dateStr ? ' = ' + escapeHtml(dateFmt) : '') + '">' + escapeHtml(lbl) + '</span>' +
+        (dateStr ? '<span class="ta-val-mini">= ' + escapeHtml(dateFmt) + '</span>' : '') +
+      '</span>';
     }
     return '<span class="ta-val' + (dateStr ? '' : ' empty') + '">' + (dateStr ? escapeHtml(dateFmt) : '—') + '</span>';
   }
