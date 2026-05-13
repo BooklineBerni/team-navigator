@@ -1796,12 +1796,12 @@
 
   /* Group cards (parent tasks) */
   .group-row {
-    display: grid; grid-template-columns: 16px 22px 1fr auto auto; gap: 10px; align-items: center;
+    display: grid; grid-template-columns: 16px 22px 1fr auto; gap: 10px; align-items: center;
     padding: 10px 14px; background: #fffaf0; border: 1px solid #f0e3c4; border-radius: 10px;
-    margin-bottom: 6px; cursor: pointer;
+    margin-bottom: 6px;
   }
   .group-row[data-selected="true"] { outline: 2px solid #1a1a1a; outline-offset: -1px; }
-  .group-row:hover { border-color: #d6b962; background: #fff5dc; }
+  .group-row:hover { border-color: #d6b962; }
   .group-row .group-checkbox {
     width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #d8d6d1;
     display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
@@ -1809,16 +1809,34 @@
   }
   .group-row .group-checkbox.checked { background: #1a1a1a; border-color: #1a1a1a; }
   .group-row .group-checkbox.checked::before { content: "\2713"; }
-  .group-row .caret { font-size: 11px; color: #6b6b6b; transition: transform .15s; display: inline-flex; align-items: center; justify-content: center; }
-  .group-row.expanded .caret { transform: rotate(90deg); }
-  .group-row .group-title { font-weight: 600; font-size: 14px; color: #1a1a1a; display: flex; align-items: center; gap: 8px; }
-  .group-row .group-title .folder-emoji { font-size: 16px; }
+  .group-row .group-caret {
+    appearance: none; border: 1px solid transparent; background: transparent;
+    font-size: 11px; color: #6b6b6b;
+    transition: transform .15s, background .12s, border-color .12s, color .12s;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; padding: 0; border-radius: 6px;
+    cursor: pointer; font-family: inherit;
+  }
+  .group-row .group-caret:hover { background: #fff5dc; border-color: #d6b962; color: #1a1a1a; }
+  .group-row.expanded .group-caret { transform: rotate(90deg); }
+  .group-row .group-title {
+    appearance: none; border: none; background: transparent;
+    font-weight: 600; font-size: 14px; color: #1a1a1a;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 4px 8px; border-radius: 6px;
+    cursor: pointer; text-align: left;
+    font-family: inherit;
+    min-width: 0; max-width: 100%;
+    transition: background .12s, color .12s;
+  }
+  .group-row .group-title:hover { background: #fff5dc; color: #92400e; }
+  .group-row .group-title:hover .group-title-text { text-decoration: underline; }
+  .group-row .group-title .folder-emoji { font-size: 16px; flex-shrink: 0; }
+  .group-row .group-title .group-title-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .group-row .group-progress { display: flex; align-items: center; gap: 8px; }
   .group-row .group-progress-bar-wrap { width: 80px; height: 6px; background: #f0e3c4; border-radius: 3px; overflow: hidden; }
   .group-row .group-progress-bar-fill { height: 100%; background: #16a34a; transition: width .2s; }
   .group-row .group-progress-text { font-size: 11.5px; color: #6b6b6b; min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
-  .group-row .group-edit-btn { appearance: none; border: none; background: transparent; cursor: pointer; color: #9a9a9a; font-size: 14px; padding: 0 6px; }
-  .group-row .group-edit-btn:hover { color: #1a1a1a; }
   .group-children { padding-left: 28px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 4px; border-left: 2px dashed #f0e3c4; margin-left: 12px; padding-top: 4px; padding-bottom: 4px; }
   .group-children.collapsed { display: none; }
   .group-children .flat-task { background: #fffefb; }
@@ -7486,34 +7504,38 @@ function groupRowHtml(g) {
   const sel = isSelected(g.id);
   return '<div class="group-row' + (expanded ? ' expanded' : '') + '" data-gid="' + escapeHtml(g.id) + '"' + (sel ? ' data-selected="true"' : '') + '>' +
       '<span class="checkbox group-checkbox' + (sel ? ' checked' : '') + '" data-gid="' + escapeHtml(g.id) + '" title="Select this group for bulk actions"></span>' +
-      '<span class="caret">▶</span>' +
-      '<span class="group-title"><span class="folder-emoji">📁</span>' + escapeHtml(g.subject || '(unnamed group)') + '</span>' +
+      '<button type="button" class="group-caret" title="' + (expanded ? 'Collapse' : 'Expand') + ' group">▶</button>' +
+      '<button type="button" class="group-title" title="Edit group"><span class="folder-emoji">📁</span><span class="group-title-text">' + escapeHtml(g.subject || '(unnamed group)') + '</span></button>' +
       '<span class="group-progress">' +
         '<span class="group-progress-bar-wrap"><span class="group-progress-bar-fill" style="width:' + prog.pct + '%"></span></span>' +
         '<span class="group-progress-text">' + prog.done + '/' + prog.total + '</span>' +
       '</span>' +
-      '<button class="group-edit-btn" title="Edit group">&#9998;</button>' +
     '</div>';
 }
 function attachGroupHandlers(container) {
   container.querySelectorAll(".group-row").forEach(node => {
     const gid = node.dataset.gid;
-    node.addEventListener("click", e => {
-      if (e.target.closest(".group-edit-btn")) return;
-      if (e.target.closest(".group-checkbox")) return;   // checkbox handled below
+    // Title click → open the edit modal
+    const title = node.querySelector(".group-title");
+    if (title) title.addEventListener("click", e => {
+      e.stopPropagation();
+      openModal(gid);
+    });
+    // Caret click → expand/collapse
+    const caret = node.querySelector(".group-caret");
+    if (caret) caret.addEventListener("click", e => {
+      e.stopPropagation();
       toggleGroupExpanded(gid);
-      // Toggle visually + render new children
       const childrenEl = node.nextElementSibling;
       if (childrenEl && childrenEl.classList.contains("group-children")) {
         childrenEl.classList.toggle("collapsed");
         node.classList.toggle("expanded");
-      } else {
-        // No siblings rendered yet — full re-render
-        if (typeof render === "function") render();
+        caret.title = node.classList.contains("expanded") ? "Collapse group" : "Expand group";
+      } else if (typeof render === "function") {
+        render();
       }
     });
-    const editBtn = node.querySelector(".group-edit-btn");
-    if (editBtn) editBtn.addEventListener("click", e => { e.stopPropagation(); openModal(gid); });
+    // Checkbox → multi-select toggle
     const cb = node.querySelector(".group-checkbox");
     if (cb) cb.addEventListener("click", e => {
       e.stopPropagation();
