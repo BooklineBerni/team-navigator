@@ -264,6 +264,40 @@
   .rm-modal-date-input:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
   .rm-modal-date-input:disabled { background: #fef3c7; color: #92400e; cursor: not-allowed; }
   .rm-modal-arrow { color: #92400e; font-weight: 600; font-size: 11px; }
+  /* Per-row Apply-style component: pin + start + N days + end + pin, with source chips below */
+  .rm-modal-row { flex-wrap: wrap; align-items: flex-start; }
+  .rm-modal-row .rm-modal-dates {
+    display: inline-flex; align-items: flex-start; gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .rm-modal-cell { display: inline-flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .rm-modal-input-wrap { display: inline-flex; align-items: center; gap: 3px; }
+  .rm-modal-pin {
+    background: #fff; border: 1px solid #fde68a; border-radius: 5px;
+    padding: 2px 4px; cursor: pointer;
+    font-size: 10.5px; line-height: 1;
+    opacity: .65; transition: all .12s;
+  }
+  .rm-modal-pin:hover { opacity: 1; border-color: #d97706; }
+  .rm-modal-days-cell input.rm-modal-days {
+    width: 44px; padding: 2px 4px; font-size: 11px;
+    border: 1px solid #fde68a; border-radius: 6px;
+    background: #fff; color: #92400e;
+    text-align: center;
+  }
+  .rm-modal-days-cell input.rm-modal-days:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
+  .rm-modal-days-unit { font-size: 10px; color: #92400e; margin-left: 2px; }
+  .rm-modal-src {
+    font-size: 10px; font-weight: 600; color: #78350f;
+    background: #fef3c7; padding: 1px 5px; border-radius: 3px;
+    align-self: flex-start;
+    max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .rm-modal-src .bn-src-clear {
+    background: transparent; border: none; cursor: pointer;
+    color: #78350f; font-weight: 700; padding: 0 0 0 3px; font-size: 10px;
+  }
+  .rm-modal-src .bn-src-clear:hover { color: #b91c1c; }
   /* Mini avatar used in roadmap rows / picker (replaces the old pin emoji) */
   .rm-owner-mini {
     flex-shrink: 0;
@@ -576,7 +610,9 @@
     text-align: left;
     padding: 2px 8px;
     line-height: 22px !important;   /* keep title strip at the top regardless of bar height */
-    overflow: visible;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     z-index: 6;
   }
   .cal-event.cal-event-group:hover { transform: none; z-index: 7; filter: brightness(0.96) saturate(1.1); }
@@ -4489,6 +4525,8 @@ function closeModal() {
     window.__pendingApplyToRoadmaps = false;
     if (typeof window.__resetApplyToRoadmapsState === 'function') window.__resetApplyToRoadmapsState();
   }
+  // Clear transient per-row source-chip labels (they're not persisted)
+  window.__rmRowSrc = {};
   document.getElementById("modalBg").classList.remove("show");
   editingId = null;
 }
@@ -4741,9 +4779,7 @@ function bnEndFromStartAndDuration(startStr, n) {
       }
     });
   }
-  // Compute another task's aggregated start/end (min start / max end across all its roadmap entries,
-  // resolving anchor chains via effectiveDatesForInRoadmap). Returns '' if the task isn't in any
-  // roadmap OR if no resolvable date exists for that side.
+  // (Helper aggregatedDateForTaskInRoadmaps kept as local fallback; main impl is bnAggregatedDateForTask at module scope.)
   function aggregatedDateForTaskInRoadmaps(taskId, side /* 'start'|'end' */) {
     const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : (STORE.roadmaps || []);
     const dates = [];
@@ -5453,7 +5489,14 @@ function renderRoadmapsInModal(t) {
   const allRoadmaps = (typeof getRoadmaps === 'function') ? getRoadmaps() : [];
   const assigned = allRoadmaps.filter(r => (r.tasks || []).some(e => e.taskId === t.id))
     .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  // Stacked rows: each row shows the roadmap name (clickable to jump to it), its specific dates for this task, and a × to remove.
+  // Transient source-chip labels per row (rmId|side → "start of X"). Cleared on modal close.
+  if (!window.__rmRowSrc) window.__rmRowSrc = {};
+  function srcKey(rmId, side) { return t.id + '|' + rmId + '|' + side; }
+  function getRowSrc(rmId, side) { return window.__rmRowSrc[srcKey(rmId, side)] || ''; }
+  function setRowSrc(rmId, side, lbl) {
+    if (lbl) window.__rmRowSrc[srcKey(rmId, side)] = lbl;
+    else delete window.__rmRowSrc[srcKey(rmId, side)];
+  }
   if (assigned.length === 0) {
     cont.innerHTML = '<span style="color:#9a9a9a; font-size:12px">Not in any roadmap</span>';
   } else {
@@ -5463,15 +5506,39 @@ function renderRoadmapsInModal(t) {
       const eVal = (entry && entry.endDate)   || '';
       const sAnchored = !!(entry && entry.startAnchor);
       const eAnchored = !!(entry && entry.endAnchor);
+      const durVal = (entry && typeof entry.durationDays === 'number' && entry.durationDays >= 1) ? entry.durationDays : '';
+      const sSrcLbl = getRowSrc(r.id, 'start');
+      // End "source" can be either a picked-task label OR a "N days" computed label
+      let eSrcLbl = getRowSrc(r.id, 'end');
+      if (!eSrcLbl && durVal) eSrcLbl = durVal + ' day' + (durVal === 1 ? '' : 's');
+      function srcChip(lbl) {
+        if (!lbl) return '<div class="rm-modal-src" style="display:none"></div>';
+        return '<div class="rm-modal-src">= ' + escapeHtml(lbl) + ' <button type="button" class="bn-src-clear" title="Clear source">×</button></div>';
+      }
       return '<div class="rm-modal-row" data-rmid="' + escapeHtml(r.id) + '">' +
         '<button type="button" class="rm-modal-link" data-rmid="' + escapeHtml(r.id) + '" title="Open this roadmap">' +
           roadmapOwnerAvatarHtml(r, 18) +
           '<span>' + escapeHtml(r.name || '(unnamed)') + '</span>' +
         '</button>' +
         '<span class="rm-modal-dates">' +
-          '<input type="date" class="rm-modal-date-input rm-modal-start" data-rmid="' + escapeHtml(r.id) + '" value="' + escapeHtml(sVal) + '" title="' + (sAnchored ? 'Anchored — edit in roadmap to change' : 'Start in this roadmap') + '"' + (sAnchored ? ' disabled' : '') + '>' +
-          '<span class="rm-modal-arrow">→</span>' +
-          '<input type="date" class="rm-modal-date-input rm-modal-end" data-rmid="' + escapeHtml(r.id) + '" value="' + escapeHtml(eVal) + '" title="' + (eAnchored ? 'Anchored — edit in roadmap to change' : 'End in this roadmap') + '"' + (eAnchored ? ' disabled' : '') + '>' +
+          '<span class="rm-modal-cell">' +
+            '<span class="rm-modal-input-wrap">' +
+              '<button type="button" class="rm-modal-pin" data-rmid="' + escapeHtml(r.id) + '" data-side="start" title="Use another task\'s aggregated start/end as this Start">📌</button>' +
+              '<input type="date" class="rm-modal-date-input rm-modal-start" data-rmid="' + escapeHtml(r.id) + '" value="' + escapeHtml(sVal) + '" title="' + (sAnchored ? 'Anchored — clear via the roadmap calendar to change' : 'Start in this roadmap') + '"' + (sAnchored ? ' disabled' : '') + '>' +
+            '</span>' +
+            srcChip(sSrcLbl) +
+          '</span>' +
+          '<span class="rm-modal-cell rm-modal-days-cell">' +
+            '<input type="number" class="rm-modal-days" data-rmid="' + escapeHtml(r.id) + '" value="' + escapeHtml(String(durVal)) + '" min="1" step="1" placeholder="N" title="Duration in days — sets End = Start + (N − 1) days">' +
+            '<span class="rm-modal-days-unit">days</span>' +
+          '</span>' +
+          '<span class="rm-modal-cell">' +
+            '<span class="rm-modal-input-wrap">' +
+              '<input type="date" class="rm-modal-date-input rm-modal-end" data-rmid="' + escapeHtml(r.id) + '" value="' + escapeHtml(eVal) + '" title="' + (eAnchored ? 'Anchored — clear via the roadmap calendar to change' : 'End in this roadmap') + '"' + (eAnchored ? ' disabled' : '') + '>' +
+              '<button type="button" class="rm-modal-pin" data-rmid="' + escapeHtml(r.id) + '" data-side="end" title="Use another task\'s aggregated start/end as this End">📌</button>' +
+            '</span>' +
+            srcChip(eSrcLbl) +
+          '</span>' +
         '</span>' +
         '<button type="button" class="rm-modal-x" data-rmid="' + escapeHtml(r.id) + '" title="Remove from this roadmap">×</button>' +
       '</div>';
@@ -5488,44 +5555,128 @@ function renderRoadmapsInModal(t) {
         if (typeof switchView === 'function') switchView('roadmaps');
       });
     });
+    // Helper: find entry for a given roadmap row
+    function entryFor(rmId) {
+      const rm = findRoadmap(rmId);
+      if (!rm) return { rm: null, entry: null };
+      const entry = (rm.tasks || []).find(en => en.taskId === t.id);
+      return { rm, entry };
+    }
+    // Recompute end from start + (durationDays − 1)
+    function recomputeEndFromDays(rmId) {
+      const { entry } = entryFor(rmId);
+      if (!entry) return;
+      const n = entry.durationDays;
+      if (typeof n !== 'number' || n < 1 || !entry.startDate) return;
+      const newEnd = bnEndFromStartAndDuration(entry.startDate, n);
+      if (newEnd) {
+        entry.endDate = newEnd;
+        entry.endAnchor = '';
+      }
+    }
     // Date inputs — editable per-roadmap; saving an explicit date clears any anchor on that side
     cont.querySelectorAll('.rm-modal-start').forEach(inp => {
-      inp.addEventListener('change', e => {
+      inp.addEventListener('change', () => {
         const rmId = inp.dataset.rmid;
-        const rm = findRoadmap(rmId);
-        if (!rm) return;
-        const entry = (rm.tasks || []).find(en => en.taskId === t.id);
+        const { entry } = entryFor(rmId);
         if (!entry) return;
         entry.startDate = inp.value || '';
         if (entry.startAnchor) entry.startAnchor = '';
+        setRowSrc(rmId, 'start', '');
+        // If duration is set, recompute end (chip "N days" remains)
+        if (entry.durationDays) recomputeEndFromDays(rmId);
         saveAndSyncTaskDates();
         renderRoadmapsInModal(t);
-        // Also refresh the aggregate Start/End inputs in the modal
-        if (typeof t.id === 'string') {
-          const fs = document.getElementById('f_taskStart');
-          const fe = document.getElementById('f_taskEnd');
-          if (fs) fs.value = (STORE.tasks.find(x => x.id === t.id) || {}).startDate || '';
-          if (fe) fe.value = (STORE.tasks.find(x => x.id === t.id) || {}).endDate || '';
-        }
       });
     });
     cont.querySelectorAll('.rm-modal-end').forEach(inp => {
-      inp.addEventListener('change', e => {
+      inp.addEventListener('change', () => {
         const rmId = inp.dataset.rmid;
-        const rm = findRoadmap(rmId);
-        if (!rm) return;
-        const entry = (rm.tasks || []).find(en => en.taskId === t.id);
+        const { entry } = entryFor(rmId);
         if (!entry) return;
         entry.endDate = inp.value || '';
         if (entry.endAnchor) entry.endAnchor = '';
+        // Manual end edit clears duration AND end source chip
+        delete entry.durationDays;
+        setRowSrc(rmId, 'end', '');
         saveAndSyncTaskDates();
         renderRoadmapsInModal(t);
-        if (typeof t.id === 'string') {
-          const fs = document.getElementById('f_taskStart');
-          const fe = document.getElementById('f_taskEnd');
-          if (fs) fs.value = (STORE.tasks.find(x => x.id === t.id) || {}).startDate || '';
-          if (fe) fe.value = (STORE.tasks.find(x => x.id === t.id) || {}).endDate || '';
+      });
+    });
+    // Duration days — drives end = start + (N − 1) days. Empty → clears stored days + end.
+    cont.querySelectorAll('.rm-modal-days').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const rmId = inp.dataset.rmid;
+        const { entry } = entryFor(rmId);
+        if (!entry) return;
+        const n = parseInt(inp.value, 10);
+        if (!Number.isFinite(n) || n < 1) {
+          delete entry.durationDays;
+          // If end source chip was the "N days" label, clear the end too
+          entry.endDate = '';
+          entry.endAnchor = '';
+          setRowSrc(rmId, 'end', '');
+        } else {
+          entry.durationDays = n;
+          setRowSrc(rmId, 'end', '');  // days chip takes over (rendered from durationDays)
+          if (entry.startDate) {
+            const newEnd = bnEndFromStartAndDuration(entry.startDate, n);
+            if (newEnd) {
+              entry.endDate = newEnd;
+              entry.endAnchor = '';
+            }
+          }
         }
+        saveAndSyncTaskDates();
+        renderRoadmapsInModal(t);
+      });
+    });
+    // Pin buttons → pick another task's aggregated start/end, fill date input behind, show source chip
+    cont.querySelectorAll('.rm-modal-pin').forEach(pin => {
+      pin.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        const rmId = pin.dataset.rmid;
+        const side = pin.dataset.side;
+        bnOpenAggregatedPicker(pin, t.id, side, (absDate, label) => {
+          const { entry } = entryFor(rmId);
+          if (!entry) return;
+          if (side === 'start') {
+            entry.startDate = absDate;
+            entry.startAnchor = '';
+            setRowSrc(rmId, 'start', label);
+            // If duration is set, recompute end so it follows the new start
+            if (entry.durationDays) recomputeEndFromDays(rmId);
+          } else {
+            entry.endDate = absDate;
+            entry.endAnchor = '';
+            // Picking end directly clears the days source (anchor wins)
+            delete entry.durationDays;
+            setRowSrc(rmId, 'end', label);
+          }
+          saveAndSyncTaskDates();
+          renderRoadmapsInModal(t);
+        });
+      });
+    });
+    // Source-chip × clears that source AND, for end-via-days, also clears stored duration
+    cont.querySelectorAll('.rm-modal-row .bn-src-clear').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        const row = btn.closest('.rm-modal-row');
+        const cell = btn.closest('.rm-modal-cell');
+        if (!row || !cell) return;
+        const rmId = row.dataset.rmid;
+        // Determine which side this chip belongs to by looking at sibling inputs
+        const isStartCell = !!cell.querySelector('.rm-modal-start');
+        const isEndCell   = !!cell.querySelector('.rm-modal-end');
+        const side = isStartCell ? 'start' : (isEndCell ? 'end' : null);
+        if (!side) return;
+        const { entry } = entryFor(rmId);
+        if (!entry) return;
+        setRowSrc(rmId, side, '');
+        if (side === 'end' && entry.durationDays) delete entry.durationDays;
+        saveAndSyncTaskDates();
+        renderRoadmapsInModal(t);
       });
     });
     cont.querySelectorAll('.rm-modal-x').forEach(btn => {
@@ -6271,6 +6422,162 @@ function openTaskScheduleAnchorPicker(anchorBtn, selfTaskId, kind /* 'start'|'en
   setTimeout(() => {
     const closer = e => {
       if (menu.contains(e.target) || e.target === anchorBtn) return;
+      menu.remove();
+      document.removeEventListener('click', closer, true);
+    };
+    document.addEventListener('click', closer, true);
+  }, 0);
+}
+// Compute a task's aggregated start/end across ALL its roadmap entries (resolving anchor chains).
+// Returns '' if the task isn't in any roadmap or no resolvable date exists for that side.
+function bnAggregatedDateForTask(taskId, side /* 'start'|'end' */) {
+  const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : (STORE.roadmaps || []);
+  const dates = [];
+  let anyEntry = false;
+  rms.forEach(rm => {
+    const e = (rm.tasks || []).find(x => x.taskId === taskId);
+    if (!e) return;
+    anyEntry = true;
+    const r = effectiveDatesForInRoadmap(e, rm);
+    const s = side === 'start' ? r.startStr : r.endStr;
+    if (s) dates.push(s);
+  });
+  if (!anyEntry || dates.length === 0) return '';
+  return side === 'start'
+    ? dates.reduce((m, s) => (!m || s < m) ? s : m, '')
+    : dates.reduce((m, s) => (!m || s > m) ? s : m, '');
+}
+// Floating "pick another task's aggregated start/end" picker — shared by the modal's top "Apply to all"
+// row AND each per-roadmap row. Filters out: the selfTaskId, tasks whose parent group is selfTaskId,
+// and tasks with no resolvable start/end at all. Click a side button → onPicked(absoluteDateStr, label).
+function bnOpenAggregatedPicker(anchorBtn, selfTaskId, side, onPicked) {
+  document.querySelectorAll('.bn-anchor-menu').forEach(n => n.remove());
+  const candidates = (STORE.tasks || [])
+    .filter(t => t.id !== selfTaskId && t.groupId !== selfTaskId)
+    .map(task => ({
+      task,
+      startVal: bnAggregatedDateForTask(task.id, 'start'),
+      endVal:   bnAggregatedDateForTask(task.id, 'end'),
+    }))
+    .filter(x => x.startVal || x.endVal);
+  if (candidates.length === 0) {
+    const menu = document.createElement('div');
+    menu.className = 'bn-anchor-menu';
+    menu.innerHTML =
+      '<div class="bam-head"><strong>No tasks available</strong><button type="button" class="bam-close" title="Close">✕</button></div>' +
+      '<div class="bam-empty" style="display:block; padding:16px">No other tasks have dates in any roadmap yet.</div>';
+    document.body.appendChild(menu);
+    const rect = anchorBtn.getBoundingClientRect();
+    menu.style.left = (rect.left + window.scrollX) + 'px';
+    menu.style.top  = (rect.bottom + window.scrollY + 6) + 'px';
+    menu.querySelector('.bam-close').addEventListener('click', () => menu.remove());
+    setTimeout(() => {
+      const closer = ev => {
+        if (menu.contains(ev.target) || ev.target === anchorBtn) return;
+        menu.remove();
+        document.removeEventListener('click', closer, true);
+      };
+      document.addEventListener('click', closer, true);
+    }, 0);
+    return;
+  }
+  candidates.sort((a, b) => {
+    const ap = a.task.isGroup ? 0 : 1;
+    const bp = b.task.isGroup ? 0 : 1;
+    if (ap !== bp) return ap - bp;
+    return (a.task.subject || '').localeCompare(b.task.subject || '');
+  });
+  const groupCount = candidates.filter(c => c.task.isGroup).length;
+  const taskCount = candidates.length - groupCount;
+  const menu = document.createElement('div');
+  menu.className = 'bn-anchor-menu';
+  menu.innerHTML =
+    '<div class="bam-head">' +
+      '<strong>Pick another task\'s ' + (side === 'start' ? 'start' : 'end') + '</strong>' +
+      '<button type="button" class="bam-close" title="Close">✕</button>' +
+    '</div>' +
+    '<div class="bam-search-wrap">' +
+      '<span class="bam-search-icon">🔍</span>' +
+      '<input type="text" class="bam-search" placeholder="Search tasks…" autocomplete="off">' +
+    '</div>' +
+    '<div class="bam-filters">' +
+      '<button type="button" class="bam-chip active" data-filter="all">All <span class="bam-count">' + candidates.length + '</span></button>' +
+      '<button type="button" class="bam-chip" data-filter="groups">📁 Groups <span class="bam-count">' + groupCount + '</span></button>' +
+      '<button type="button" class="bam-chip" data-filter="tasks">Tasks <span class="bam-count">' + taskCount + '</span></button>' +
+    '</div>' +
+    '<div class="bam-list">' +
+      candidates.map(({ task, startVal, endVal }) => {
+        const isG = !!task.isGroup;
+        const name = task.subject || '(unnamed)';
+        return '<div class="bam-row" data-type="' + (isG ? 'group' : 'task') + '" data-name="' + escapeHtml(name.toLowerCase()) + '">' +
+          '<span class="bam-row-name">' +
+            (isG ? '<span class="bam-icon">📁</span>' : '<span class="bam-icon-task">·</span>') +
+            '<span class="bam-row-label" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span>' +
+          '</span>' +
+          '<span class="bam-row-actions">' +
+            (startVal ? '<button type="button" class="bam-side-btn" data-val="' + escapeHtml(startVal) + '" data-label="start of ' + escapeHtml(name) + '" title="Use start of ' + escapeHtml(name) + '">start</button>' : '') +
+            (endVal   ? '<button type="button" class="bam-side-btn" data-val="' + escapeHtml(endVal)   + '" data-label="end of '   + escapeHtml(name) + '" title="Use end of '   + escapeHtml(name) + '">end</button>'   : '') +
+          '</span>' +
+        '</div>';
+      }).join('') +
+    '</div>' +
+    '<div class="bam-empty" style="display:none">No matches</div>';
+  document.body.appendChild(menu);
+  const rect = anchorBtn.getBoundingClientRect();
+  menu.style.left = (rect.left + window.scrollX) + 'px';
+  menu.style.top  = (rect.bottom + window.scrollY + 6) + 'px';
+  setTimeout(() => {
+    const mr = menu.getBoundingClientRect();
+    if (mr.right > window.innerWidth - 8) menu.style.left = Math.max(8, window.innerWidth - mr.width - 8 + window.scrollX) + 'px';
+    if (mr.bottom > window.innerHeight - 8) menu.style.top = (Math.max(8, rect.top - mr.height - 6) + window.scrollY) + 'px';
+  }, 0);
+  let activeFilter = 'all';
+  let activeQuery = '';
+  function applyFilter() {
+    let visibleCount = 0;
+    menu.querySelectorAll('.bam-row').forEach(rw => {
+      const type = rw.dataset.type;
+      const name = rw.dataset.name || '';
+      const filterMatch = activeFilter === 'all' || activeFilter === (type === 'group' ? 'groups' : 'tasks');
+      const queryMatch = !activeQuery || name.indexOf(activeQuery) >= 0;
+      const show = filterMatch && queryMatch;
+      rw.style.display = show ? '' : 'none';
+      if (show) visibleCount++;
+    });
+    menu.querySelector('.bam-empty').style.display = visibleCount === 0 ? '' : 'none';
+  }
+  const searchInput = menu.querySelector('.bam-search');
+  searchInput.addEventListener('input', () => {
+    activeQuery = searchInput.value.trim().toLowerCase();
+    applyFilter();
+  });
+  setTimeout(() => searchInput.focus(), 30);
+  menu.querySelectorAll('.bam-chip').forEach(chip => {
+    chip.addEventListener('click', ev => {
+      ev.stopPropagation();
+      menu.querySelectorAll('.bam-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeFilter = chip.dataset.filter;
+      applyFilter();
+    });
+  });
+  menu.querySelectorAll('.bam-side-btn').forEach(b => {
+    b.addEventListener('click', ev => {
+      ev.preventDefault(); ev.stopPropagation();
+      const v = b.dataset.val || '';
+      const lbl = b.dataset.label || '';
+      if (!v) return;
+      menu.remove();
+      if (typeof onPicked === 'function') onPicked(v, lbl);
+    });
+  });
+  menu.querySelector('.bam-close').addEventListener('click', ev => {
+    ev.preventDefault(); ev.stopPropagation();
+    menu.remove();
+  });
+  setTimeout(() => {
+    const closer = ev => {
+      if (menu.contains(ev.target) || ev.target === anchorBtn) return;
       menu.remove();
       document.removeEventListener('click', closer, true);
     };
