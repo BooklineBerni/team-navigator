@@ -1944,6 +1944,40 @@
   }
   .profile-rm-card .rm-role-pill.owner { background: #1a1a1a; color: #fff; }
   .profile-rm-card .rm-role-pill.assigned { background: #f0efeb; color: #6b6b6b; }
+  /* Aggregated strip inside the profile roadmap card — pills + dates + total days */
+  .profile-rm-agg {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: #f5f3ed; border: 1px dashed #d6d3c8; border-radius: 8px;
+    padding: 6px 10px; margin-bottom: 8px;
+  }
+  .profile-rm-agg .prag-key {
+    font-size: 10px; font-weight: 700; color: #6b6b6b;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .profile-rm-agg .prag-stack {
+    display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  }
+  .profile-rm-agg .prag-pill {
+    font-size: 10.5px; font-weight: 700; color: #78350f;
+    background: #fef3c7; border: 1px solid #fde68a; border-radius: 5px;
+    padding: 1px 5px;
+    max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .profile-rm-agg .prag-val {
+    font-size: 11px; font-weight: 700; color: #1a1a1a;
+    font-variant-numeric: tabular-nums;
+    padding: 0 2px;
+  }
+  .profile-rm-agg .prag-stack .prag-pill + .prag-val {
+    font-size: 10px; font-weight: 500; opacity: 0.75; color: #92400e;
+  }
+  .profile-rm-agg .prag-stack .prag-pill + .prag-val::before { content: '= '; opacity: 0.6; }
+  .profile-rm-agg .prag-val.empty { color: #b3b3b3; font-style: italic; }
+  .profile-rm-agg .prag-span {
+    font-size: 11px; font-weight: 600; color: #6b6b6b;
+    font-variant-numeric: tabular-nums;
+    padding: 0 4px;
+  }
   .mini-7day-wrap {
     position: relative;
   }
@@ -9340,6 +9374,50 @@ function renderProfileRoadmapCard(rm, personId) {
   html += '</div>';
   html += '<span class="rm-meta">' + personTaskEntries.length + ' task' + (personTaskEntries.length===1?'':'s') + '</span>';
   html += '</div>';
+  // Aggregated summary for this person's tasks in this roadmap — same look as the task modal:
+  // pill (when every entry shares the same source label) + resolved date + total days between.
+  if (personTaskEntries.length > 0) {
+    const resolved = personTaskEntries.map(entry => {
+      const r = effectiveDatesForInRoadmap(entry, rm);
+      return { entry, startStr: r.startStr, endStr: r.endStr };
+    });
+    const aggStart = resolved.every(x => !!x.startStr)
+      ? resolved.reduce((m, x) => (!m || x.startStr < m) ? x.startStr : m, '')
+      : '';
+    const aggEnd = resolved.every(x => !!x.endStr)
+      ? resolved.reduce((m, x) => (!m || x.endStr > m) ? x.endStr : m, '')
+      : '';
+    function commonLabel(arr) {
+      if (arr.length === 0) return '';
+      const first = arr[0];
+      if (!first) return '';
+      return arr.every(x => x === first) ? first : '';
+    }
+    const startLbl = commonLabel(personTaskEntries.map(e => e.startSrcLabel || ''));
+    const endLbl = commonLabel(personTaskEntries.map(e => {
+      if (e.endSrcLabel) return e.endSrcLabel;
+      if (typeof e.durationDays === 'number' && e.durationDays >= 1) {
+        return e.durationDays + ' day' + (e.durationDays === 1 ? '' : 's');
+      }
+      return '';
+    }));
+    const spanDays = (aggStart && aggEnd) ? bnDaysInclusive(aggStart, aggEnd) : 0;
+    html += '<div class="profile-rm-agg">';
+    html += '<span class="prag-key">Start</span>';
+    html += '<span class="prag-stack">';
+    if (startLbl) html += '<span class="prag-pill">' + escapeHtml(startLbl) + '</span>';
+    html += '<span class="prag-val' + (aggStart ? '' : ' empty') + '">' + (aggStart ? escapeHtml(aggStart) : '—') + '</span>';
+    html += '</span>';
+    if (spanDays > 0) {
+      html += '<span class="prag-span">' + spanDays + ' day' + (spanDays === 1 ? '' : 's') + '</span>';
+    }
+    html += '<span class="prag-key">End</span>';
+    html += '<span class="prag-stack">';
+    if (endLbl) html += '<span class="prag-pill">' + escapeHtml(endLbl) + '</span>';
+    html += '<span class="prag-val' + (aggEnd ? '' : ' empty') + '">' + (aggEnd ? escapeHtml(aggEnd) : '—') + '</span>';
+    html += '</span>';
+    html += '</div>';
+  }
   // Mini 7-day calendar — wrapper holds day cells + absolute overlay so multi-day bars span continuously
   html += '<div class="mini-7day-wrap">';
   html += '<div class="mini-7day">';
