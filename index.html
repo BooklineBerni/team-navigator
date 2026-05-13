@@ -1042,17 +1042,8 @@
     opacity: .65; transition: all .12s;
   }
   .bn-quick-apply-pin:hover { opacity: 1; border-color: #999; }
-  .bn-quick-apply-src {
-    font-size: 10.5px; font-weight: 600; color: #92400e;
-    background: #fef3c7; padding: 2px 6px; border-radius: 4px;
-    align-self: flex-start;
-    max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .bn-quick-apply-src .bn-src-clear {
-    background: transparent; border: none; cursor: pointer;
-    color: #92400e; font-weight: 700; padding: 0 0 0 4px; font-size: 11px;
-  }
-  .bn-quick-apply-src .bn-src-clear:hover { color: #b91c1c; }
+  /* Source slot wrapper — pass-through; the actual chip/display is now a .rm-modal-date-display button. */
+  .bn-quick-apply-src { display: inline-flex; align-self: flex-start; }
   .bn-quick-apply-feedback {
     font-size: 11px; color: #16a34a; font-weight: 600;
     background: #dcfce7; padding: 3px 8px; border-radius: 4px;
@@ -4697,22 +4688,57 @@ function bnEndFromStartAndDuration(startStr, n) {
     clearTimeout(window.__quickApplyHideT);
     window.__quickApplyHideT = setTimeout(() => { if (fbEl) fbEl.style.display = 'none'; }, 2500);
   }
-  // Source chips: when the user picks a value from another task, show "= start of TaskX" / "= end of TaskX"
-  // under the input. Clearing the date or picking again resets the chip.
+  // Source layout: same look as the per-roadmap rows. When a source label is set, the input is
+  // HIDDEN and replaced by a clickable pill (in its slot) showing "start of X" / "N days" / "end of X".
+  // The actual resolved date is shown below as "= YYYY-MM-DD" (also clickable to clear).
+  // Clicking either the pill or the date display clears the source and reveals the date input
+  // pre-filled with the current value, so the user can pick a new one directly.
   const sSrcEl = document.getElementById('f_quickApplyStartSrc');
   const eSrcEl = document.getElementById('f_quickApplyEndSrc');
   function setSourceChip(srcEl, label) {
+    // srcEl is the wrapper used for the resolved-date display below the input.
     if (!srcEl) return;
+    const cell = srcEl.parentElement;
+    const wrap = cell && cell.querySelector('.bn-quick-apply-input-wrap');
+    if (!wrap) return;
+    const isStart = (srcEl === sSrcEl);
+    const inp = isStart ? startEl : endEl;
+    // Always remove any existing pill before re-rendering
+    const oldPill = wrap.querySelector('.rm-modal-pill-btn');
+    if (oldPill) oldPill.remove();
     if (label) {
-      srcEl.innerHTML = '= ' + escapeHtml(label) + ' <button type="button" class="bn-src-clear" title="Clear source">×</button>';
-      srcEl.style.display = '';
-      const clr = srcEl.querySelector('.bn-src-clear');
-      if (clr) clr.addEventListener('click', ev => {
+      // Hide the date input and insert a pill in its place
+      inp.style.display = 'none';
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'rm-modal-pill-btn';
+      pill.title = label + ' — click to clear and pick a date';
+      pill.innerHTML = escapeHtml(label) + '<span class="bn-pill-x" aria-hidden="true">×</span>';
+      pill.addEventListener('click', ev => {
         ev.preventDefault(); ev.stopPropagation();
-        srcEl.style.display = 'none';
-        srcEl.innerHTML = '';
+        setSourceChip(srcEl, '');
+        // Days "source" lives in daysEl; clearing the End source also wipes the days.
+        if (!isStart && daysEl) daysEl.value = '';
       });
+      // Insert pill at the same DOM position the input occupied
+      inp.parentElement.insertBefore(pill, inp);
+      // Set the "= YYYY-MM-DD" display below as a clickable button
+      srcEl.innerHTML = '';
+      const disp = document.createElement('button');
+      disp.type = 'button';
+      disp.className = 'rm-modal-date-display';
+      disp.title = 'Click to clear and pick a date';
+      disp.textContent = '= ' + (inp.value || '—');
+      disp.addEventListener('click', ev => {
+        ev.preventDefault(); ev.stopPropagation();
+        setSourceChip(srcEl, '');
+        if (!isStart && daysEl) daysEl.value = '';
+      });
+      srcEl.appendChild(disp);
+      srcEl.style.display = '';
     } else {
+      // Restore the input visibility; clear date display
+      inp.style.display = '';
       srcEl.style.display = 'none';
       srcEl.innerHTML = '';
     }
