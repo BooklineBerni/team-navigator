@@ -7385,8 +7385,11 @@ function renderRoadmapCalendar(roadmapId) {
           const gid = s.event.task.id;
           top = laneTop[s.lane];
           const hasKids = (subLanesByParent[gid] && subLanesByParent[gid].length > 0);
-          // Match the lane's height when the group hosts kids; otherwise 22 like a normal task bar
-          height = hasKids ? (laneHeights[s.lane] - 4) : 22;
+          // Only stretch the bar when the group is EXPANDED with visible kids.
+          // Collapsed groups (even with hidden kids) get a normal 22px bar so the dashed border
+          // edges sit comfortably around the title text (line-height 22) instead of crossing it.
+          const visibleSubLanes = groupVisibleSubLanesCount(gid);
+          height = (hasKids && visibleSubLanes > 0) ? (laneHeights[s.lane] - 4) : 22;
           // Pick a status hex from the saturated map; fall back to amber for empty/unknown
           const stHex = statusColors[s.event.task.slackStatus] || '#d97706';
           // Convert hex to rgba with alpha — accepts #rgb or #rrggbb
