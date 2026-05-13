@@ -1903,8 +1903,25 @@
   .group-row .group-progress-text { font-size: 11.5px; color: #6b6b6b; min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
   .group-children { padding-left: 28px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 4px; border-left: 2px dashed #f0e3c4; margin-left: 12px; padding-top: 4px; padding-bottom: 4px; }
   .group-children.collapsed { display: none; }
-  .group-children .flat-task { background: #fffefb; }
-  .group-children .task { background: #fffefb; }
+  /* Children of a group: keep their own status color but indented. */
+  .flat-task.is-group { border-style: dashed; font-weight: 600; }
+  .flat-task .flat-group-caret {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px;
+    margin-right: 6px;
+    vertical-align: middle;
+    border: 1px solid rgba(0,0,0,0.10);
+    background: rgba(255,255,255,0.6);
+    font-size: 9px; color: inherit; font-weight: 700;
+    border-radius: 4px;
+    cursor: pointer; padding: 0;
+    font-family: inherit;
+    transition: background .12s, transform .15s, border-color .12s;
+  }
+  .flat-task .flat-group-caret:hover { background: rgba(255,255,255,0.95); border-color: rgba(0,0,0,0.20); }
+  .flat-task .flat-group-caret.expanded { transform: rotate(90deg); }
+  .flat-task .folder-emoji { font-size: 14px; }
+  .flat-task .flat-group-count { color: rgba(0,0,0,0.55); font-weight: 500; font-size: 11.5px; margin-left: 2px; }
   .group-row .group-empty { color: #9a9a9a; font-size: 11.5px; font-style: italic; }
   .badge.group-badge { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-weight: 600; }
 
@@ -2494,6 +2511,9 @@
         <input type="date" id="f_taskStart" style="width:160px">
         <span style="font-size:11px; color:#6b6b6b">End</span>
         <input type="date" id="f_taskEnd" style="width:160px">
+        <span style="font-size:11px; color:#6b6b6b">or</span>
+        <input type="number" id="f_taskDuration" min="1" step="1" placeholder="N" style="width:62px" title="Duration in days (inclusive) — sets End = Start + N − 1 days">
+        <span style="font-size:11px; color:#6b6b6b">days</span>
         <button type="button" id="f_taskApplyDates" class="btn primary" style="font-size:12px; padding:5px 12px" disabled>Apply to roadmaps</button>
       </div>
       <div style="font-size:11px; color:#6b6b6b; margin-top:4px" id="f_taskDatesHint">Auto-computed from roadmaps: earliest start (when all have one) and latest end (when all have one). Edit a value here and click <strong>Apply</strong> to push it to every assigned roadmap.</div>
@@ -2954,9 +2974,10 @@ function tagMiniHtml(tag) {
 }
 function mapPanelStatus(s) { const v = (s||'').toLowerCase(); if (v.includes('complete')) return 'completed'; if (v.includes('progress') || v.includes('review')) return 'in_progress'; if (v.includes('discard')) return 'discarded'; if (v.includes('archived')) return 'archived'; return 'pending'; }
 
-function taskMatchesFilters(t) {
-  // Groups themselves are never returned by this filter — they're rendered separately.
-  if (t.isGroup) return false;
+function taskMatchesFilters(t, opts) {
+  // By default groups are filtered out (they used to be rendered separately).
+  // Pass { allowGroups: true } from places that render groups inline as flat-tasks.
+  if (t.isGroup && !(opts && opts.allowGroups)) return false;
   // Team-only mode: only show tasks owned by an active Team member, OR unassigned tasks (so the Unassigned card still appears).
   if (teamOnly) {
     if (t.responsibleId) {
@@ -3965,6 +3986,12 @@ function openModal(tid, overrides) {
     tStartEl.value = t.startDate || "";
     tEndEl.value   = t.endDate   || "";
     if (tApplyEl) tApplyEl.disabled = true;   // becomes enabled once user edits a date below
+    // Sync the Duration field to the current Start/End
+    const tDurEl = document.getElementById("f_taskDuration");
+    if (tDurEl) {
+      if (tStartEl.value && tEndEl.value) tDurEl.value = bnDaysInclusive(tStartEl.value, tEndEl.value) || '';
+      else tDurEl.value = '';
+    }
     // Reset any leftover "Pending" visual state from a previous modal session
     window.__pendingApplyToRoadmaps = false;
     if (typeof window.__resetApplyToRoadmapsState === 'function') window.__resetApplyToRoadmapsState();
@@ -4094,9 +4121,23 @@ document.getElementById("addBtn").addEventListener("click", () => openModal("new
 // The actual push to roadmaps (and recompute) happens when the user clicks Save.
 // Cancel / close discards the pending apply.
 window.__pendingApplyToRoadmaps = false;
+// Inclusive day count between two YYYY-MM-DD strings: Jan 1 → Jan 7 = 7 days
+function bnDaysInclusive(startStr, endStr) {
+  const s = parseDate(startStr), e = parseDate(endStr);
+  if (!s || !e) return 0;
+  return Math.round((e - s) / DAY_MS) + 1;
+}
+// Date string for start + (n − 1) days (inclusive). Returns '' if invalid.
+function bnEndFromStartAndDuration(startStr, n) {
+  const s = parseDate(startStr);
+  if (!s || !Number.isFinite(n) || n < 1) return '';
+  const d = new Date(s); d.setDate(d.getDate() + (n - 1));
+  return dateKey(d);
+}
 (function wireTaskScheduleControls() {
   const startEl = document.getElementById("f_taskStart");
   const endEl   = document.getElementById("f_taskEnd");
+  const durEl   = document.getElementById("f_taskDuration");
   const applyEl = document.getElementById("f_taskApplyDates");
   const hintEl  = document.getElementById("f_taskDatesHint");
   if (!startEl || !endEl || !applyEl) return;
@@ -4123,9 +4164,58 @@ window.__pendingApplyToRoadmaps = false;
           ? 'Stage these dates for all assigned roadmaps (saved when you click Save)'
           : 'Apply with empty dates to clear the schedule in every assigned roadmap');
   }
+  // Bidirectional sync between End date and Duration (days). Each follows from Start.
+  let __durSyncing = false;
+  function refreshDurationFromDates() {
+    if (!durEl) return;
+    __durSyncing = true;
+    if (startEl.value && endEl.value) {
+      const n = bnDaysInclusive(startEl.value, endEl.value);
+      durEl.value = (n > 0) ? n : '';
+    } else {
+      durEl.value = '';
+    }
+    __durSyncing = false;
+  }
+  function refreshEndFromDuration() {
+    if (!durEl) return;
+    const n = parseInt(durEl.value, 10);
+    if (!Number.isFinite(n) || n < 1 || !startEl.value) return;
+    const newEnd = bnEndFromStartAndDuration(startEl.value, n);
+    if (newEnd && endEl.value !== newEnd) {
+      endEl.value = newEnd;
+      endEl.dispatchEvent(new Event('input', { bubbles: true }));
+      endEl.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
   // Editing Start/End after staging cancels the pending apply (forces re-Apply)
-  startEl.addEventListener('input', () => { if (window.__pendingApplyToRoadmaps) clearPendingApplyVisual(); bumpApplyState(); });
-  endEl.addEventListener('input',   () => { if (window.__pendingApplyToRoadmaps) clearPendingApplyVisual(); bumpApplyState(); });
+  startEl.addEventListener('input', () => {
+    if (window.__pendingApplyToRoadmaps) clearPendingApplyVisual();
+    // If Start changes and Duration is set, recompute End to preserve duration.
+    if (durEl && durEl.value && startEl.value && !__durSyncing) {
+      const n = parseInt(durEl.value, 10);
+      if (Number.isFinite(n) && n >= 1) {
+        const newEnd = bnEndFromStartAndDuration(startEl.value, n);
+        if (newEnd) { endEl.value = newEnd; }
+      }
+    } else {
+      refreshDurationFromDates();
+    }
+    bumpApplyState();
+  });
+  endEl.addEventListener('input', () => {
+    if (window.__pendingApplyToRoadmaps) clearPendingApplyVisual();
+    if (!__durSyncing) refreshDurationFromDates();
+    bumpApplyState();
+  });
+  if (durEl) {
+    durEl.addEventListener('input', () => {
+      if (__durSyncing) return;
+      if (window.__pendingApplyToRoadmaps) clearPendingApplyVisual();
+      refreshEndFromDuration();
+      bumpApplyState();
+    });
+  }
   // Delete / Backspace clears the date input (mirrors the per-roadmap rows behavior)
   function clearOnDelete(inp) {
     inp.addEventListener('keydown', e => {
@@ -7817,53 +7907,56 @@ function attachGroupHandlers(container) {
 
 function renderFlatTasks() {
   const cont = document.getElementById("flatTasksList");
-  // Get all groups + ungrouped tasks separately
-  const groups = (STORE.tasks || []).filter(t => t.isGroup);
-  groups.sort((a,b) => (a.subject||'').localeCompare(b.subject||''));
-  const visibleTasks = sortTaskList(STORE.tasks.filter(taskMatchesFilters));
-  const ungroupedTasks = visibleTasks.filter(t => !t.groupId);
-  const groupedTasks = visibleTasks.filter(t => t.groupId);
-
-  // Hide empty groups when filters narrow them out (but show them all when no filters)
-  const haveAnyFilter = personInclude.size > 0 || personExclude.size > 0 ||
-                        statusInclude.size > 0 || statusExclude.size > 0 ||
-                        prioInclude.size > 0 || prioExclude.size > 0 ||
-                        (typeof searchQuery === 'string' && searchQuery.length > 0);
-
-  if (groups.length === 0 && visibleTasks.length === 0) {
-    cont.innerHTML = '<div class="rm-empty">No tasks yet. Click <strong>+ New task</strong> to create one (toggle "This is a group" to make a folder).</div>';
+  // Filter groups + tasks together with the same predicate (groups are normal tiles now).
+  const visibleAll = sortTaskList((STORE.tasks || []).filter(t => taskMatchesFilters(t, { allowGroups: true })));
+  // Top-level items render at the root (no groupId). Children render indented inside their parent group.
+  const topLevel = visibleAll.filter(t => !t.groupId);
+  if ((STORE.tasks || []).length === 0) {
+    cont.innerHTML = '<div class="rm-empty">No tasks yet. Click <strong>+ New task</strong> to create one. To make a task a parent of others, open it and toggle <em>Subtasks — this task contains other tasks</em>.</div>';
     return;
   }
-
+  if (topLevel.length === 0) {
+    cont.innerHTML = '<div class="rm-empty">No tasks match the current filters.</div>';
+    return;
+  }
   let html = '';
-  groups.forEach(g => {
-    const matchedKids = groupedTasks.filter(t => t.groupId === g.id);
-    if (haveAnyFilter && matchedKids.length === 0) return;   // hide groups with no matching children when filtering
-    const expanded = isGroupExpanded(g.id);
-    html += groupRowHtml(g);
-    html += '<div class="group-children' + (expanded ? '' : ' collapsed') + '" data-gid="' + escapeHtml(g.id) + '">';
-    if (matchedKids.length === 0) {
-      html += '<div class="group-empty" style="padding:6px 8px">No tasks in this group yet.</div>';
-    } else {
-      html += matchedKids.map(t => flatTaskHtml(t)).join("");
+  topLevel.forEach(t => {
+    html += flatTaskHtml(t);
+    if (t.isGroup) {
+      const expanded = isGroupExpanded(t.id);
+      const kids = (STORE.tasks || []).filter(c => c.groupId === t.id);
+      const visibleKids = sortTaskList(kids.filter(c => taskMatchesFilters(c, { allowGroups: true })));
+      html += '<div class="group-children' + (expanded ? '' : ' collapsed') + '" data-gid="' + escapeHtml(t.id) + '">';
+      if (visibleKids.length === 0) {
+        html += '<div class="group-empty" style="padding:6px 8px">No subtasks match the current filters.</div>';
+      } else {
+        html += visibleKids.map(c => flatTaskHtml(c)).join("");
+      }
+      html += '</div>';
     }
-    html += '</div>';
   });
-  if (ungroupedTasks.length > 0) {
-    if (groups.length > 0) {
-      html += '<div style="font-size:12px; color:#6b6b6b; font-weight:600; margin:14px 0 6px; text-transform:uppercase; letter-spacing:0.04em">Ungrouped <span style="color:#9a9a9a; font-weight:500">(' + ungroupedTasks.length + ')</span></div>';
-    }
-    html += ungroupedTasks.map(t => flatTaskHtml(t)).join("");
-  }
-  if (html === '') {
-    html = '<div class="rm-empty">No tasks match the current filters.</div>';
-  }
   cont.innerHTML = html;
 
-  attachGroupHandlers(cont);
   cont.querySelectorAll(".flat-task").forEach(node => {
     const tid = node.dataset.tid;
-    node.querySelector(".text").addEventListener("click", () => openModal(tid));
+    // Chevron click → expand/collapse children (for groups only)
+    const caret = node.querySelector(".flat-group-caret");
+    if (caret) caret.addEventListener("click", e => {
+      e.stopPropagation();
+      toggleGroupExpanded(tid);
+      const childrenEl = node.nextElementSibling;
+      if (childrenEl && childrenEl.classList.contains("group-children")) {
+        childrenEl.classList.toggle("collapsed");
+        caret.classList.toggle("expanded");
+        caret.title = caret.classList.contains("expanded") ? "Collapse subtasks" : "Expand subtasks";
+      } else if (typeof render === "function") {
+        render();
+      }
+    });
+    node.querySelector(".text").addEventListener("click", e => {
+      if (e.target.closest(".flat-group-caret")) return;
+      openModal(tid);
+    });
     node.querySelector(".edit-btn").addEventListener("click", () => openModal(tid));
     node.querySelector(".checkbox").addEventListener("click", e => {
       e.stopPropagation();
@@ -7913,11 +8006,21 @@ function flatTaskHtml(t) {
   const respName = p ? p.displayName : (t.responsibleRaw || "?");
   const avClickAttr = p ? (' data-go-profile="' + p.id + '" title="Open ' + escapeHtml(respName) + '\'s profile" style="cursor:pointer; background:' + color + '"') : (' style="background:' + color + '"');
   const nameClickAttr = p ? (' data-go-profile="' + p.id + '" style="font-size:11px; color:#6b6b6b; max-width:140px; text-align:right; cursor:pointer; text-decoration:underline; text-decoration-color:transparent" onmouseover="this.style.textDecorationColor=\'#6b6b6b\'" onmouseout="this.style.textDecorationColor=\'transparent\'"') : ' style="font-size:11px; color:#6b6b6b; max-width:140px; text-align:right"';
-  return '<div class="flat-task" data-pstatus="' + escapeHtml(t.slackStatus||'') + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
+  const isG = !!t.isGroup;
+  const childCount = isG ? (STORE.tasks || []).filter(c => c.groupId === t.id).length : 0;
+  const expanded = isG ? isGroupExpanded(t.id) : false;
+  const chevHtml = isG
+    ? '<button type="button" class="flat-group-caret' + (expanded ? ' expanded' : '') + '" data-gid="' + t.id + '" title="' + (expanded ? 'Collapse subtasks' : 'Expand subtasks') + '">▶</button>'
+    : '';
+  const folderPrefix = isG ? '<span class="folder-emoji">📁</span> ' : '';
+  const groupCountSuffix = (isG && childCount > 0)
+    ? ' <span class="flat-group-count">(' + childCount + ')</span>'
+    : '';
+  return '<div class="flat-task' + (isG ? ' is-group' : '') + '" data-pstatus="' + escapeHtml(t.slackStatus||'') + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
     '<span class="checkbox ' + (sel ? 'checked' : '') + '" title="Select"></span>' +
     '<span class="av-mini"' + avClickAttr + '><img src="' + photo + '" alt="" onerror="this.remove()"><span class="ini">' + escapeHtml(ini) + '</span></span>' +
     '<div>' +
-      '<div class="text" title="Click to edit">' + escapeHtml(t.subject) + '</div>' +
+      '<div class="text" title="Click to edit">' + chevHtml + folderPrefix + escapeHtml(t.subject) + groupCountSuffix + '</div>' +
       '<div class="meta-line"><span class="badges-inline">' + badges.join(' ') + (taskTagsHtml ? ' ' + taskTagsHtml : '') + '</span></div>' +
     '</div>' +
     '<span' + nameClickAttr + '>' + escapeHtml(respName) + '</span>' +
