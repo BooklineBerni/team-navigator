@@ -315,6 +315,14 @@
     text-align: left;
   }
   .rm-modal-date-display:hover { opacity: 1; text-decoration: underline; }
+  /* Read-only "= N days" indicator below the End date in each roadmap row */
+  .rm-modal-days-display {
+    font-size: 10px; color: #6b6b6b; opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+    padding: 0 4px; margin-top: 1px;
+    align-self: flex-start;
+    font-weight: 600;
+  }
   /* Mini avatar used in roadmap rows / picker (replaces the old pin emoji) */
   .rm-owner-mini {
     flex-shrink: 0;
@@ -5673,7 +5681,8 @@ function renderRoadmapsInModal(t) {
       if (!eSrcLbl && durVal) eSrcLbl = durVal + ' day' + (durVal === 1 ? '' : 's');
       // Build a start/end cell. When a source label is set, show a clickable pill (whole pill
       // resets to date input on click) and the resolved date "= YYYY-MM-DD" below (also clickable
-      // to reset). Otherwise, show a normal date input.
+      // to reset). Otherwise, show a normal date input. The END cell additionally shows a "= N days"
+      // line below whenever both start and end are resolvable — purely informational.
       function buildSideCell(side, val, anchored, srcLbl) {
         const pinHtml = '<button type="button" class="rm-modal-pin" data-rmid="' + escapeHtml(r.id) + '" data-side="' + side + '" title="Use another task\'s aggregated start/end as this ' + (side === 'start' ? 'Start' : 'End') + '">📌</button>';
         const dateInput = '<input type="date" class="rm-modal-date-input rm-modal-' + side + '" data-rmid="' + escapeHtml(r.id) + '" value="' + escapeHtml(val) + '" title="' + (anchored ? 'Anchored — clear via the roadmap calendar to change' : (side === 'start' ? 'Start' : 'End') + ' in this roadmap') + '"' + (anchored ? ' disabled' : '') + '>';
@@ -5686,12 +5695,20 @@ function renderRoadmapsInModal(t) {
         const dateBelow = srcLbl
           ? '<button type="button" class="rm-modal-date-display" data-side="' + side + '" data-rmid="' + escapeHtml(r.id) + '" title="Click to clear and pick a date">= ' + escapeHtml(val || '—') + '</button>'
           : '';
+        // "= N days" indicator under the end date when both dates are present (read-only).
+        let daysBelow = '';
+        if (side === 'end' && sVal && eVal) {
+          const n = bnDaysInclusive(sVal, eVal);
+          if (n > 0) {
+            daysBelow = '<span class="rm-modal-days-display" title="Inclusive days between Start and End">= ' + n + ' day' + (n === 1 ? '' : 's') + '</span>';
+          }
+        }
         const innerInput = srcLbl ? pill : dateInput;
         // Pin position: start → left of input, end → right of input
         const wrap = (side === 'start')
           ? '<span class="rm-modal-input-wrap">' + pinHtml + innerInput + '</span>'
           : '<span class="rm-modal-input-wrap">' + innerInput + pinHtml + '</span>';
-        return '<span class="rm-modal-cell">' + wrap + dateBelow + '</span>';
+        return '<span class="rm-modal-cell">' + wrap + dateBelow + daysBelow + '</span>';
       }
       // Days cell — ALWAYS a number input. User edits the number here; the End date follows.
       function buildDaysCell() {
