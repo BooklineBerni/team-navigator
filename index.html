@@ -972,6 +972,9 @@
   }
   .bn-quick-apply-arrow { color: #9a9a9a; font-size: 13px; }
   .bn-quick-apply-btn { font-size: 12px; padding: 5px 14px; }
+  .bn-quick-apply-days { width: 56px; text-align: center; }
+  .bn-quick-apply-days-unit { font-size: 11px; color: #6b6b6b; }
+  .bn-quick-apply-days-cell { min-width: 0; }
   .bn-quick-apply-cell {
     display: flex; flex-direction: column; gap: 3px; min-width: 0;
   }
@@ -2892,8 +2895,9 @@
     <div class="field" id="f_roadmapsField">
       <label>Roadmaps</label>
       <!-- Quick "Apply to all roadmaps" row — always visible. Commits IMMEDIATELY (no Save needed).
-           Each date can be filled manually OR by picking another task's aggregated start/end via 📌
-           (which appears to the LEFT of each date input). -->
+           Layout: 📌 [start] · [N days] · [end] 📌  · [Apply]
+           Setting "N days" computes end = start + (N − 1) days and shows "= N days" as the End source.
+           Picking via 📌 fills the input behind the scenes and shows "= start/end of X" as the source. -->
       <div id="f_quickApplyRow" class="bn-quick-apply">
         <span class="bn-quick-apply-lbl">Apply to all roadmaps</span>
         <div class="bn-quick-apply-inputs">
@@ -2904,11 +2908,16 @@
             </div>
             <div id="f_quickApplyStartSrc" class="bn-quick-apply-src" style="display:none"></div>
           </div>
-          <span class="bn-quick-apply-arrow">→</span>
+          <div class="bn-quick-apply-cell bn-quick-apply-days-cell">
+            <div class="bn-quick-apply-input-wrap">
+              <input type="number" id="f_quickApplyDays" class="bn-quick-apply-input bn-quick-apply-days" min="1" step="1" placeholder="N" title="Duration in days (inclusive). Sets End = Start + (N − 1) days.">
+              <span class="bn-quick-apply-days-unit">days</span>
+            </div>
+          </div>
           <div class="bn-quick-apply-cell">
             <div class="bn-quick-apply-input-wrap">
-              <button type="button" id="f_quickApplyEndPin" class="bn-quick-apply-pin" title="Use another task's aggregated start/end as this End">📌</button>
               <input type="date" id="f_quickApplyEnd" class="bn-quick-apply-input" title="End">
+              <button type="button" id="f_quickApplyEndPin" class="bn-quick-apply-pin" title="Use another task's aggregated start/end as this End">📌</button>
             </div>
             <div id="f_quickApplyEndSrc" class="bn-quick-apply-src" style="display:none"></div>
           </div>
@@ -4616,6 +4625,7 @@ function bnEndFromStartAndDuration(startStr, n) {
   const row     = document.getElementById('f_quickApplyRow');
   const startEl = document.getElementById('f_quickApplyStart');
   const endEl   = document.getElementById('f_quickApplyEnd');
+  const daysEl  = document.getElementById('f_quickApplyDays');
   const btnEl   = document.getElementById('f_quickApplyBtn');
   const fbEl    = document.getElementById('f_quickApplyFeedback');
   const sPinEl  = document.getElementById('f_quickApplyStartPin');
@@ -4656,17 +4666,35 @@ function bnEndFromStartAndDuration(startStr, n) {
     row.style.display = '';
     startEl.value = '';
     endEl.value   = '';
+    if (daysEl) daysEl.value = '';
     setSourceChip(sSrcEl, '');
     setSourceChip(eSrcEl, '');
     btnEl.title = 'Write these dates to every assigned roadmap immediately';
     if (fbEl) fbEl.style.display = 'none';
   };
+  // Recompute End from Start + (N − 1) days. Returns the new end string or ''.
+  function recomputeEndFromDays() {
+    if (!daysEl) return '';
+    const n = parseInt(daysEl.value, 10);
+    if (!Number.isFinite(n) || n < 1) return '';
+    if (!startEl.value) return '';
+    const newEnd = bnEndFromStartAndDuration(startEl.value, n);
+    if (!newEnd) return '';
+    endEl.value = newEnd;
+    setSourceChip(eSrcEl, n + ' day' + (n === 1 ? '' : 's'));
+    return newEnd;
+  }
   // Delete / Backspace clears the date input AND the source chip
   startEl.addEventListener('keydown', e => {
     if ((e.key === 'Delete' || e.key === 'Backspace') && startEl.value) {
       e.preventDefault();
       startEl.value = '';
       setSourceChip(sSrcEl, '');
+      // If End was driven by days, it now has no anchor — clear it too
+      if (daysEl && daysEl.value) {
+        endEl.value = '';
+        setSourceChip(eSrcEl, '');
+      }
     }
   });
   endEl.addEventListener('keydown', e => {
@@ -4674,11 +4702,44 @@ function bnEndFromStartAndDuration(startStr, n) {
       e.preventDefault();
       endEl.value = '';
       setSourceChip(eSrcEl, '');
+      if (daysEl) daysEl.value = '';   // End cleared ⇒ days no longer drives anything
     }
   });
-  // Manually editing the date clears the source chip (it's no longer linked)
-  startEl.addEventListener('input', () => setSourceChip(sSrcEl, ''));
-  endEl.addEventListener('input',   () => setSourceChip(eSrcEl, ''));
+  // Manually editing the start clears its source AND (if days is set) recomputes the end.
+  startEl.addEventListener('input', () => {
+    setSourceChip(sSrcEl, '');
+    if (daysEl && daysEl.value) recomputeEndFromDays();
+  });
+  // Manually editing the end clears its source AND any days (days are no longer driving it).
+  endEl.addEventListener('input', () => {
+    setSourceChip(eSrcEl, '');
+    if (daysEl) daysEl.value = '';
+  });
+  // Days input: drives End. Empty ⇒ no effect (End stays as-is). Valid N + Start ⇒ End = Start + (N−1) days.
+  if (daysEl) {
+    daysEl.addEventListener('input', () => {
+      const n = parseInt(daysEl.value, 10);
+      if (!Number.isFinite(n) || n < 1) {
+        // Clearing days clears the End-from-days chip; End value stays put unless user picked nothing else
+        if (eSrcEl && eSrcEl.innerHTML && /\d+\s+day/.test(eSrcEl.textContent || '')) {
+          endEl.value = '';
+          setSourceChip(eSrcEl, '');
+        }
+        return;
+      }
+      if (!startEl.value) return;   // need a start to anchor against
+      recomputeEndFromDays();
+    });
+    daysEl.addEventListener('keydown', e => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !daysEl.value) {
+        // Already empty — also clear end if it was driven by days
+        if (eSrcEl && /\d+\s+day/.test(eSrcEl.textContent || '')) {
+          endEl.value = '';
+          setSourceChip(eSrcEl, '');
+        }
+      }
+    });
+  }
   // Compute another task's aggregated start/end (min start / max end across all its roadmap entries,
   // resolving anchor chains via effectiveDatesForInRoadmap). Returns '' if the task isn't in any
   // roadmap OR if no resolvable date exists for that side.
@@ -4828,6 +4889,14 @@ function bnEndFromStartAndDuration(startStr, n) {
         if (!v) return;
         inp.value = v;                  // date goes "behind" in the date input
         setSourceChip(srcEl, lbl);      // display label in front: "= start of X" / "= end of X"
+        // If we just set the Start AND a days value is present, recompute End so it follows the new start.
+        if (inp === startEl && daysEl && daysEl.value) {
+          recomputeEndFromDays();
+        }
+        // If we just set the End directly, any days-driven chip is no longer valid — clear days.
+        if (inp === endEl && daysEl) {
+          daysEl.value = '';
+        }
         menu.remove();
       });
     });
