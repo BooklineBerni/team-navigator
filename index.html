@@ -1132,6 +1132,11 @@
     font-variant-numeric: tabular-nums;
     padding: 0 4px;
   }
+  /* Date-below variant: smaller + "= " prefix — used only when a pill is present above it */
+  .bn-agg-display-val.below {
+    font-size: 11px; font-weight: 500; opacity: 0.75; color: #92400e;
+  }
+  .bn-agg-display-val.below::before { content: '= '; opacity: 0.6; }
   .bn-agg-display-pill {
     font-size: 11px; font-weight: 700;
     color: #78350f; background: #fef3c7;
@@ -1139,11 +1144,7 @@
     padding: 1px 6px;
     max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .bn-agg-display-stack .bn-agg-display-val {
-    font-size: 11px; font-weight: 500; opacity: 0.75; color: #92400e;
-    padding: 0 2px;
-  }
-  .bn-agg-display-stack .bn-agg-display-pill + .bn-agg-display-val::before { content: '= '; opacity: 0.6; }
+  .bn-agg-display-stack .bn-agg-display-val { padding: 0 2px; }
   /* Task modal — Schedule sections (Apply-to-all editable + Aggregated read-only) */
   .bn-sched-section {
     background: #fbfaf6; border: 1px solid #ececea; border-radius: 10px;
@@ -5254,6 +5255,9 @@ window.__renderTaskAggregatedSchedule = function(t) {
   }
   function setPill(pillEl, lbl, srcTaskId) {
     if (!pillEl) return;
+    // The "= YYYY-MM-DD" below-label style only applies when a pill is actually shown — toggle a
+    // .below class on the sibling val so the "= " prefix never appears without a pill.
+    const valEl = pillEl.parentElement && pillEl.parentElement.querySelector('.bn-agg-display-val');
     if (lbl) {
       pillEl.textContent = lbl;
       pillEl.style.display = '';
@@ -5261,10 +5265,12 @@ window.__renderTaskAggregatedSchedule = function(t) {
       const stl = isDays ? BN_GRAY_PILL : bnPillStyleForTaskId(srcTaskId);
       if (stl) pillEl.setAttribute('style', bnPillInlineStyle(stl));
       else pillEl.removeAttribute('style');
+      if (valEl) valEl.classList.add('below');
     } else {
       pillEl.textContent = '';
       pillEl.style.display = 'none';
       pillEl.removeAttribute('style');
+      if (valEl) valEl.classList.remove('below');
     }
   }
   if (entries.length === 0) {
