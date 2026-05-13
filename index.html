@@ -125,6 +125,40 @@
   .task .checkbox.checked { background: #1a1a1a; border-color: #1a1a1a; color: #fff; }
   .task .checkbox.checked::before { content: "\2713"; }
   .task .badges { grid-column: 2 / -1; display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
+  /* Aggregated info row inside the task card — common source pill + min start / max end / span days */
+  .task .task-agg {
+    grid-column: 2 / -1;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-top: 4px; padding: 4px 8px;
+    background: rgba(255,255,255,0.55);
+    border: 1px dashed #d6d3c8;
+    border-radius: 6px;
+    font-size: 10.5px;
+  }
+  .task .task-agg .ta-key {
+    font-size: 9.5px; font-weight: 700; color: #6b6b6b;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .task .task-agg .ta-stack { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+  .task .task-agg .ta-pill {
+    font-size: 10px; font-weight: 700;
+    border: 1px solid #d8d6d1; border-radius: 4px;
+    padding: 1px 5px;
+    max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .task .task-agg .ta-val {
+    font-size: 10.5px; font-weight: 700; color: #1a1a1a;
+    font-variant-numeric: tabular-nums; padding: 0 2px;
+  }
+  .task .task-agg .ta-stack .ta-pill + .ta-val {
+    font-size: 9.5px; font-weight: 500; opacity: 0.7; color: #6b6b6b;
+  }
+  .task .task-agg .ta-stack .ta-pill + .ta-val::before { content: '= '; opacity: 0.6; }
+  .task .task-agg .ta-val.empty { color: #b3b3b3; font-style: italic; }
+  .task .task-agg .ta-span {
+    font-size: 10px; font-weight: 600; color: #6b6b6b;
+    font-variant-numeric: tabular-nums; padding: 0 4px;
+  }
   .badge { display: inline-flex; padding: 1px 6px; border-radius: 999px; font-size: 9.5px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap; }
   .badge.prio-Critical  { background: #fee4e2; color: #b42318; }
   .badge.prio-Alta      { background: #fef0c7; color: #b54708; }
@@ -1944,40 +1978,6 @@
   }
   .profile-rm-card .rm-role-pill.owner { background: #1a1a1a; color: #fff; }
   .profile-rm-card .rm-role-pill.assigned { background: #f0efeb; color: #6b6b6b; }
-  /* Aggregated strip inside the profile roadmap card — pills + dates + total days */
-  .profile-rm-agg {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    background: #f5f3ed; border: 1px dashed #d6d3c8; border-radius: 8px;
-    padding: 6px 10px; margin-bottom: 8px;
-  }
-  .profile-rm-agg .prag-key {
-    font-size: 10px; font-weight: 700; color: #6b6b6b;
-    text-transform: uppercase; letter-spacing: .04em;
-  }
-  .profile-rm-agg .prag-stack {
-    display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px;
-  }
-  .profile-rm-agg .prag-pill {
-    font-size: 10.5px; font-weight: 700; color: #78350f;
-    background: #fef3c7; border: 1px solid #fde68a; border-radius: 5px;
-    padding: 1px 5px;
-    max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .profile-rm-agg .prag-val {
-    font-size: 11px; font-weight: 700; color: #1a1a1a;
-    font-variant-numeric: tabular-nums;
-    padding: 0 2px;
-  }
-  .profile-rm-agg .prag-stack .prag-pill + .prag-val {
-    font-size: 10px; font-weight: 500; opacity: 0.75; color: #92400e;
-  }
-  .profile-rm-agg .prag-stack .prag-pill + .prag-val::before { content: '= '; opacity: 0.6; }
-  .profile-rm-agg .prag-val.empty { color: #b3b3b3; font-style: italic; }
-  .profile-rm-agg .prag-span {
-    font-size: 11px; font-weight: 600; color: #6b6b6b;
-    font-variant-numeric: tabular-nums;
-    padding: 0 4px;
-  }
   .mini-7day-wrap {
     position: relative;
   }
@@ -4400,11 +4400,62 @@ function taskHtml(t) {
     ? '<button type="button" class="task-group-caret' + (isGExpanded ? ' expanded' : '') + '" data-gid="' + t.id + '" title="' + (isGExpanded ? 'Collapse subtasks' : 'Expand subtasks') + '">▶</button>'
     : '';
   const folderPrefix = isG ? '<span class="folder-emoji">📁</span> ' : '';
+  // Aggregated info: common source pill (if all roadmap entries share it) + min start / max end + total days.
+  let aggHtml = '';
+  const tEntries = [];
+  (STORE.roadmaps || []).forEach(rm => {
+    const en = (rm.tasks || []).find(x => x.taskId === t.id);
+    if (en) tEntries.push({ entry: en, rm });
+  });
+  if (tEntries.length > 0) {
+    const starts = tEntries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).startStr);
+    const ends   = tEntries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).endStr);
+    const aggStart = starts.every(s => !!s) ? starts.reduce((m, s) => (!m || s < m) ? s : m, '') : '';
+    const aggEnd   = ends.every(s => !!s)   ? ends.reduce((m, s) => (!m || s > m) ? s : m, '')   : '';
+    function commonLbl(arr) {
+      if (arr.length === 0) return ''; const first = arr[0]; if (!first) return '';
+      return arr.every(x => x === first) ? first : '';
+    }
+    const sLbl = commonLbl(tEntries.map(x => x.entry.startSrcLabel || ''));
+    const sTid = commonLbl(tEntries.map(x => x.entry.startSrcTaskId || ''));
+    const eLbl = commonLbl(tEntries.map(x => {
+      if (x.entry.endSrcLabel) return x.entry.endSrcLabel;
+      if (typeof x.entry.durationDays === 'number' && x.entry.durationDays >= 1) {
+        return x.entry.durationDays + ' day' + (x.entry.durationDays === 1 ? '' : 's');
+      }
+      return '';
+    }));
+    const eTid = commonLbl(tEntries.map(x => x.entry.endSrcTaskId || ''));
+    const spanN = (aggStart && aggEnd) ? bnDaysInclusive(aggStart, aggEnd) : 0;
+    // Render only if there is at least something useful to show
+    if (aggStart || aggEnd || sLbl || eLbl) {
+      function pillStyleFor(lbl, tid) {
+        const isDays = lbl && /^\d+\s+day/.test(lbl);
+        if (isDays) return bnPillInlineStyle(BN_GRAY_PILL);
+        const stl = bnPillStyleForTaskId(tid);
+        return stl ? bnPillInlineStyle(stl) : '';
+      }
+      aggHtml = '<div class="task-agg">';
+      aggHtml += '<span class="ta-key">Start</span>';
+      aggHtml += '<span class="ta-stack">';
+      if (sLbl) aggHtml += '<span class="ta-pill" style="' + pillStyleFor(sLbl, sTid) + '">' + escapeHtml(sLbl) + '</span>';
+      aggHtml += '<span class="ta-val' + (aggStart ? '' : ' empty') + '">' + (aggStart ? escapeHtml(aggStart) : '—') + '</span>';
+      aggHtml += '</span>';
+      if (spanN > 0) aggHtml += '<span class="ta-span">' + spanN + ' day' + (spanN === 1 ? '' : 's') + '</span>';
+      aggHtml += '<span class="ta-key">End</span>';
+      aggHtml += '<span class="ta-stack">';
+      if (eLbl) aggHtml += '<span class="ta-pill" style="' + pillStyleFor(eLbl, eTid) + '">' + escapeHtml(eLbl) + '</span>';
+      aggHtml += '<span class="ta-val' + (aggEnd ? '' : ' empty') + '">' + (aggEnd ? escapeHtml(aggEnd) : '—') + '</span>';
+      aggHtml += '</span>';
+      aggHtml += '</div>';
+    }
+  }
   return '<div class="task' + (isG ? ' is-group' : '') + '" data-pstatus="' + escapeHtml(t.slackStatus||'') + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
     '<span class="checkbox ' + (sel?'checked':'') + '" title="Select task (use modal to mark completed)"></span>' +
     '<span class="text" title="Click to edit all fields">' + chevHtml + folderPrefix + escapeHtml(t.subject) + '</span>' +
     '<button class="edit-btn" title="Edit">&#9998;</button>' +
     '<div class="badges">' + badges.join('') + ' ' + taskTagsHtml + '</div>' +
+    aggHtml +
     '</div>';
 }
 
@@ -4788,7 +4839,7 @@ function bnEndFromStartAndDuration(startStr, n) {
   // pre-filled with the current value, so the user can pick a new one directly.
   const sSrcEl = document.getElementById('f_quickApplyStartSrc');
   const eSrcEl = document.getElementById('f_quickApplyEndSrc');
-  function setSourceChip(srcEl, label) {
+  function setSourceChip(srcEl, label, srcTaskId) {
     // srcEl is the wrapper used for the resolved-date display below the input.
     if (!srcEl) return;
     const cell = srcEl.parentElement;
@@ -4796,10 +4847,15 @@ function bnEndFromStartAndDuration(startStr, n) {
     if (!wrap) return;
     const isStart = (srcEl === sSrcEl);
     const inp = isStart ? startEl : endEl;
-    // Track the currently-displayed source label in module-level state so the Apply
-    // handler can propagate it to each per-roadmap row.
-    if (isStart) window.__quickApplyStartSrcLbl = label || '';
-    else         window.__quickApplyEndSrcLbl   = label || '';
+    // Track the currently-displayed source label + task id in module-level state so the Apply
+    // handler can propagate them to each per-roadmap row.
+    if (isStart) {
+      window.__quickApplyStartSrcLbl = label || '';
+      window.__quickApplyStartSrcTid = srcTaskId || '';
+    } else {
+      window.__quickApplyEndSrcLbl = label || '';
+      window.__quickApplyEndSrcTid = srcTaskId || '';
+    }
     // Always remove any existing pill before re-rendering
     const oldPill = wrap.querySelector('.rm-modal-pill-btn');
     if (oldPill) oldPill.remove();
@@ -4811,6 +4867,10 @@ function bnEndFromStartAndDuration(startStr, n) {
       pill.className = 'rm-modal-pill-btn';
       pill.title = label + ' — click to clear and pick a date';
       pill.innerHTML = escapeHtml(label) + '<span class="bn-pill-x" aria-hidden="true">×</span>';
+      // Apply color: "N days" → gray; "start/end of TaskX" → that task's status color (from srcTaskId).
+      const isDaysLabel = /^\d+\s+day/.test(label);
+      const stl = isDaysLabel ? BN_GRAY_PILL : bnPillStyleForTaskId(srcTaskId);
+      if (stl) pill.setAttribute('style', bnPillInlineStyle(stl));
       pill.addEventListener('click', ev => {
         ev.preventDefault(); ev.stopPropagation();
         setSourceChip(srcEl, '');
@@ -4848,6 +4908,8 @@ function bnEndFromStartAndDuration(startStr, n) {
     if (daysEl) daysEl.value = '';
     window.__quickApplyStartSrcLbl = '';
     window.__quickApplyEndSrcLbl   = '';
+    window.__quickApplyStartSrcTid = '';
+    window.__quickApplyEndSrcTid   = '';
     setSourceChip(sSrcEl, '');
     setSourceChip(eSrcEl, '');
     btnEl.title = 'Write these dates to every assigned roadmap immediately';
@@ -4862,7 +4924,7 @@ function bnEndFromStartAndDuration(startStr, n) {
     const newEnd = bnEndFromStartAndDuration(startEl.value, n);
     if (!newEnd) return '';
     endEl.value = newEnd;
-    setSourceChip(eSrcEl, n + ' day' + (n === 1 ? '' : 's'));
+    setSourceChip(eSrcEl, n + ' day' + (n === 1 ? '' : 's'), '');   // '' srcTaskId → gray pill
     return newEnd;
   }
   // Delete / Backspace clears the date input AND the source chip
@@ -5066,8 +5128,8 @@ function bnEndFromStartAndDuration(startStr, n) {
         let v = b.dataset.val || '';
         const lbl = b.dataset.label || '';
         const pickedSide = b.dataset.pickedSide || '';
+        const pickedTaskId = b.dataset.pickedTaskId || '';
         if (!v) return;
-        // Predecessor/successor: filling start with end-of-X → +1 day; filling end with start-of-X → −1 day.
         if (side === 'start' && pickedSide === 'end') {
           const d = parseDate(v);
           if (d) { const d2 = new Date(d); d2.setDate(d2.getDate() + 1); v = dateKey(d2); }
@@ -5075,13 +5137,11 @@ function bnEndFromStartAndDuration(startStr, n) {
           const d = parseDate(v);
           if (d) { const d2 = new Date(d); d2.setDate(d2.getDate() - 1); v = dateKey(d2); }
         }
-        inp.value = v;                  // date goes "behind" in the date input
-        setSourceChip(srcEl, lbl);      // display label in front: "= start of X" / "= end of X"
-        // If we just set the Start AND a days value is present, recompute End so it follows the new start.
+        inp.value = v;
+        setSourceChip(srcEl, lbl, pickedTaskId);
         if (inp === startEl && daysEl && daysEl.value) {
           recomputeEndFromDays();
         }
-        // If we just set the End directly, any days-driven chip is no longer valid — clear days.
         if (inp === endEl && daysEl) {
           daysEl.value = '';
         }
@@ -5110,9 +5170,11 @@ function bnEndFromStartAndDuration(startStr, n) {
     if (!t) return;
     const startV = startEl.value || '';
     const endV   = endEl.value || '';
-    // Read the current source labels + days from the top component so they propagate to each row.
+    // Read the current source labels + task IDs + days from the top component so they propagate.
     const startSrcLbl = window.__quickApplyStartSrcLbl || '';
     const endSrcLbl   = window.__quickApplyEndSrcLbl   || '';
+    const startSrcTid = window.__quickApplyStartSrcTid || '';
+    const endSrcTid   = window.__quickApplyEndSrcTid   || '';
     const daysNum     = daysEl ? parseInt(daysEl.value, 10) : NaN;
     const hasDays     = Number.isFinite(daysNum) && daysNum >= 1;
     t.startDate = startV;
@@ -5130,18 +5192,22 @@ function bnEndFromStartAndDuration(startStr, n) {
       e.startAnchor = '';
       e.endDate     = endV;
       e.endAnchor   = '';
-      // Propagate the START source label (pill text). Persisted on the entry so it survives reopen.
+      // Propagate START source label + task id (for status-colored pill).
       if (startSrcLbl) e.startSrcLabel = startSrcLbl;
       else delete e.startSrcLabel;
-      // Days take precedence over an end pill label. If days is set, store durationDays — the row
-      // renders "N days" pill from entry.durationDays. Otherwise persist the end source label.
+      if (startSrcTid) e.startSrcTaskId = startSrcTid;
+      else delete e.startSrcTaskId;
+      // Days take precedence over an end pill label. If days is set, store durationDays only.
       if (hasDays) {
         e.durationDays = daysNum;
         delete e.endSrcLabel;
+        delete e.endSrcTaskId;
       } else {
         delete e.durationDays;
         if (endSrcLbl) e.endSrcLabel = endSrcLbl;
         else delete e.endSrcLabel;
+        if (endSrcTid) e.endSrcTaskId = endSrcTid;
+        else delete e.endSrcTaskId;
       }
       touched++;
     });
@@ -5178,10 +5244,20 @@ window.__renderTaskAggregatedSchedule = function(t) {
     if (val) { el.textContent = val; el.classList.remove('empty'); }
     else     { el.textContent = '—'; el.classList.add('empty'); }
   }
-  function setPill(pillEl, lbl) {
+  function setPill(pillEl, lbl, srcTaskId) {
     if (!pillEl) return;
-    if (lbl) { pillEl.textContent = lbl; pillEl.style.display = ''; }
-    else     { pillEl.textContent = ''; pillEl.style.display = 'none'; }
+    if (lbl) {
+      pillEl.textContent = lbl;
+      pillEl.style.display = '';
+      const isDays = /^\d+\s+day/.test(lbl);
+      const stl = isDays ? BN_GRAY_PILL : bnPillStyleForTaskId(srcTaskId);
+      if (stl) pillEl.setAttribute('style', bnPillInlineStyle(stl));
+      else pillEl.removeAttribute('style');
+    } else {
+      pillEl.textContent = '';
+      pillEl.style.display = 'none';
+      pillEl.removeAttribute('style');
+    }
   }
   if (entries.length === 0) {
     setVal(startEl, '');
@@ -5225,6 +5301,7 @@ window.__renderTaskAggregatedSchedule = function(t) {
     return arr.every(x => x === first) ? first : '';
   }
   const startLabels = entries.map(({ entry }) => entry.startSrcLabel || '');
+  const startTids = entries.map(({ entry }) => entry.startSrcTaskId || '');
   const endLabels = entries.map(({ entry }) => {
     if (entry.endSrcLabel) return entry.endSrcLabel;
     if (typeof entry.durationDays === 'number' && entry.durationDays >= 1) {
@@ -5232,8 +5309,13 @@ window.__renderTaskAggregatedSchedule = function(t) {
     }
     return '';
   });
-  setPill(startPill, commonLabel(startLabels));
-  setPill(endPill,   commonLabel(endLabels));
+  const endTids = entries.map(({ entry }) => entry.endSrcTaskId || '');
+  const commonStartLbl = commonLabel(startLabels);
+  const commonStartTid = commonLabel(startTids);
+  const commonEndLbl = commonLabel(endLabels);
+  const commonEndTid = commonLabel(endTids);
+  setPill(startPill, commonStartLbl, commonStartTid);
+  setPill(endPill,   commonEndLbl,   commonEndTid);
 };
 (function wireTaskScheduleControls() {
   const startEl = document.getElementById("f_taskStart");
@@ -5722,9 +5804,10 @@ function renderRoadmapsInModal(t) {
   function setRowSrc(rmId, side, lbl) {
     const e = entryForRm(rmId);
     if (e) {
-      const k = side === 'start' ? 'startSrcLabel' : 'endSrcLabel';
-      if (lbl) e[k] = lbl;
-      else delete e[k];
+      const kLbl = side === 'start' ? 'startSrcLabel' : 'endSrcLabel';
+      const kTid = side === 'start' ? 'startSrcTaskId' : 'endSrcTaskId';
+      if (lbl) e[kLbl] = lbl;
+      else { delete e[kLbl]; delete e[kTid]; }
     }
     // Keep the transient cache in sync (mostly for clarity; the entry is canonical now).
     if (lbl) window.__rmRowSrc[srcKey(rmId, side)] = lbl;
@@ -5751,8 +5834,21 @@ function renderRoadmapsInModal(t) {
       function buildSideCell(side, val, anchored, srcLbl) {
         const pinHtml = '<button type="button" class="rm-modal-pin" data-rmid="' + escapeHtml(r.id) + '" data-side="' + side + '" title="Use another task\'s aggregated start/end as this ' + (side === 'start' ? 'Start' : 'End') + '">📌</button>';
         const dateInput = '<input type="date" class="rm-modal-date-input rm-modal-' + side + '" data-rmid="' + escapeHtml(r.id) + '" value="' + escapeHtml(val) + '" title="' + (anchored ? 'Anchored — clear via the roadmap calendar to change' : (side === 'start' ? 'Start' : 'End') + ' in this roadmap') + '"' + (anchored ? ' disabled' : '') + '>';
+        // Pick the pill color: "N days" → gray; "start/end of TaskX" → that task's status color.
+        const isDaysLabel = srcLbl && /^\d+\s+day/.test(srcLbl);
+        let pillStyle = '';
+        if (srcLbl) {
+          const entry2 = entryFor(r.id).entry;
+          if (isDaysLabel) {
+            pillStyle = bnPillInlineStyle(BN_GRAY_PILL);
+          } else {
+            const srcTid = entry2 && (side === 'start' ? entry2.startSrcTaskId : entry2.endSrcTaskId);
+            const stl = bnPillStyleForTaskId(srcTid);
+            if (stl) pillStyle = bnPillInlineStyle(stl);
+          }
+        }
         const pill = srcLbl
-          ? '<button type="button" class="rm-modal-pill rm-modal-pill-btn" data-side="' + side + '" data-rmid="' + escapeHtml(r.id) + '" title="' + escapeHtml(srcLbl) + ' — click to clear and pick a date">' +
+          ? '<button type="button" class="rm-modal-pill rm-modal-pill-btn" data-side="' + side + '" data-rmid="' + escapeHtml(r.id) + '" style="' + pillStyle + '" title="' + escapeHtml(srcLbl) + ' — click to clear and pick a date">' +
               escapeHtml(srcLbl) +
               '<span class="bn-pill-x" aria-hidden="true">×</span>' +
             '</button>'
@@ -5890,20 +5986,22 @@ function renderRoadmapsInModal(t) {
         e.preventDefault(); e.stopPropagation();
         const rmId = pin.dataset.rmid;
         const side = pin.dataset.side;
-        bnOpenAggregatedPicker(pin, t.id, side, (absDate, label) => {
+        bnOpenAggregatedPicker(pin, t.id, side, (absDate, label, srcTaskId) => {
           const { entry } = entryFor(rmId);
           if (!entry) return;
           if (side === 'start') {
             entry.startDate = absDate;
             entry.startAnchor = '';
+            if (srcTaskId) entry.startSrcTaskId = srcTaskId;
+            else delete entry.startSrcTaskId;
             setRowSrc(rmId, 'start', label);
-            // If duration is set, recompute end so it follows the new start
             if (entry.durationDays) recomputeEndFromDays(rmId);
           } else {
             entry.endDate = absDate;
             entry.endAnchor = '';
-            // Picking end directly clears the days source (anchor wins)
             delete entry.durationDays;
+            if (srcTaskId) entry.endSrcTaskId = srcTaskId;
+            else delete entry.endSrcTaskId;
             setRowSrc(rmId, 'end', label);
           }
           saveAndSyncTaskDates();
@@ -6692,6 +6790,30 @@ function openTaskScheduleAnchorPicker(anchorBtn, selfTaskId, kind /* 'start'|'en
     document.addEventListener('click', closer, true);
   }, 0);
 }
+// Pill color palette keyed by task status — used by source pills ("start of X" / "end of X") so
+// they pick up the referenced task's status color. The "N days" pill always uses the gray style.
+const BN_STATUS_PILL = {
+  "":             { bg: "#f5f5f4", border: "#d8d6d1", text: "#52525b" },
+  "Waiting":      { bg: "#dbeafe", border: "#93c5fd", text: "#1e40af" },
+  "Proposed":     { bg: "#c7d2fe", border: "#818cf8", text: "#3730a3" },
+  "Later / Next": { bg: "#fee2e2", border: "#fca5a5", text: "#991b1b" },
+  "In Progress":  { bg: "#ffedd5", border: "#fed7aa", text: "#9a3412" },
+  "Under Review": { bg: "#ede9fe", border: "#c4b5fd", text: "#5b21b6" },
+  "Completed":    { bg: "#ecfdf3", border: "#a7f3d0", text: "#065f46" },
+  "Archived":     { bg: "#f5efe6", border: "#d6c5a8", text: "#78350f" },
+  "Discarded":    { bg: "#f5f5f4", border: "#d8d6d1", text: "#64748b" },
+};
+const BN_GRAY_PILL = { bg: "#f5f5f4", border: "#d8d6d1", text: "#52525b" };
+function bnPillStyleForTaskId(taskId) {
+  if (!taskId) return null;
+  const tk = STORE.tasks.find(x => x.id === taskId);
+  if (!tk) return null;
+  return BN_STATUS_PILL[tk.slackStatus || ''] || BN_STATUS_PILL[''];
+}
+function bnPillInlineStyle(style) {
+  if (!style) return '';
+  return 'background:' + style.bg + ';border-color:' + style.border + ';color:' + style.text;
+}
 // Compute a task's aggregated start/end across ALL its roadmap entries (resolving anchor chains).
 // Returns '' if the task isn't in any roadmap or no resolvable date exists for that side.
 function bnAggregatedDateForTask(taskId, side /* 'start'|'end' */) {
@@ -6779,8 +6901,8 @@ function bnOpenAggregatedPicker(anchorBtn, selfTaskId, side, onPicked) {
             '<span class="bam-row-label" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span>' +
           '</span>' +
           '<span class="bam-row-actions">' +
-            (startVal ? '<button type="button" class="bam-side-btn" data-val="' + escapeHtml(startVal) + '" data-label="start of ' + escapeHtml(name) + '" data-picked-side="start" title="Use start of ' + escapeHtml(name) + '">start</button>' : '') +
-            (endVal   ? '<button type="button" class="bam-side-btn" data-val="' + escapeHtml(endVal)   + '" data-label="end of '   + escapeHtml(name) + '" data-picked-side="end" title="Use end of '   + escapeHtml(name) + '">end</button>'   : '') +
+            (startVal ? '<button type="button" class="bam-side-btn" data-val="' + escapeHtml(startVal) + '" data-label="start of ' + escapeHtml(name) + '" data-picked-side="start" data-picked-task-id="' + escapeHtml(task.id) + '" title="Use start of ' + escapeHtml(name) + '">start</button>' : '') +
+            (endVal   ? '<button type="button" class="bam-side-btn" data-val="' + escapeHtml(endVal)   + '" data-label="end of '   + escapeHtml(name) + '" data-picked-side="end" data-picked-task-id="' + escapeHtml(task.id) + '" title="Use end of '   + escapeHtml(name) + '">end</button>'   : '') +
           '</span>' +
         '</div>';
       }).join('') +
@@ -6831,12 +6953,8 @@ function bnOpenAggregatedPicker(anchorBtn, selfTaskId, side, onPicked) {
       let v = b.dataset.val || '';
       const lbl = b.dataset.label || '';
       const pickedSide = b.dataset.pickedSide || '';
+      const pickedTaskId = b.dataset.pickedTaskId || '';
       if (!v) return;
-      // Predecessor/successor semantics: crossing sides applies a 1-day offset so tasks chain
-      // back-to-back without overlap.
-      //   filling 'start' + picked 'end'  → +1 day (start the day AFTER target's end)
-      //   filling 'end'   + picked 'start' → -1 day (end the day BEFORE target's start)
-      // Same-side picks copy the date as-is.
       if (side === 'start' && pickedSide === 'end') {
         const d = parseDate(v);
         if (d) { const d2 = new Date(d); d2.setDate(d2.getDate() + 1); v = dateKey(d2); }
@@ -6845,7 +6963,7 @@ function bnOpenAggregatedPicker(anchorBtn, selfTaskId, side, onPicked) {
         if (d) { const d2 = new Date(d); d2.setDate(d2.getDate() - 1); v = dateKey(d2); }
       }
       menu.remove();
-      if (typeof onPicked === 'function') onPicked(v, lbl);
+      if (typeof onPicked === 'function') onPicked(v, lbl, pickedTaskId);
     });
   });
   menu.querySelector('.bam-close').addEventListener('click', ev => {
@@ -9374,50 +9492,6 @@ function renderProfileRoadmapCard(rm, personId) {
   html += '</div>';
   html += '<span class="rm-meta">' + personTaskEntries.length + ' task' + (personTaskEntries.length===1?'':'s') + '</span>';
   html += '</div>';
-  // Aggregated summary for this person's tasks in this roadmap — same look as the task modal:
-  // pill (when every entry shares the same source label) + resolved date + total days between.
-  if (personTaskEntries.length > 0) {
-    const resolved = personTaskEntries.map(entry => {
-      const r = effectiveDatesForInRoadmap(entry, rm);
-      return { entry, startStr: r.startStr, endStr: r.endStr };
-    });
-    const aggStart = resolved.every(x => !!x.startStr)
-      ? resolved.reduce((m, x) => (!m || x.startStr < m) ? x.startStr : m, '')
-      : '';
-    const aggEnd = resolved.every(x => !!x.endStr)
-      ? resolved.reduce((m, x) => (!m || x.endStr > m) ? x.endStr : m, '')
-      : '';
-    function commonLabel(arr) {
-      if (arr.length === 0) return '';
-      const first = arr[0];
-      if (!first) return '';
-      return arr.every(x => x === first) ? first : '';
-    }
-    const startLbl = commonLabel(personTaskEntries.map(e => e.startSrcLabel || ''));
-    const endLbl = commonLabel(personTaskEntries.map(e => {
-      if (e.endSrcLabel) return e.endSrcLabel;
-      if (typeof e.durationDays === 'number' && e.durationDays >= 1) {
-        return e.durationDays + ' day' + (e.durationDays === 1 ? '' : 's');
-      }
-      return '';
-    }));
-    const spanDays = (aggStart && aggEnd) ? bnDaysInclusive(aggStart, aggEnd) : 0;
-    html += '<div class="profile-rm-agg">';
-    html += '<span class="prag-key">Start</span>';
-    html += '<span class="prag-stack">';
-    if (startLbl) html += '<span class="prag-pill">' + escapeHtml(startLbl) + '</span>';
-    html += '<span class="prag-val' + (aggStart ? '' : ' empty') + '">' + (aggStart ? escapeHtml(aggStart) : '—') + '</span>';
-    html += '</span>';
-    if (spanDays > 0) {
-      html += '<span class="prag-span">' + spanDays + ' day' + (spanDays === 1 ? '' : 's') + '</span>';
-    }
-    html += '<span class="prag-key">End</span>';
-    html += '<span class="prag-stack">';
-    if (endLbl) html += '<span class="prag-pill">' + escapeHtml(endLbl) + '</span>';
-    html += '<span class="prag-val' + (aggEnd ? '' : ' empty') + '">' + (aggEnd ? escapeHtml(aggEnd) : '—') + '</span>';
-    html += '</span>';
-    html += '</div>';
-  }
   // Mini 7-day calendar — wrapper holds day cells + absolute overlay so multi-day bars span continuously
   html += '<div class="mini-7day-wrap">';
   html += '<div class="mini-7day">';
