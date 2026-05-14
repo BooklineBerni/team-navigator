@@ -8294,10 +8294,23 @@ function bnAggregatedDateForTask(taskId, side /* 'start'|'end' */) {
     const s = side === 'start' ? r.startStr : r.endStr;
     if (s) dates.push(s);
   });
-  if (!anyEntry || dates.length === 0) return '';
-  return side === 'start'
-    ? dates.reduce((m, s) => (!m || s < m) ? s : m, '')
-    : dates.reduce((m, s) => (!m || s > m) ? s : m, '');
+  if (anyEntry && dates.length > 0) {
+    return side === 'start'
+      ? dates.reduce((m, s) => (!m || s < m) ? s : m, '')
+      : dates.reduce((m, s) => (!m || s > m) ? s : m, '');
+  }
+  // Fall back to the task's own dates — a task without any roadmap entries (or whose entries
+  // don't resolve to a date) can still be anchored against if it has task-level dates set.
+  const task = (STORE.tasks || []).find(x => x.id === taskId);
+  if (!task) return '';
+  if (typeof effectiveDatesForTask === 'function') {
+    try {
+      const r = effectiveDatesForTask(task);
+      const s = side === 'start' ? r.startStr : r.endStr;
+      if (s) return s;
+    } catch (_) {}
+  }
+  return side === 'start' ? (task.startDate || '') : (task.endDate || '');
 }
 // Floating "pick another task's aggregated start/end" picker — shared by the modal's top "Apply to all"
 // row AND each per-roadmap row. Filters out: the selfTaskId, tasks whose parent group is selfTaskId,
