@@ -102,7 +102,7 @@
   .stats { display: flex; gap: 8px; font-size: 11px; color: #6b6b6b; flex-wrap: wrap; padding: 4px 0; }
   .stats .stat { display: inline-flex; gap: 4px; align-items: center; }
   .stats .dot { width: 6px; height: 6px; border-radius: 50%; }
-  .dot.empty { background: #cbd5e1; } .dot.waiting { background: #60a5fa; } .dot.proposed { background: #1d4ed8; }
+  .dot.empty { background: #cbd5e1; } .dot.waiting { background: #38bdf8; } .dot.proposed { background: #1d4ed8; }
   .dot.later-next { background: #dc2626; } .dot.in-progress { background: #f97316; } .dot.under-review { background: #7c3aed; }
   .dot.completed { background: #16a34a; } .dot.archived { background: #92400e; } .dot.discarded { background: #9a9a9a; }
 
@@ -110,7 +110,7 @@
   .tasks:empty::before { content: "No tasks match these filters"; display: block; font-size: 12px; color: #9a9a9a; padding: 6px 2px; }
   .task { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 8px; padding: 6px 8px; border-radius: 8px; background: #faf9f7; border: 1px solid #efeeea; align-items: center; }
   .task[data-pstatus=""]              { background: #fff;    border-color: #ececea; }
-  .task[data-pstatus="Waiting"]       { background: #dbeafe; border-color: #93c5fd; }
+  .task[data-pstatus="Waiting"]       { background: #e0f2fe; border-color: #7dd3fc; }
   .task[data-pstatus="Proposed"]      { background: #c7d2fe; border-color: #818cf8; }
   .task[data-pstatus="Later / Next"]  { background: #fee2e2; border-color: #fca5a5; }
   .task[data-pstatus="In Progress"]   { background: #ffedd5; border-color: #fed7aa; }
@@ -192,7 +192,7 @@
   .flat-tasks { display: flex; flex-direction: column; gap: 4px; }
   .flat-task { display: grid; grid-template-columns: 16px 32px 1fr auto auto; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 8px; background: #faf9f7; border: 1px solid #efeeea; }
   .flat-task[data-pstatus=""]              { background: #fff;    border-color: #ececea; }
-  .flat-task[data-pstatus="Waiting"]       { background: #dbeafe; border-color: #93c5fd; }
+  .flat-task[data-pstatus="Waiting"] { background: #e0f2fe; border-color: #7dd3fc; }
   .flat-task[data-pstatus="Proposed"]      { background: #c7d2fe; border-color: #818cf8; }
   .flat-task[data-pstatus="Later / Next"]  { background: #fee2e2; border-color: #fca5a5; }
   .flat-task[data-pstatus="In Progress"]   { background: #ffedd5; border-color: #fed7aa; }
@@ -1417,7 +1417,7 @@
     background: #ecfdf3; border: 1px solid #86efac; border-radius: 8px;
   }
   /* Status-tinted backgrounds for Unscheduled rows (overridden by .ready when scheduled) */
-  .rm-side-area .rm-task-row[data-pstatus="Waiting"]      { background: #dbeafe; border-color: #93c5fd; }
+  .rm-side-area .rm-task-row[data-pstatus="Waiting"] { background: #e0f2fe; border-color: #7dd3fc; }
   .rm-side-area .rm-task-row[data-pstatus="Proposed"]     { background: #c7d2fe; border-color: #818cf8; }
   .rm-side-area .rm-task-row[data-pstatus="Later / Next"] { background: #fee2e2; border-color: #fca5a5; }
   .rm-side-area .rm-task-row[data-pstatus="In Progress"]  { background: #ffedd5; border-color: #fed7aa; }
@@ -2290,7 +2290,7 @@
     padding: 8px 12px; border-radius: 8px; background: #faf9f7; border: 1px solid #efeeea;
   }
   .flat-task[data-pstatus=""]              { background: #fff;    border-color: #ececea; }
-  .flat-task[data-pstatus="Waiting"]       { background: #dbeafe; border-color: #93c5fd; }
+  .flat-task[data-pstatus="Waiting"] { background: #e0f2fe; border-color: #7dd3fc; }
   .flat-task[data-pstatus="Proposed"]      { background: #c7d2fe; border-color: #818cf8; }
   .flat-task[data-pstatus="Later / Next"]  { background: #fee2e2; border-color: #fca5a5; }
   .flat-task[data-pstatus="In Progress"]   { background: #ffedd5; border-color: #fed7aa; }
@@ -2399,7 +2399,7 @@
   /* Status select: tint with the status' palette, mirrored from the task cards. */
   select.f-colored-status { font-weight: 600; }
   select.f-colored-status[data-value=""]              { background: #fff;    color: #1a1a1a;   border-color: #d8d6d1; }
-  select.f-colored-status[data-value="Waiting"]       { background: #dbeafe; color: #1d4ed8;   border-color: #93c5fd; }
+  select.f-colored-status[data-value="Waiting"] { background: #e0f2fe; color: #0369a1; border-color: #7dd3fc; }
   select.f-colored-status[data-value="Proposed"]      { background: #c7d2fe; color: #1e3a8a;   border-color: #818cf8; }
   select.f-colored-status[data-value="Later / Next"]  { background: #fee2e2; color: #b91c1c;   border-color: #fca5a5; }
   select.f-colored-status[data-value="In Progress"]   { background: #ffedd5; color: #9a3412;   border-color: #fed7aa; }
@@ -2407,6 +2407,15 @@
   select.f-colored-status[data-value="Completed"]     { background: #ecfdf3; color: #027a48;   border-color: #a7f3d0; }
   select.f-colored-status[data-value="Archived"]      { background: #f5efe6; color: #78350f;   border-color: #d6c5a8; }
   select.f-colored-status[data-value="Discarded"]     { background: #f1f5f9; color: #64748b;   border-color: #d8d6d1; }
+  /* Color the individual <option> rows in the native dropdown too. Supported by most desktop browsers. */
+  select.f-colored-status option[value="Waiting"]      { background: #e0f2fe; color: #0369a1; }
+  select.f-colored-status option[value="Proposed"]     { background: #c7d2fe; color: #1e3a8a; }
+  select.f-colored-status option[value="Later / Next"] { background: #fee2e2; color: #b91c1c; }
+  select.f-colored-status option[value="In Progress"]  { background: #ffedd5; color: #9a3412; }
+  select.f-colored-status option[value="Under Review"] { background: #ede9fe; color: #5b21b6; }
+  select.f-colored-status option[value="Completed"]    { background: #ecfdf3; color: #027a48; }
+  select.f-colored-status option[value="Archived"]     { background: #f5efe6; color: #78350f; }
+  select.f-colored-status option[value="Discarded"]    { background: #f1f5f9; color: #64748b; }
   /* Priority select */
   select.f-colored-prio { font-weight: 600; }
   select.f-colored-prio[data-value=""]         { background: #fff;    color: #1a1a1a; border-color: #d8d6d1; }
@@ -2415,6 +2424,11 @@
   select.f-colored-prio[data-value="Media"]    { background: #d1fadf; color: #027a48; border-color: #a7f3d0; }
   select.f-colored-prio[data-value="Baja"]     { background: #eaecf0; color: #475467; border-color: #d8d6d1; }
   select.f-colored-prio[data-value="Muy Baja"] { background: #f2f4f7; color: #98a2b3; border-color: #e2e4e7; }
+  select.f-colored-prio option[value="Critical"] { background: #fee4e2; color: #b42318; }
+  select.f-colored-prio option[value="Alta"]     { background: #fef0c7; color: #b54708; }
+  select.f-colored-prio option[value="Media"]    { background: #d1fadf; color: #027a48; }
+  select.f-colored-prio option[value="Baja"]     { background: #eaecf0; color: #475467; }
+  select.f-colored-prio option[value="Muy Baja"] { background: #f2f4f7; color: #98a2b3; }
   /* Type select */
   select.f-colored-type { font-weight: 600; }
   select.f-colored-type[data-value=""]              { background: #fff;    color: #1a1a1a; border-color: #d8d6d1; }
@@ -2423,12 +2437,20 @@
   select.f-colored-type[data-value="Request"]        { background: #ecfdf3; color: #027a48; border-color: #a7f3d0; }
   select.f-colored-type[data-value="ERROR"]          { background: #fee4e2; color: #b42318; border-color: #fecaca; }
   select.f-colored-type[data-value="Infinite"]       { background: #fef0c7; color: #92400e; border-color: #fde68a; }
+  select.f-colored-type option[value="Project"]        { background: #f4ebff; color: #6941c6; }
+  select.f-colored-type option[value="Responsability"] { background: #e0eaff; color: #3538cd; }
+  select.f-colored-type option[value="Request"]        { background: #ecfdf3; color: #027a48; }
+  select.f-colored-type option[value="ERROR"]          { background: #fee4e2; color: #b42318; }
+  select.f-colored-type option[value="Infinite"]       { background: #fef0c7; color: #92400e; }
   /* Share with select */
   select.f-colored-share { font-weight: 600; }
   select.f-colored-share[data-value=""]         { background: #fff;    color: #1a1a1a; border-color: #d8d6d1; }
   select.f-colored-share[data-value="Private"]  { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
   select.f-colored-share[data-value="Team"]     { background: #cffafe; color: #0e7490; border-color: #67e8f9; }
   select.f-colored-share[data-value="Everyone"] { background: #1a1a1a; color: #ffffff; border-color: #1a1a1a; }
+  select.f-colored-share option[value="Private"]  { background: #fee2e2; color: #b91c1c; }
+  select.f-colored-share option[value="Team"]     { background: #cffafe; color: #0e7490; }
+  select.f-colored-share option[value="Everyone"] { background: #1a1a1a; color: #ffffff; }
 
   /* === Group picker (searchable, with status color tint) === */
   .group-picker-box { position: relative; }
@@ -2445,7 +2467,7 @@
   .group-picker-chip .gp-clear:hover { color: #dc2626; }
   .group-picker-chip .gp-caret { color: #9a9a9a; font-size: 10px; }
   /* Tint by current group's status (data-status attribute on the chip) */
-  .group-picker-chip[data-status="Waiting"]       { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+  .group-picker-chip[data-status="Waiting"] { background: #e0f2fe; border-color: #7dd3fc; color: #0369a1; }
   .group-picker-chip[data-status="Proposed"]      { background: #c7d2fe; border-color: #818cf8; color: #1e3a8a; }
   .group-picker-chip[data-status="Later / Next"]  { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
   .group-picker-chip[data-status="In Progress"]   { background: #ffedd5; border-color: #fed7aa; color: #9a3412; }
@@ -2471,7 +2493,7 @@
     flex-shrink: 0; font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
     text-transform: uppercase; letter-spacing: 0.03em;
   }
-  .group-picker-item .gpi-status[data-status="Waiting"]       { background: #dbeafe; color: #1d4ed8; }
+  .group-picker-item .gpi-status[data-status="Waiting"] { background: #e0f2fe; color: #0369a1; }
   .group-picker-item .gpi-status[data-status="Proposed"]      { background: #c7d2fe; color: #1e3a8a; }
   .group-picker-item .gpi-status[data-status="Later / Next"]  { background: #fee2e2; color: #b91c1c; }
   .group-picker-item .gpi-status[data-status="In Progress"]   { background: #ffedd5; color: #9a3412; }
@@ -2505,7 +2527,7 @@
   .rm-add-empty-state { padding: 14px 12px; color: #9a9a9a; font-size: 12px; text-align: center; }
 
   /* === Colored subtask rows (status tint, mirrored from the task cards) === */
-  .subtask-row[data-status="Waiting"]       { background: #dbeafe; border-color: #93c5fd; }
+  .subtask-row[data-status="Waiting"] { background: #e0f2fe; border-color: #7dd3fc; }
   .subtask-row[data-status="Proposed"]      { background: #c7d2fe; border-color: #818cf8; }
   .subtask-row[data-status="Later / Next"]  { background: #fee2e2; border-color: #fca5a5; }
   .subtask-row[data-status="In Progress"]   { background: #ffedd5; border-color: #fed7aa; }
@@ -2513,7 +2535,7 @@
   .subtask-row[data-status="Completed"]     { background: #ecfdf3; border-color: #a7f3d0; }
   .subtask-row[data-status="Archived"]      { background: #f5efe6; border-color: #d6c5a8; }
   .subtask-row[data-status="Discarded"]     { background: #f1f5f9; border-color: #d8d6d1; opacity: 0.85; }
-  .subtask-row .subtask-status[data-status="Waiting"]       { background: #bfdbfe; color: #1d4ed8; }
+  .subtask-row .subtask-status[data-status="Waiting"] { background: #bae6fd; color: #0369a1; }
   .subtask-row .subtask-status[data-status="Proposed"]      { background: #a5b4fc; color: #1e3a8a; }
   .subtask-row .subtask-status[data-status="Later / Next"]  { background: #fecaca; color: #b91c1c; }
   .subtask-row .subtask-status[data-status="In Progress"]   { background: #fed7aa; color: #9a3412; }
@@ -2521,6 +2543,59 @@
   .subtask-row .subtask-status[data-status="Completed"]     { background: #a7f3d0; color: #027a48; }
   .subtask-row .subtask-status[data-status="Archived"]      { background: #d6c5a8; color: #78350f; }
   .subtask-row .subtask-status[data-status="Discarded"]     { background: #e2e4e7; color: #64748b; }
+  /* Status-tinted subtask suggestions (matches the group picker dropdown style). */
+  .subtask-suggestion[data-status="Waiting"]       { background: #e0f2fe; border-color: #7dd3fc; }
+  .subtask-suggestion[data-status="Proposed"]      { background: #c7d2fe; border-color: #818cf8; }
+  .subtask-suggestion[data-status="Later / Next"]  { background: #fee2e2; border-color: #fca5a5; }
+  .subtask-suggestion[data-status="In Progress"]   { background: #ffedd5; border-color: #fed7aa; }
+  .subtask-suggestion[data-status="Under Review"]  { background: #ede9fe; border-color: #c4b5fd; }
+  .subtask-suggestion[data-status="Completed"]     { background: #ecfdf3; border-color: #a7f3d0; }
+  .subtask-suggestion[data-status="Archived"]      { background: #f5efe6; border-color: #d6c5a8; }
+  .subtask-suggestion[data-status="Discarded"]     { background: #f1f5f9; border-color: #d8d6d1; }
+  .subtask-suggestion[data-status]:hover { filter: brightness(0.96); }
+  .subtask-suggestion .subtask-status[data-status="Waiting"]       { background: #bae6fd; color: #0369a1; }
+  .subtask-suggestion .subtask-status[data-status="Proposed"]      { background: #a5b4fc; color: #1e3a8a; }
+  .subtask-suggestion .subtask-status[data-status="Later / Next"]  { background: #fecaca; color: #b91c1c; }
+  .subtask-suggestion .subtask-status[data-status="In Progress"]   { background: #fed7aa; color: #9a3412; }
+  .subtask-suggestion .subtask-status[data-status="Under Review"]  { background: #c4b5fd; color: #5b21b6; }
+  .subtask-suggestion .subtask-status[data-status="Completed"]     { background: #a7f3d0; color: #027a48; }
+  .subtask-suggestion .subtask-status[data-status="Archived"]      { background: #d6c5a8; color: #78350f; }
+  .subtask-suggestion .subtask-status[data-status="Discarded"]     { background: #e2e4e7; color: #64748b; }
+
+  /* === Combined Task tags row inside the task modal === */
+  /* All tags (assigned + available) live in one wrap; clear visual distinction between the two. */
+  .task-tags-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 5px 6px;
+    padding: 4px 0;
+  }
+  .task-tags-row .task-tag {
+    cursor: pointer; font-size: 10px; padding: 2px 8px;
+    border: 1px solid transparent;
+    transition: filter .12s, transform .12s, opacity .12s;
+  }
+  .task-tags-row .task-tag.applied { box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+  .task-tags-row .task-tag.applied .tag-remove { margin-left: 4px; opacity: 0.7; font-weight: 700; }
+  .task-tags-row .task-tag.applied:hover { filter: brightness(0.95); }
+  /* "Available" suggested tags: outline only, white inside, lower opacity to fade vs applied. */
+  .task-tags-row .task-tag.suggest {
+    background: transparent !important;
+    border: 1px dashed currentColor;
+    opacity: 0.55;
+    font-weight: 500;
+  }
+  .task-tags-row .task-tag.suggest:hover { opacity: 1; transform: scale(1.04); }
+  .task-tags-row .task-tags-divider {
+    display: inline-flex; align-items: center;
+    height: 16px; width: 1px; background: #d8d6d1;
+    margin: 0 4px;
+  }
+  .task-tags-row .task-tags-mini-label {
+    font-size: 10px; color: #9a9a9a; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 0 4px;
+  }
+  .task-tags-row .task-tags-empty {
+    color: #9a9a9a; font-size: 11px; font-style: italic; padding: 2px 4px;
+  }
 
   .card.card-unassigned { border: 1px dashed #d8d6d1; background: #fafaf8; }
   .card.card-unassigned .name { color: #6b6b6b; }
@@ -3250,8 +3325,9 @@
       </div>
     </div>
     <div class="field f_taskOnlyRow"><label>Task tags</label>
-      <div id="f_taskTagsContainer" class="person-modal-tags"></div>
-      <div class="preset-tags" id="f_presetTaskTagsContainer" style="margin-top:6px"></div>
+      <div id="f_taskTagsContainer" class="task-tags-row"></div>
+      <!-- Suggested tags are now rendered inline inside f_taskTagsContainer, after a divider. -->
+      <div id="f_presetTaskTagsContainer" style="display:none"></div>
     </div>
     <div class="field" id="f_subtasksField">
       <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none">
@@ -4018,7 +4094,7 @@ function renderTeamStrip() {
 // Order matters — drives the visual order of the filter pills, dropdown, sort.
 const STATUSES = [
   { key: "",             label: "(empty)",      bg: "#fff",    color: "#9a9a9a" },
-  { key: "Waiting",      label: "Waiting",      bg: "#dbeafe", color: "#1d4ed8" },
+  { key: "Waiting",      label: "Waiting",      bg: "#e0f2fe", color: "#0369a1" },
   { key: "Proposed",     label: "Proposed",     bg: "#c7d2fe", color: "#1e3a8a" },
   { key: "Later / Next", label: "Later / Next", bg: "#fee2e2", color: "#b91c1c" },
   { key: "In Progress",  label: "In Progress",  bg: "#ffedd5", color: "#9a3412" },
@@ -6617,41 +6693,61 @@ document.getElementById("addMemberBg").addEventListener("click", e => { if (e.ta
 // ---------- Tag Manager modal ----------
 
 function renderTaskTagsInModal(t) {
+  // Single wrap row: applied tags (full color, with ×) | divider | available tags (outline, faded).
   const cont = document.getElementById("f_taskTagsContainer");
-  const presetCont = document.getElementById("f_presetTaskTagsContainer");
   const tags = (t.taskTags || []).slice();
-  cont.innerHTML = tags.length
-    ? tags.map(n => taskTagBadgeHtml(n, true)).join("")
-    : '<span style="color:#9a9a9a; font-size:12px">No task tags</span>';
-  cont.querySelectorAll(".task-tag").forEach(node => {
-    node.addEventListener("click", () => {
+  const lib = getTaskTagLibrary();
+  function tagHtml(name, applied) {
+    const style = (typeof getTaskTagStyle === 'function') ? getTaskTagStyle(name) : '';
+    const cls = 'task-tag ' + (applied ? 'applied' : 'suggest');
+    const inner = applied
+      ? (escapeHtml(name) + ' <span class="tag-remove">&times;</span>')
+      : escapeHtml(name);
+    return '<span class="' + cls + '" style="' + style + '" data-tag="' + escapeHtml(name) + '">' + inner + '</span>';
+  }
+  // Free-text tags (assigned but not in library) — keep first so they're not lost.
+  const extraApplied = tags.filter(n => !lib.some(x => x.name === n));
+  // Library tags split by applied/available, preserving library order.
+  const libApplied   = lib.filter(x => tags.includes(x.name)).map(x => x.name);
+  const libAvailable = lib.filter(x => !tags.includes(x.name)).map(x => x.name);
+  let html = '';
+  const appliedAll = [...libApplied, ...extraApplied];
+  if (appliedAll.length === 0 && libAvailable.length === 0) {
+    html = '<span class="task-tags-empty">No task tags in the library yet — create some with the "Task Tags" button.</span>';
+  } else {
+    if (appliedAll.length === 0) {
+      html += '<span class="task-tags-empty">No tags applied</span>';
+    } else {
+      html += appliedAll.map(n => tagHtml(n, true)).join('');
+    }
+    if (libAvailable.length > 0) {
+      html += '<span class="task-tags-divider"></span>';
+      html += '<span class="task-tags-mini-label">Add</span>';
+      html += libAvailable.map(n => tagHtml(n, false)).join('');
+    }
+  }
+  cont.innerHTML = html;
+  // Applied → click removes
+  cont.querySelectorAll('.task-tag.applied').forEach(node => {
+    node.addEventListener('click', () => {
       const n = node.dataset.tag;
       t.taskTags = (t.taskTags || []).filter(x => x !== n);
-      // Persist immediately
       const stored = STORE.tasks.find(x => x.id === t.id);
       if (stored) { stored.taskTags = t.taskTags; stored._pendingSync = true; saveStore(STORE); }
       renderTaskTagsInModal(t);
     });
   });
-  const lib = getTaskTagLibrary();
-  if (lib.length === 0) {
-    presetCont.innerHTML = '<span style="color:#9a9a9a; font-size:12px">No task tags in library yet. Create one with "Task Tags" button.</span>';
-  } else {
-    presetCont.innerHTML = lib.map(libTag => {
-      const inUse = tags.includes(libTag.name);
-      return '<span class="preset-tag ' + (inUse ? "in-use" : "") + '">' + taskTagBadgeHtml(libTag.name, false) + '</span>';
-    }).join("");
-    presetCont.querySelectorAll(".preset-tag:not(.in-use)").forEach(node => {
-      node.addEventListener("click", () => {
-        const tagName = node.querySelector(".task-tag").dataset.tag;
-        t.taskTags = t.taskTags || [];
-        if (!t.taskTags.includes(tagName)) t.taskTags.push(tagName);
-        const stored = STORE.tasks.find(x => x.id === t.id);
-        if (stored) { stored.taskTags = t.taskTags; stored._pendingSync = true; saveStore(STORE); }
-        renderTaskTagsInModal(t);
-      });
+  // Suggested → click adds
+  cont.querySelectorAll('.task-tag.suggest').forEach(node => {
+    node.addEventListener('click', () => {
+      const n = node.dataset.tag;
+      t.taskTags = t.taskTags || [];
+      if (!t.taskTags.includes(n)) t.taskTags.push(n);
+      const stored = STORE.tasks.find(x => x.id === t.id);
+      if (stored) { stored.taskTags = t.taskTags; stored._pendingSync = true; saveStore(STORE); }
+      renderTaskTagsInModal(t);
     });
-  }
+  });
 }
 
 // ---- Roadmaps assignment inside Task modal ----
@@ -7036,8 +7132,9 @@ function renderSubtasksInModal(t) {
     } else {
       sugg.innerHTML = cands.map(c => {
         const icon = c.isGroup ? '📁' : '·';
-        const stat = c.slackStatus ? '<span class="subtask-status">' + escapeHtml(c.slackStatus) + '</span>' : '';
-        return '<button type="button" class="subtask-suggestion" data-tid="' + escapeHtml(c.id) + '">' +
+        const sAttr = c.slackStatus ? ' data-status="' + escapeHtml(c.slackStatus) + '"' : '';
+        const stat = c.slackStatus ? '<span class="subtask-status"' + sAttr + '>' + escapeHtml(c.slackStatus) + '</span>' : '';
+        return '<button type="button" class="subtask-suggestion" data-tid="' + escapeHtml(c.id) + '"' + sAttr + '>' +
           '<span class="subtask-icon">' + icon + '</span>' +
           '<span class="subtask-name">' + escapeHtml(c.subject || '(unnamed)') + '</span>' +
           stat +
@@ -7612,7 +7709,7 @@ function openTaskScheduleAnchorPicker(anchorBtn, selfTaskId, kind /* 'start'|'en
 // they pick up the referenced task's status color. The "N days" pill always uses the gray style.
 const BN_STATUS_PILL = {
   "":             { bg: "#f5f5f4", border: "#d8d6d1", text: "#52525b" },
-  "Waiting":      { bg: "#dbeafe", border: "#93c5fd", text: "#1e40af" },
+  "Waiting":      { bg: "#e0f2fe", border: "#7dd3fc", text: "#0c4a6e" },
   "Proposed":     { bg: "#c7d2fe", border: "#818cf8", text: "#3730a3" },
   "Later / Next": { bg: "#fee2e2", border: "#fca5a5", text: "#991b1b" },
   "In Progress":  { bg: "#ffedd5", border: "#fed7aa", text: "#9a3412" },
