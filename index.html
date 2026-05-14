@@ -2362,21 +2362,21 @@
   .proposed-chip.psec-bookline .proposed-chip-name { color: #ffffff; }
   .proposed-chip.psec-bookline .proposed-chip-x { color: #d8d6d1; }
   .proposed-chip.psec-bookline .proposed-chip-x:hover { color: #fca5a5; }
-  .proposed-chip.psec-team { background: #dbeafe; border-color: #93c5fd; }
-  .proposed-chip.psec-team .proposed-chip-name { color: #1d4ed8; }
+  .proposed-chip.psec-team { background: #cffafe; border-color: #67e8f9; }
+  .proposed-chip.psec-team .proposed-chip-name { color: #0e7490; }
   .proposed-chip.psec-supplementary { background: #dcfce7; border-color: #86efac; }
   .proposed-chip.psec-supplementary .proposed-chip-name { color: #15803d; }
   .proposed-dd-item.psec-disabled { background: #f3f4f6; }
   .proposed-dd-item.psec-disabled .proposed-dd-name { color: #4b5563; }
   .proposed-dd-item.psec-bookline { background: #f5f5f4; }
   .proposed-dd-item.psec-bookline .proposed-dd-name { color: #1a1a1a; font-weight: 600; }
-  .proposed-dd-item.psec-team { background: #eff6ff; }
-  .proposed-dd-item.psec-team .proposed-dd-name { color: #1d4ed8; }
+  .proposed-dd-item.psec-team { background: #ecfeff; }
+  .proposed-dd-item.psec-team .proposed-dd-name { color: #0e7490; }
   .proposed-dd-item.psec-supplementary { background: #f0fdf4; }
   .proposed-dd-item.psec-supplementary .proposed-dd-name { color: #15803d; }
   .proposed-dd-item.psec-disabled:hover { background: #e5e7eb; }
   .proposed-dd-item.psec-bookline:hover { background: #e7e5e4; }
-  .proposed-dd-item.psec-team:hover { background: #dbeafe; }
+  .proposed-dd-item.psec-team:hover { background: #cffafe; }
   .proposed-dd-item.psec-supplementary:hover { background: #dcfce7; }
   .proposed-chip .av-mini { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; overflow: hidden; position: relative; }
   .proposed-chip .av-mini img,
@@ -2394,6 +2394,133 @@
   .proposed-dd-name { font-size: 13px; font-weight: 500; color: #1a1a1a; }
   .proposed-dd-email { font-size: 11px; color: #6b6b6b; }
   .proposed-dd-ext { font-size: 10px; padding: 2px 6px; background: #fff7ed; color: #c2410c; border-radius: 999px; flex-shrink: 0; }
+
+  /* === Colored selects in the task modal === */
+  /* Status select: tint with the status' palette, mirrored from the task cards. */
+  select.f-colored-status { font-weight: 600; }
+  select.f-colored-status[data-value=""]              { background: #fff;    color: #1a1a1a;   border-color: #d8d6d1; }
+  select.f-colored-status[data-value="Waiting"]       { background: #dbeafe; color: #1d4ed8;   border-color: #93c5fd; }
+  select.f-colored-status[data-value="Proposed"]      { background: #c7d2fe; color: #1e3a8a;   border-color: #818cf8; }
+  select.f-colored-status[data-value="Later / Next"]  { background: #fee2e2; color: #b91c1c;   border-color: #fca5a5; }
+  select.f-colored-status[data-value="In Progress"]   { background: #ffedd5; color: #9a3412;   border-color: #fed7aa; }
+  select.f-colored-status[data-value="Under Review"]  { background: #ede9fe; color: #5b21b6;   border-color: #c4b5fd; }
+  select.f-colored-status[data-value="Completed"]     { background: #ecfdf3; color: #027a48;   border-color: #a7f3d0; }
+  select.f-colored-status[data-value="Archived"]      { background: #f5efe6; color: #78350f;   border-color: #d6c5a8; }
+  select.f-colored-status[data-value="Discarded"]     { background: #f1f5f9; color: #64748b;   border-color: #d8d6d1; }
+  /* Priority select */
+  select.f-colored-prio { font-weight: 600; }
+  select.f-colored-prio[data-value=""]         { background: #fff;    color: #1a1a1a; border-color: #d8d6d1; }
+  select.f-colored-prio[data-value="Critical"] { background: #fee4e2; color: #b42318; border-color: #fecaca; }
+  select.f-colored-prio[data-value="Alta"]     { background: #fef0c7; color: #b54708; border-color: #fde68a; }
+  select.f-colored-prio[data-value="Media"]    { background: #d1fadf; color: #027a48; border-color: #a7f3d0; }
+  select.f-colored-prio[data-value="Baja"]     { background: #eaecf0; color: #475467; border-color: #d8d6d1; }
+  select.f-colored-prio[data-value="Muy Baja"] { background: #f2f4f7; color: #98a2b3; border-color: #e2e4e7; }
+  /* Type select */
+  select.f-colored-type { font-weight: 600; }
+  select.f-colored-type[data-value=""]              { background: #fff;    color: #1a1a1a; border-color: #d8d6d1; }
+  select.f-colored-type[data-value="Project"]        { background: #f4ebff; color: #6941c6; border-color: #d6bbfb; }
+  select.f-colored-type[data-value="Responsability"] { background: #e0eaff; color: #3538cd; border-color: #c7d7fe; }
+  select.f-colored-type[data-value="Request"]        { background: #ecfdf3; color: #027a48; border-color: #a7f3d0; }
+  select.f-colored-type[data-value="ERROR"]          { background: #fee4e2; color: #b42318; border-color: #fecaca; }
+  select.f-colored-type[data-value="Infinite"]       { background: #fef0c7; color: #92400e; border-color: #fde68a; }
+  /* Share with select */
+  select.f-colored-share { font-weight: 600; }
+  select.f-colored-share[data-value=""]         { background: #fff;    color: #1a1a1a; border-color: #d8d6d1; }
+  select.f-colored-share[data-value="Private"]  { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+  select.f-colored-share[data-value="Team"]     { background: #cffafe; color: #0e7490; border-color: #67e8f9; }
+  select.f-colored-share[data-value="Everyone"] { background: #1a1a1a; color: #ffffff; border-color: #1a1a1a; }
+
+  /* === Group picker (searchable, with status color tint) === */
+  .group-picker-box { position: relative; }
+  .group-picker-chip {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid #d8d6d1; border-radius: 6px; padding: 6px 10px; background: #fff;
+    cursor: pointer; min-height: 36px; font-size: 13px; color: #1a1a1a; outline: none;
+    font-weight: 600;
+  }
+  .group-picker-chip:hover, .group-picker-chip:focus { border-color: #1a1a1a; }
+  .group-picker-chip .gp-empty { color: #9a9a9a; font-weight: 400; }
+  .group-picker-chip .gp-name  { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .group-picker-chip .gp-clear { appearance: none; border: none; background: transparent; color: #6b6b6b; font-size: 14px; cursor: pointer; padding: 0 4px; line-height: 1; }
+  .group-picker-chip .gp-clear:hover { color: #dc2626; }
+  .group-picker-chip .gp-caret { color: #9a9a9a; font-size: 10px; }
+  /* Tint by current group's status (data-status attribute on the chip) */
+  .group-picker-chip[data-status="Waiting"]       { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+  .group-picker-chip[data-status="Proposed"]      { background: #c7d2fe; border-color: #818cf8; color: #1e3a8a; }
+  .group-picker-chip[data-status="Later / Next"]  { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+  .group-picker-chip[data-status="In Progress"]   { background: #ffedd5; border-color: #fed7aa; color: #9a3412; }
+  .group-picker-chip[data-status="Under Review"]  { background: #ede9fe; border-color: #c4b5fd; color: #5b21b6; }
+  .group-picker-chip[data-status="Completed"]     { background: #ecfdf3; border-color: #a7f3d0; color: #027a48; }
+  .group-picker-chip[data-status="Archived"]      { background: #f5efe6; border-color: #d6c5a8; color: #78350f; }
+  .group-picker-chip[data-status="Discarded"]     { background: #f1f5f9; border-color: #d8d6d1; color: #64748b; }
+  .group-picker-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px;
+    background: #fff; border: 1px solid #d8d6d1; border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10); z-index: 100;
+    max-height: 280px; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .group-picker-search { border: none; outline: none; padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #ececec; background: #fafafa; }
+  .group-picker-list { overflow-y: auto; flex: 1; padding: 4px 0; }
+  .group-picker-item {
+    display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer;
+    font-size: 13px;
+  }
+  .group-picker-item:hover, .group-picker-item.active { background: #f1f3f4; }
+  .group-picker-item .gpi-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .group-picker-item .gpi-status {
+    flex-shrink: 0; font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .group-picker-item .gpi-status[data-status="Waiting"]       { background: #dbeafe; color: #1d4ed8; }
+  .group-picker-item .gpi-status[data-status="Proposed"]      { background: #c7d2fe; color: #1e3a8a; }
+  .group-picker-item .gpi-status[data-status="Later / Next"]  { background: #fee2e2; color: #b91c1c; }
+  .group-picker-item .gpi-status[data-status="In Progress"]   { background: #ffedd5; color: #9a3412; }
+  .group-picker-item .gpi-status[data-status="Under Review"]  { background: #ede9fe; color: #5b21b6; }
+  .group-picker-item .gpi-status[data-status="Completed"]     { background: #ecfdf3; color: #027a48; }
+  .group-picker-item .gpi-status[data-status="Archived"]      { background: #f5efe6; color: #78350f; }
+  .group-picker-item .gpi-status[data-status="Discarded"]     { background: #f1f5f9; color: #64748b; }
+  .group-picker-empty-state { padding: 14px 12px; color: #9a9a9a; font-size: 12px; text-align: center; }
+
+  /* === Roadmap-add picker (searchable, with owner avatar) === */
+  .rm-add-box { position: relative; max-width: 360px; }
+  .rm-add-chip {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px dashed #d8d6d1; border-radius: 6px; padding: 6px 10px; background: #fff;
+    cursor: pointer; min-height: 32px; font-size: 12px; color: #6b6b6b; outline: none;
+  }
+  .rm-add-chip:hover, .rm-add-chip:focus { border-color: #1a1a1a; color: #1a1a1a; }
+  .rm-add-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px;
+    background: #fff; border: 1px solid #d8d6d1; border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10); z-index: 100;
+    max-height: 280px; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .rm-add-search { border: none; outline: none; padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #ececec; background: #fafafa; }
+  .rm-add-list { overflow-y: auto; flex: 1; padding: 4px 0; }
+  .rm-add-item {
+    display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px;
+  }
+  .rm-add-item:hover, .rm-add-item.active { background: #f1f3f4; }
+  .rm-add-item-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rm-add-empty-state { padding: 14px 12px; color: #9a9a9a; font-size: 12px; text-align: center; }
+
+  /* === Colored subtask rows (status tint, mirrored from the task cards) === */
+  .subtask-row[data-status="Waiting"]       { background: #dbeafe; border-color: #93c5fd; }
+  .subtask-row[data-status="Proposed"]      { background: #c7d2fe; border-color: #818cf8; }
+  .subtask-row[data-status="Later / Next"]  { background: #fee2e2; border-color: #fca5a5; }
+  .subtask-row[data-status="In Progress"]   { background: #ffedd5; border-color: #fed7aa; }
+  .subtask-row[data-status="Under Review"]  { background: #ede9fe; border-color: #c4b5fd; }
+  .subtask-row[data-status="Completed"]     { background: #ecfdf3; border-color: #a7f3d0; }
+  .subtask-row[data-status="Archived"]      { background: #f5efe6; border-color: #d6c5a8; }
+  .subtask-row[data-status="Discarded"]     { background: #f1f5f9; border-color: #d8d6d1; opacity: 0.85; }
+  .subtask-row .subtask-status[data-status="Waiting"]       { background: #bfdbfe; color: #1d4ed8; }
+  .subtask-row .subtask-status[data-status="Proposed"]      { background: #a5b4fc; color: #1e3a8a; }
+  .subtask-row .subtask-status[data-status="Later / Next"]  { background: #fecaca; color: #b91c1c; }
+  .subtask-row .subtask-status[data-status="In Progress"]   { background: #fed7aa; color: #9a3412; }
+  .subtask-row .subtask-status[data-status="Under Review"]  { background: #c4b5fd; color: #5b21b6; }
+  .subtask-row .subtask-status[data-status="Completed"]     { background: #a7f3d0; color: #027a48; }
+  .subtask-row .subtask-status[data-status="Archived"]      { background: #d6c5a8; color: #78350f; }
+  .subtask-row .subtask-status[data-status="Discarded"]     { background: #e2e4e7; color: #64748b; }
 
   .card.card-unassigned { border: 1px dashed #d8d6d1; background: #fafaf8; }
   .card.card-unassigned .name { color: #6b6b6b; }
@@ -3012,11 +3139,20 @@
     <div class="field"><label>Title <span style="color:#dc2626">*</span></label><input type="text" id="f_subject"></div>
     <div class="field" id="f_groupRow" style="display:none">
       <label>Group (optional)</label>
-      <select id="f_groupId"><option value="">— No group —</option></select>
-      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Assign this task to a group to nest it under a parent.</div>
+      <div id="f_groupBox" class="group-picker-box">
+        <div id="f_groupChip" class="group-picker-chip" tabindex="0">
+          <span class="gp-empty">— No group —</span>
+          <span class="gp-caret">▾</span>
+        </div>
+        <div id="f_groupDropdown" class="group-picker-dropdown" style="display:none">
+          <input type="text" id="f_groupInput" class="group-picker-search" placeholder="Search a group…" autocomplete="off">
+          <div id="f_groupList" class="group-picker-list"></div>
+        </div>
+        <input type="hidden" id="f_groupId" value="">
+      </div>
     </div>
     <div class="field f_taskOnlyRow" id="f_statusRow">
-      <label>Status <span style="color:#dc2626">*</span></label><select id="f_slackStatus">
+      <label>Status <span style="color:#dc2626">*</span></label><select id="f_slackStatus" class="f-colored-status">
         <option value="">(empty)</option>
         <option value="Proposed">Proposed</option><option value="Under Review">Under Review</option>
         <option value="In Progress">In Progress</option><option value="Waiting">Waiting</option>
@@ -3025,12 +3161,12 @@
       </select>
     </div>
     <div class="field-row-3 f_taskOnlyRow">
-      <div class="field"><label>Priority <span style="color:#dc2626">*</span></label><select id="f_priority">
+      <div class="field"><label>Priority <span style="color:#dc2626">*</span></label><select id="f_priority" class="f-colored-prio">
         <option value="">(empty)</option><option value="Critical">Critical</option>
         <option value="Alta">Alta</option><option value="Media">Media</option>
         <option value="Baja">Baja</option><option value="Muy Baja">Muy Baja</option>
       </select></div>
-      <div class="field"><label>Type <span style="color:#dc2626">*</span></label><select id="f_type">
+      <div class="field"><label>Type <span style="color:#dc2626">*</span></label><select id="f_type" class="f-colored-type">
         <option value="">(empty)</option><option value="Project">Project</option>
         <option value="Responsability">Responsability</option><option value="Request">Request</option>
         <option value="ERROR">ERROR</option><option value="Infinite">Infinite</option>
@@ -3064,7 +3200,7 @@
       <div class="field"><label>Dedicated hours</label><input type="number" id="f_dedicatedHours" step="0.5" min="0"></div>
       <div class="field"><label>Estimated hours</label><input type="number" id="f_estimatedHours" step="0.5" min="0"></div>
       <div class="field"><label>Share with <span style="color:#dc2626">*</span></label>
-        <select id="f_shareWith">
+        <select id="f_shareWith" class="f-colored-share">
           <option value="">(empty)</option>
           <option value="Private">Private</option>
           <option value="Team">Team</option>
@@ -3076,7 +3212,14 @@
     <div class="field" id="f_roadmapsField">
       <label>Roadmaps</label>
       <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
-      <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
+      <div id="f_addRoadmapBox" class="rm-add-box">
+        <div id="f_addRoadmapChip" class="rm-add-chip" tabindex="0">+ Add to roadmap…</div>
+        <div id="f_addRoadmapDropdown" class="rm-add-dropdown" style="display:none">
+          <input type="text" id="f_addRoadmapInput" class="rm-add-search" placeholder="Search a roadmap…" autocomplete="off">
+          <div id="f_addRoadmapList" class="rm-add-list"></div>
+        </div>
+        <input type="hidden" id="f_addRoadmapSel" value="">
+      </div>
       <!-- Task dates — auto-saves every change to task.startDate / task.endDate / task.durationDays /
            anchors / source labels. All roadmaps the task is in read these task-level values. -->
       <div id="f_taskDatesRow" class="bn-quick-apply" style="margin-top:10px">
@@ -4883,6 +5026,18 @@ function _respPickerCloseDropdown() {
   });
 })();
 
+// Mirror each colored select's value to its data-value attribute so the CSS
+// can paint the background to match the picklist colors (status/priority/type/share).
+(function wireColoredSelects(){
+  const ids = ['f_slackStatus', 'f_priority', 'f_type', 'f_shareWith'];
+  ids.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.setAttribute('data-value', sel.value || '');
+    sel.addEventListener('change', () => sel.setAttribute('data-value', sel.value || ''));
+  });
+})();
+
 (function wireProposedPicker(){
   const inp = document.getElementById('f_proposedInput');
   if (!inp) return;
@@ -4908,14 +5063,100 @@ function _respPickerCloseDropdown() {
   });
 })();
 
-function refreshGroupSelectOptions(currentGroupId, excludeTaskId) {
-  const sel = document.getElementById("f_groupId");
-  if (!sel) return;
-  const groups = (STORE.tasks || []).filter(x => x.isGroup && x.id !== excludeTaskId);
-  groups.sort((a,b) => (a.subject||'').localeCompare(b.subject||''));
-  sel.innerHTML = '<option value="">— No group —</option>' +
-    groups.map(g => '<option value="'+g.id+'"'+(g.id===currentGroupId?' selected':'')+'>📁 '+escapeHtml(g.subject||'(unnamed)')+'</option>').join('');
+// Legacy name kept; now drives the searchable group picker (chip + dropdown).
+let _groupPickerExcludeTaskId = '';
+function _groupPickerCandidates(excludeTaskId) {
+  return (STORE.tasks || [])
+    .filter(x => x.isGroup && x.id !== excludeTaskId)
+    .slice()
+    .sort((a, b) => (a.subject || '').localeCompare(b.subject || ''));
 }
+function _groupPickerRenderChip(currentGroupId) {
+  const chip = document.getElementById('f_groupChip');
+  if (!chip) return;
+  if (!currentGroupId) {
+    chip.removeAttribute('data-status');
+    chip.innerHTML = '<span class="gp-empty">— No group —</span><span class="gp-caret">▾</span>';
+    return;
+  }
+  const g = (STORE.tasks || []).find(x => x.id === currentGroupId);
+  if (!g) {
+    chip.removeAttribute('data-status');
+    chip.innerHTML = '<span class="gp-empty">(missing group)</span><button type="button" class="gp-clear" title="Clear">×</button><span class="gp-caret">▾</span>';
+  } else {
+    if (g.slackStatus) chip.setAttribute('data-status', g.slackStatus);
+    else chip.removeAttribute('data-status');
+    chip.innerHTML =
+      '<span class="folder-emoji" style="font-size:14px">📁</span>' +
+      '<span class="gp-name">' + escapeHtml(g.subject || '(unnamed)') + '</span>' +
+      '<button type="button" class="gp-clear" title="Clear">×</button>' +
+      '<span class="gp-caret">▾</span>';
+  }
+  const clr = chip.querySelector('.gp-clear');
+  if (clr) clr.addEventListener('click', e => {
+    e.stopPropagation();
+    refreshGroupSelectOptions('', _groupPickerExcludeTaskId);
+  });
+}
+function _groupPickerRenderList(query) {
+  const list = document.getElementById('f_groupList');
+  if (!list) return;
+  const q = (query || '').trim().toLowerCase();
+  const cands = _groupPickerCandidates(_groupPickerExcludeTaskId).filter(g => !q || (g.subject||'').toLowerCase().includes(q));
+  if (cands.length === 0) {
+    list.innerHTML = '<div class="group-picker-empty-state">No matches</div>';
+  } else {
+    list.innerHTML = cands.map(g => {
+      const status = g.slackStatus || '';
+      return '<div class="group-picker-item" data-gid="' + escapeHtml(g.id) + '">' +
+        '<span class="folder-emoji" style="font-size:14px">📁</span>' +
+        '<span class="gpi-name">' + escapeHtml(g.subject || '(unnamed)') + '</span>' +
+        (status ? '<span class="gpi-status" data-status="' + escapeHtml(status) + '">' + escapeHtml(status) + '</span>' : '') +
+        '</div>';
+    }).join('');
+    list.querySelectorAll('.group-picker-item').forEach(it => {
+      it.addEventListener('mousedown', e => e.preventDefault());
+      it.addEventListener('click', () => {
+        refreshGroupSelectOptions(it.dataset.gid, _groupPickerExcludeTaskId);
+        const dd = document.getElementById('f_groupDropdown');
+        if (dd) dd.style.display = 'none';
+      });
+    });
+  }
+}
+function refreshGroupSelectOptions(currentGroupId, excludeTaskId) {
+  _groupPickerExcludeTaskId = excludeTaskId || '';
+  const hidden = document.getElementById('f_groupId');
+  if (hidden) hidden.value = currentGroupId || '';
+  _groupPickerRenderChip(currentGroupId || '');
+}
+(function wireGroupPicker(){
+  const chip = document.getElementById('f_groupChip');
+  const dd = document.getElementById('f_groupDropdown');
+  const inp = document.getElementById('f_groupInput');
+  if (!chip || !dd || !inp) return;
+  chip.addEventListener('click', e => {
+    if (e.target && e.target.classList && e.target.classList.contains('gp-clear')) return;
+    if (dd.style.display === 'none' || !dd.style.display) {
+      dd.style.display = '';
+      inp.value = '';
+      _groupPickerRenderList('');
+      inp.focus();
+    } else {
+      dd.style.display = 'none';
+    }
+  });
+  chip.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chip.click(); }
+  });
+  inp.addEventListener('input', () => _groupPickerRenderList(inp.value));
+  inp.addEventListener('keydown', e => { if (e.key === 'Escape') { dd.style.display = 'none'; chip.focus(); } });
+  document.addEventListener('click', e => {
+    const box = document.getElementById('f_groupBox');
+    if (!box) return;
+    if (!box.contains(e.target)) dd.style.display = 'none';
+  });
+})();
 
 function applyGroupModeToModal(isGroup) {
   // Tasks now keep ALL their own fields whether or not isGroup is on.
@@ -4956,9 +5197,15 @@ function openModal(tid, overrides) {
     isGroupCb.title = '';
   }
   refreshGroupSelectOptions(t.groupId || "", t.id);
-  document.getElementById("f_slackStatus").value = t.slackStatus || "";
-  document.getElementById("f_priority").value = t.priority || "";
-  document.getElementById("f_type").value = t.type || "";
+  const _statusSel = document.getElementById("f_slackStatus");
+  _statusSel.value = t.slackStatus || "";
+  _statusSel.setAttribute('data-value', _statusSel.value);
+  const _prioSel = document.getElementById("f_priority");
+  _prioSel.value = t.priority || "";
+  _prioSel.setAttribute('data-value', _prioSel.value);
+  const _typeSel = document.getElementById("f_type");
+  _typeSel.value = t.type || "";
+  _typeSel.setAttribute('data-value', _typeSel.value);
   // Responsible: searchable photo picker (Team + Supplementary only; Disabled hidden).
   setResponsiblePicker(t.responsibleId || "");
   // Proposed By: support new array model + legacy single id
@@ -4972,7 +5219,9 @@ function openModal(tid, overrides) {
   if (propDd) propDd.style.display = 'none';
   document.getElementById("f_dedicatedHours").value = (t.dedicatedHours === 0 || t.dedicatedHours) ? t.dedicatedHours : "";
   document.getElementById("f_estimatedHours").value = (t.estimatedHours === 0 || t.estimatedHours) ? t.estimatedHours : "";
-  document.getElementById("f_shareWith").value = t.shareWith || "";
+  const _shareSel = document.getElementById("f_shareWith");
+  _shareSel.value = t.shareWith || "";
+  _shareSel.setAttribute('data-value', _shareSel.value);
   document.getElementById("f_extraComments").value = t.extraComments || "";
   renderTaskTagsInModal(t);
   renderRoadmapsInModal(t);
@@ -6408,8 +6657,9 @@ function renderTaskTagsInModal(t) {
 // ---- Roadmaps assignment inside Task modal ----
 function renderRoadmapsInModal(t) {
   const cont = document.getElementById("f_roadmapsContainer");
+  // sel is now a hidden input; the picker chip/dropdown drive Add-to-roadmap.
   const sel = document.getElementById("f_addRoadmapSel");
-  if (!cont || !sel) return;
+  if (!cont) return;
   const allRoadmaps = (typeof getRoadmaps === 'function') ? getRoadmaps() : [];
   const assigned = allRoadmaps.filter(r => (r.tasks || []).some(e => e.taskId === t.id))
     .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -6615,29 +6865,82 @@ function renderRoadmapsInModal(t) {
       });
     });
   }
-  // Fill dropdown with un-assigned roadmaps (alphabetical)
+  // Fill the picker (chip + dropdown) with un-assigned roadmaps (alphabetical)
   const unassigned = allRoadmaps.filter(r => !assigned.some(a => a.id === r.id))
     .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  sel.innerHTML = '<option value="">+ Add to roadmap…</option>' +
-    unassigned.map(r => '<option value="' + escapeHtml(r.id) + '">' + escapeHtml(r.name || '(unnamed)') + '</option>').join("");
-  sel.disabled = unassigned.length === 0;
-  sel.onchange = () => {
-    const rmId = sel.value;
-    if (!rmId) return;
-    const rm = findRoadmap(rmId);
-    if (!rm) return;
-    if (!Array.isArray(rm.tasks)) rm.tasks = [];
-    if (!rm.tasks.some(e => e.taskId === t.id)) {
-      // Pre-populate the new entry's dates from the task's manual dates (if any)
-      const newEntry = { taskId: t.id };
-      if (t.startDate) newEntry.startDate = t.startDate;
-      if (t.endDate)   newEntry.endDate   = t.endDate;
-      rm.tasks.push(newEntry);
-      saveAndSyncTaskDates();
+  const chip = document.getElementById('f_addRoadmapChip');
+  const dd = document.getElementById('f_addRoadmapDropdown');
+  const inp = document.getElementById('f_addRoadmapInput');
+  const list = document.getElementById('f_addRoadmapList');
+  if (chip && dd && inp && list) {
+    if (unassigned.length === 0) {
+      chip.style.opacity = '0.5';
+      chip.style.cursor = 'not-allowed';
+      chip.textContent = '+ No more roadmaps to add';
+    } else {
+      chip.style.opacity = '';
+      chip.style.cursor = '';
+      chip.textContent = '+ Add to roadmap…';
     }
-    sel.value = "";
-    renderRoadmapsInModal(t);
-  };
+    function _rmAddRenderList(query) {
+      const q = (query || '').trim().toLowerCase();
+      const cands = unassigned.filter(r => !q || (r.name || '').toLowerCase().includes(q));
+      if (cands.length === 0) {
+        list.innerHTML = '<div class="rm-add-empty-state">No matches</div>';
+      } else {
+        list.innerHTML = cands.map(r => {
+          const owner = (typeof roadmapOwnerAvatarHtml === 'function') ? roadmapOwnerAvatarHtml(r, 18) : '';
+          return '<div class="rm-add-item" data-rmid="' + escapeHtml(r.id) + '">' +
+            owner +
+            '<span class="rm-add-item-name">' + escapeHtml(r.name || '(unnamed)') + '</span>' +
+            '</div>';
+        }).join('');
+        list.querySelectorAll('.rm-add-item').forEach(it => {
+          it.addEventListener('mousedown', e => e.preventDefault());
+          it.addEventListener('click', () => {
+            const rmId = it.dataset.rmid;
+            const rm = findRoadmap(rmId);
+            if (!rm) return;
+            if (!Array.isArray(rm.tasks)) rm.tasks = [];
+            if (!rm.tasks.some(e => e.taskId === t.id)) {
+              const newEntry = { taskId: t.id };
+              if (t.startDate) newEntry.startDate = t.startDate;
+              if (t.endDate)   newEntry.endDate   = t.endDate;
+              rm.tasks.push(newEntry);
+              saveAndSyncTaskDates();
+            }
+            dd.style.display = 'none';
+            renderRoadmapsInModal(t);
+          });
+        });
+      }
+    }
+    // Reset state for this open
+    inp.value = '';
+    dd.style.display = 'none';
+    chip.onclick = (e) => {
+      if (unassigned.length === 0) return;
+      if (dd.style.display === 'none' || !dd.style.display) {
+        dd.style.display = '';
+        inp.value = '';
+        _rmAddRenderList('');
+        inp.focus();
+      } else {
+        dd.style.display = 'none';
+      }
+    };
+    chip.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chip.click(); } };
+    inp.oninput = () => _rmAddRenderList(inp.value);
+    inp.onkeydown = (e) => { if (e.key === 'Escape') { dd.style.display = 'none'; chip.focus(); } };
+    if (!chip.__bnOutsideWired) {
+      chip.__bnOutsideWired = true;
+      document.addEventListener('click', (e) => {
+        const box = document.getElementById('f_addRoadmapBox');
+        if (!box) return;
+        if (!box.contains(e.target)) dd.style.display = 'none';
+      });
+    }
+  }
   // After every render, also refresh the aggregated visual (pills + dates) so it stays in sync.
   if (typeof window.__renderTaskAggregatedSchedule === 'function') {
     window.__renderTaskAggregatedSchedule(t);
@@ -6675,8 +6978,9 @@ function renderSubtasksInModal(t) {
       .sort((a, b) => (a.subject || '').localeCompare(b.subject || ''))
       .map(c => {
         const iconLeft = c.isGroup ? '📁' : '·';
+        const sAttr = c.slackStatus ? ' data-status="' + escapeHtml(c.slackStatus) + '"' : '';
         const stat = c.slackStatus ? '<span class="subtask-status" data-status="' + escapeHtml(c.slackStatus) + '">' + escapeHtml(c.slackStatus) + '</span>' : '';
-        return '<div class="subtask-row" data-tid="' + escapeHtml(c.id) + '">' +
+        return '<div class="subtask-row" data-tid="' + escapeHtml(c.id) + '"' + sAttr + '>' +
           '<button type="button" class="subtask-link" data-tid="' + escapeHtml(c.id) + '" title="Open subtask">' +
             '<span class="subtask-icon">' + iconLeft + '</span>' +
             '<span class="subtask-name">' + escapeHtml(c.subject || '(unnamed)') + '</span>' +
