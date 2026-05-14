@@ -2968,9 +2968,170 @@
   .preset-tag.in-use { opacity: 0.35; pointer-events: none; }
   kbd { background:#f0efeb; border:1px solid #d8d6d1; border-radius:4px; padding:0 5px; font-size:11px; font-family:inherit; }
   footer.bot { margin-top: 28px; font-size: 11.5px; color: #9a9a9a; text-align: center; }
+
+  /* ===== Auth/Sync overlays ===== */
+  body.bn-pre-auth .wrap { visibility: hidden; }
+  .bn-auth-overlay {
+    position: fixed; inset: 0;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .bn-auth-card {
+    background: #fff;
+    border: 1px solid #ececea;
+    border-radius: 16px;
+    padding: 28px 32px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.10);
+    width: 100%; max-width: 460px;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  .bn-auth-card textarea {
+    width: 100%; border: 1px solid #d8d6d1; border-radius: 8px;
+    padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px; line-height: 1.45; background: #fafaf8;
+    resize: vertical; min-height: 160px;
+  }
+  .bn-auth-error {
+    background: #fee2e2; color: #b91c1c;
+    padding: 8px 12px; border-radius: 8px;
+    font-size: 12px; font-family: inherit;
+  }
+  .bn-auth-primary-btn {
+    appearance: none; border: none;
+    background: #1a1a1a; color: #fff;
+    padding: 9px 16px; border-radius: 8px;
+    font-weight: 700; font-size: 13px; cursor: pointer;
+    font-family: inherit;
+  }
+  .bn-auth-primary-btn:hover { background: #2a2a2a; }
+  .bn-google-btn {
+    appearance: none;
+    background: #fff; color: #1a1a1a;
+    border: 1px solid #d8d6d1;
+    padding: 10px 18px; border-radius: 10px;
+    font-weight: 600; font-size: 14px; cursor: pointer;
+    font-family: inherit;
+    display: inline-flex; align-items: center; gap: 10px;
+    transition: background .12s, border-color .12s, transform .08s;
+  }
+  .bn-google-btn:hover { background: #f7f7f5; border-color: #1a1a1a; transform: translateY(-1px); }
+  .bn-text-btn {
+    appearance: none; border: none; background: transparent;
+    color: #6b6b6b; cursor: pointer; font-family: inherit; font-size: 11px;
+    text-decoration: underline;
+  }
+  .bn-text-btn:hover { color: #1a1a1a; }
+  .bn-spinner {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 3px solid #ececea; border-top-color: #1a1a1a;
+    animation: bn-spin 0.7s linear infinite;
+    margin: 0 auto;
+  }
+  @keyframes bn-spin { to { transform: rotate(360deg); } }
+
+  /* User chip in the sidebar */
+  .bn-user-chip {
+    margin: 14px 10px 10px;
+    padding: 8px 10px;
+    background: #f7f7f5; border: 1px solid #ececea;
+    border-radius: 10px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px;
+  }
+  .bn-user-chip .bn-user-photo {
+    width: 26px; height: 26px; border-radius: 50%; overflow: hidden;
+    background: #d8d6d1; color: #fff; font-weight: 700; font-size: 11px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .bn-user-chip .bn-user-photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+  .bn-user-chip .bn-user-meta { flex: 1; min-width: 0; }
+  .bn-user-chip .bn-user-name { font-weight: 700; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bn-user-chip .bn-user-email { color: #6b6b6b; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bn-user-chip .bn-user-signout {
+    appearance: none; border: none; background: transparent;
+    color: #6b6b6b; cursor: pointer; font-size: 14px; padding: 4px 6px;
+    border-radius: 6px;
+  }
+  .bn-user-chip .bn-user-signout:hover { background: #ececea; color: #b91c1c; }
+  .bn-sync-status {
+    margin: 0 10px 10px; padding: 4px 10px;
+    font-size: 10.5px; color: #6b6b6b;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .bn-sync-status::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%; background: #16a34a;
+  }
+  .bn-sync-status.offline::before { background: #dc2626; }
+  .bn-sync-status.syncing::before { background: #f59e0b; animation: bn-pulse 1s infinite; }
+  @keyframes bn-pulse { 50% { opacity: 0.3; } }
 </style>
 </head>
-<body>
+<body class="bn-pre-auth">
+<!-- ===== Firebase Auth + Firestore sync overlays =====
+     Three full-page overlays that gate access to the app:
+       1) #bnSetupOverlay  → no Firebase config yet; ask the user to paste it
+       2) #bnLoginOverlay  → signed out; show Google Sign-In button
+       3) #bnBlockedOverlay → signed in but the email isn't allowed (not @bookline.ai)
+     A 4th lightweight loader (#bnBootingOverlay) covers the page while we resolve auth state. -->
+<div id="bnBootingOverlay" class="bn-auth-overlay" style="display:flex">
+  <div class="bn-auth-card">
+    <div class="bn-spinner"></div>
+    <p style="color:#6b6b6b; margin:14px 0 0; font-size:13px">Connecting…</p>
+  </div>
+</div>
+<div id="bnSetupOverlay" class="bn-auth-overlay" style="display:none">
+  <div class="bn-auth-card" style="max-width:560px">
+    <h2 style="margin:0 0 6px; font-size:20px">Connect Firebase</h2>
+    <p style="color:#6b6b6b; font-size:13px; margin:0 0 18px">
+      Paste your Firebase web config below — you'll find it in Firebase Console → Project settings → General → Your apps → SDK setup &amp; configuration → npm. Copy the <code>firebaseConfig</code> object and paste here.
+    </p>
+    <textarea id="bnSetupConfigInput" rows="9" placeholder='{
+  "apiKey": "AIzaSy…",
+  "authDomain": "your-project.firebaseapp.com",
+  "projectId": "your-project",
+  "storageBucket": "your-project.appspot.com",
+  "messagingSenderId": "123…",
+  "appId": "1:123…:web:abc…"
+}'></textarea>
+    <div id="bnSetupError" class="bn-auth-error" style="display:none"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px">
+      <a href="https://console.firebase.google.com/" target="_blank" rel="noopener" style="font-size:12px; color:#1d4ed8">Open Firebase Console ↗</a>
+      <button id="bnSetupSaveBtn" class="bn-auth-primary-btn">Save &amp; continue</button>
+    </div>
+  </div>
+</div>
+<div id="bnLoginOverlay" class="bn-auth-overlay" style="display:none">
+  <div class="bn-auth-card" style="max-width:420px; text-align:center">
+    <div style="font-size:32px; margin-bottom:10px">📋</div>
+    <h2 style="margin:0 0 6px; font-size:20px">Berni Navigator</h2>
+    <p style="color:#6b6b6b; font-size:13px; margin:0 0 22px">Sign in with your <strong>@bookline.ai</strong> Google account to continue.</p>
+    <button id="bnGoogleSignInBtn" class="bn-google-btn">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path fill="#4285F4" d="M21.6 12.227c0-.708-.064-1.388-.183-2.04H12v3.858h5.382a4.601 4.601 0 0 1-1.995 3.018v2.51h3.227c1.888-1.74 2.986-4.302 2.986-7.346z"/>
+        <path fill="#34A853" d="M12 22c2.7 0 4.964-.895 6.614-2.427l-3.227-2.51c-.895.6-2.04.954-3.387.954-2.603 0-4.808-1.758-5.595-4.122H3.077v2.59A9.997 9.997 0 0 0 12 22z"/>
+        <path fill="#FBBC05" d="M6.405 13.895A6.012 6.012 0 0 1 6.082 12c0-.658.114-1.296.323-1.895V7.515H3.077A9.997 9.997 0 0 0 2 12c0 1.614.386 3.14 1.077 4.485l3.328-2.59z"/>
+        <path fill="#EA4335" d="M12 5.977c1.468 0 2.786.504 3.823 1.495l2.864-2.864C16.96 2.991 14.696 2 12 2A9.997 9.997 0 0 0 3.077 7.515l3.328 2.59C7.192 7.736 9.397 5.977 12 5.977z"/>
+      </svg>
+      <span>Sign in with Google</span>
+    </button>
+    <div id="bnLoginError" class="bn-auth-error" style="display:none; margin-top:14px"></div>
+    <div style="margin-top:24px; font-size:11px; color:#9a9a9a">
+      <button id="bnLoginReconfigureBtn" class="bn-text-btn">Reconfigure Firebase</button>
+    </div>
+  </div>
+</div>
+<div id="bnBlockedOverlay" class="bn-auth-overlay" style="display:none">
+  <div class="bn-auth-card" style="max-width:440px; text-align:center">
+    <div style="font-size:32px; margin-bottom:10px">🚫</div>
+    <h2 style="margin:0 0 6px; font-size:20px">Access not allowed</h2>
+    <p id="bnBlockedMsg" style="color:#6b6b6b; font-size:13px; margin:0 0 18px"></p>
+    <button id="bnBlockedSignOutBtn" class="bn-auth-primary-btn">Sign out and try again</button>
+  </div>
+</div>
 <div class="wrap">
   <header class="top">
     <div></div>
@@ -3672,7 +3833,11 @@ const STORE_KEY = "bookline-team-panel-v2";
 const IMPORT_FLAG_KEY = "bookline-team-panel-imported-v2";
 
 function loadStore() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || null; } catch { return null; } }
-function saveStore(st) { localStorage.setItem(STORE_KEY, JSON.stringify(st)); }
+function saveStore(st) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(st));
+  // Push to cloud (Firestore) when auth+sync module is loaded. No-op until then.
+  if (typeof bnSyncStoreToCloud === 'function') bnSyncStoreToCloud();
+}
 
 let STORE = loadStore();
 let statusInclude = new Set(), statusExclude = new Set(), prioInclude = new Set(), prioExclude = new Set(), personInclude = new Set(), personExclude = new Set(), tagInclude = new Set(), tagExclude = new Set(), taskTagInclude = new Set(), taskTagExclude = new Set(), roadmapInclude = new Set(), roadmapExclude = new Set(), dateStatusInclude = new Set(), dateStatusExclude = new Set(), sortMembers = "default", sortTasks = "default", searchQuery = "", editingId = null;
@@ -14342,6 +14507,299 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') bnCloseDatePicker();
 });
 detectBlockedPhotos();
+</script>
+
+<!-- ===== Firebase Auth + Firestore sync (loaded as ES module so we can use the modular SDK) ===== -->
+<script type="module">
+// Default Firebase config (already-provisioned project: Berni Navigator).
+// If the user opens the app from a fork/clone they can paste their own config in the setup screen
+// — that one will be saved to localStorage and override this default.
+const BN_DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAEqZHI4OsMeYcMIcnJ-m09nsEMFlzXZiQ",
+  authDomain: "berni-navigator-38a40.firebaseapp.com",
+  projectId: "berni-navigator-38a40",
+  storageBucket: "berni-navigator-38a40.firebasestorage.app",
+  messagingSenderId: "825469541819",
+  appId: "1:825469541819:web:27fd45ddc399c42557f89e",
+};
+const BN_FIREBASE_CONFIG_KEY = 'bn-firebase-config';
+const BN_WORKSPACE_ID = 'bookline';
+const BN_ALLOWED_DOMAIN = '@bookline.ai';
+
+function bnGetFirebaseConfig() {
+  try {
+    const raw = localStorage.getItem(BN_FIREBASE_CONFIG_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (_) {}
+  return BN_DEFAULT_FIREBASE_CONFIG;
+}
+function bnSaveFirebaseConfig(cfg) {
+  localStorage.setItem(BN_FIREBASE_CONFIG_KEY, JSON.stringify(cfg));
+}
+function bnClearFirebaseConfig() { localStorage.removeItem(BN_FIREBASE_CONFIG_KEY); }
+
+// Overlay helpers — each shows ONE overlay at a time.
+function bnShowOverlay(id) {
+  ['bnBootingOverlay', 'bnSetupOverlay', 'bnLoginOverlay', 'bnBlockedOverlay'].forEach(o => {
+    const el = document.getElementById(o);
+    if (el) el.style.display = (o === id) ? 'flex' : 'none';
+  });
+}
+function bnHideAllOverlays() {
+  ['bnBootingOverlay', 'bnSetupOverlay', 'bnLoginOverlay', 'bnBlockedOverlay'].forEach(o => {
+    const el = document.getElementById(o);
+    if (el) el.style.display = 'none';
+  });
+  document.body.classList.remove('bn-pre-auth');
+}
+
+// ===== Setup screen wiring (user pastes a Firebase config) =====
+function bnWireSetupScreen() {
+  const saveBtn = document.getElementById('bnSetupSaveBtn');
+  const input = document.getElementById('bnSetupConfigInput');
+  const errEl = document.getElementById('bnSetupError');
+  if (!saveBtn || !input || !errEl) return;
+  // Prefill with current config so users can edit instead of starting over.
+  const cur = bnGetFirebaseConfig();
+  if (cur) input.value = JSON.stringify(cur, null, 2);
+  saveBtn.addEventListener('click', () => {
+    errEl.style.display = 'none';
+    let raw = (input.value || '').trim();
+    // Tolerate `const firebaseConfig = { … };` pasted verbatim
+    raw = raw.replace(/^[^{]*({[\s\S]*})[^}]*$/, '$1');
+    // Tolerate unquoted keys (JS object literal style)
+    let cfg;
+    try { cfg = JSON.parse(raw); }
+    catch (_) {
+      try { cfg = (new Function('return ' + raw))(); }
+      catch (e2) {
+        errEl.textContent = "Couldn't parse the config: " + e2.message;
+        errEl.style.display = 'block';
+        return;
+      }
+    }
+    if (!cfg || !cfg.apiKey || !cfg.projectId) {
+      errEl.textContent = "Missing required fields (apiKey, projectId). Paste the full firebaseConfig object.";
+      errEl.style.display = 'block';
+      return;
+    }
+    bnSaveFirebaseConfig(cfg);
+    // Reload so Firebase reinitialises with the new config.
+    window.location.reload();
+  });
+}
+
+// ===== Firebase Auth bootstrap =====
+let bnFirebase = null;
+let bnAuthUser = null;
+let bnFirestoreUnsub = null;
+let bnSyncTimer = null;
+let bnLastWriteSelfTs = 0;     // timestamp of our last write — used to ignore the immediate echo from the listener
+let bnSyncStatus = 'offline';   // 'online' | 'syncing' | 'offline'
+
+function bnSetSyncStatus(s) {
+  bnSyncStatus = s;
+  const el = document.getElementById('bnSyncStatus');
+  if (!el) return;
+  el.className = 'bn-sync-status' + (s === 'syncing' ? ' syncing' : (s === 'offline' ? ' offline' : ''));
+  el.textContent = s === 'online' ? 'Synced' : (s === 'syncing' ? 'Syncing…' : 'Offline');
+}
+
+async function bnBootstrapFirebase() {
+  bnShowOverlay('bnBootingOverlay');
+  const cfg = bnGetFirebaseConfig();
+  if (!cfg || !cfg.apiKey) { bnShowOverlay('bnSetupOverlay'); return; }
+  try {
+    const [appMod, authMod, firestoreMod] = await Promise.all([
+      import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'),
+      import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js'),
+    ]);
+    const app = appMod.initializeApp(cfg);
+    const auth = authMod.getAuth(app);
+    const db = firestoreMod.getFirestore(app);
+    bnFirebase = { app, auth, db, authMod, firestoreMod };
+    authMod.setPersistence(auth, authMod.browserLocalPersistence).catch(() => {});
+    authMod.onAuthStateChanged(auth, (user) => bnHandleAuthUser(user));
+  } catch (err) {
+    console.error('[Firebase] init failed:', err);
+    const errEl = document.getElementById('bnSetupError');
+    if (errEl) {
+      errEl.textContent = 'Firebase init failed: ' + (err.message || err);
+      errEl.style.display = 'block';
+    }
+    bnShowOverlay('bnSetupOverlay');
+  }
+}
+
+async function bnHandleAuthUser(user) {
+  if (!user) {
+    bnAuthUser = null;
+    if (bnFirestoreUnsub) { try { bnFirestoreUnsub(); } catch (_) {} bnFirestoreUnsub = null; }
+    bnShowOverlay('bnLoginOverlay');
+    return;
+  }
+  const email = (user.email || '').toLowerCase();
+  if (!email.endsWith(BN_ALLOWED_DOMAIN)) {
+    bnAuthUser = null;
+    document.getElementById('bnBlockedMsg').textContent =
+      'You signed in as ' + (user.email || '(unknown)') + '. Only ' + BN_ALLOWED_DOMAIN + ' accounts are allowed.';
+    try { await bnFirebase.authMod.signOut(bnFirebase.auth); } catch (_) {}
+    bnShowOverlay('bnBlockedOverlay');
+    return;
+  }
+  bnAuthUser = {
+    uid: user.uid,
+    email: user.email,
+    name: user.displayName || user.email,
+    photoURL: user.photoURL || '',
+  };
+  // Reveal app, attach user chip, start Firestore.
+  bnHideAllOverlays();
+  bnRenderUserChip();
+  await bnConnectFirestore();
+}
+
+function bnRenderUserChip() {
+  if (!bnAuthUser) return;
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+  let chip = document.getElementById('bnUserChip');
+  if (!chip) {
+    chip = document.createElement('div');
+    chip.id = 'bnUserChip';
+    chip.className = 'bn-user-chip';
+    sidebar.appendChild(chip);
+  }
+  const ini = (bnAuthUser.name || bnAuthUser.email || '?').split(/\s+/).map(s => s[0]).join('').slice(0,2).toUpperCase();
+  chip.innerHTML =
+    '<div class="bn-user-photo">' +
+      (bnAuthUser.photoURL ? '<img src="' + bnAuthUser.photoURL + '" alt="" onerror="this.remove()">' : '') +
+      '<span>' + ini + '</span>' +
+    '</div>' +
+    '<div class="bn-user-meta">' +
+      '<div class="bn-user-name">' + (bnAuthUser.name || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</div>' +
+      '<div class="bn-user-email">' + (bnAuthUser.email || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</div>' +
+    '</div>' +
+    '<button class="bn-user-signout" id="bnUserSignOutBtn" title="Sign out">⎋</button>';
+  let status = document.getElementById('bnSyncStatus');
+  if (!status) {
+    status = document.createElement('div');
+    status.id = 'bnSyncStatus';
+    status.className = 'bn-sync-status';
+    status.textContent = 'Synced';
+    sidebar.appendChild(status);
+  }
+  bnSetSyncStatus(bnSyncStatus);
+  document.getElementById('bnUserSignOutBtn').addEventListener('click', async () => {
+    try { await bnFirebase.authMod.signOut(bnFirebase.auth); } catch (_) {}
+  });
+}
+
+// ===== Firestore sync =====
+async function bnConnectFirestore() {
+  if (!bnFirebase) return;
+  const { firestoreMod: fs, db } = bnFirebase;
+  const docRef = fs.doc(db, 'workspaces', BN_WORKSPACE_ID);
+  bnSetSyncStatus('syncing');
+  try {
+    const snap = await fs.getDoc(docRef);
+    if (snap.exists()) {
+      const remote = snap.data();
+      if (remote && remote.store) {
+        // Replace local STORE with remote data, persist locally too, re-render.
+        STORE = remote.store;
+        localStorage.setItem(STORE_KEY, JSON.stringify(STORE));
+        if (typeof render === 'function') try { render(); } catch (_) {}
+      }
+    } else if (STORE && (STORE.tasks || STORE.roadmaps)) {
+      // First-time write — push local STORE so other devices/users see the same data.
+      bnLastWriteSelfTs = Date.now();
+      await fs.setDoc(docRef, {
+        store: STORE,
+        updatedAt: bnLastWriteSelfTs,
+        updatedBy: (bnAuthUser && bnAuthUser.email) || '',
+      });
+    }
+    bnSetSyncStatus('online');
+  } catch (err) {
+    console.error('[Firestore] initial load failed:', err);
+    bnSetSyncStatus('offline');
+  }
+  // Listen for remote changes — skip our own most-recent write to avoid feedback loops.
+  bnFirestoreUnsub = fs.onSnapshot(docRef, (snap) => {
+    if (!snap.exists()) return;
+    const remote = snap.data();
+    if (!remote || !remote.store) return;
+    const remoteTs = remote.updatedAt || 0;
+    const remoteBy = remote.updatedBy || '';
+    // If WE just wrote, the listener echoes it back — ignore for 2.5s
+    if (remoteBy === ((bnAuthUser && bnAuthUser.email) || '') &&
+        Math.abs(remoteTs - bnLastWriteSelfTs) < 2500) return;
+    STORE = remote.store;
+    localStorage.setItem(STORE_KEY, JSON.stringify(STORE));
+    if (typeof render === 'function') try { render(); } catch (_) {}
+    bnSetSyncStatus('online');
+  }, (err) => {
+    console.error('[Firestore] listener error:', err);
+    bnSetSyncStatus('offline');
+  });
+}
+
+// Called from saveStore() — debounced push (800ms) to avoid hammering Firestore.
+window.bnSyncStoreToCloud = function() {
+  if (!bnFirebase || !bnAuthUser) return;
+  clearTimeout(bnSyncTimer);
+  bnSetSyncStatus('syncing');
+  bnSyncTimer = setTimeout(async () => {
+    try {
+      const { firestoreMod: fs, db } = bnFirebase;
+      const docRef = fs.doc(db, 'workspaces', BN_WORKSPACE_ID);
+      bnLastWriteSelfTs = Date.now();
+      await fs.setDoc(docRef, {
+        store: STORE,
+        updatedAt: bnLastWriteSelfTs,
+        updatedBy: bnAuthUser.email,
+      });
+      bnSetSyncStatus('online');
+    } catch (err) {
+      console.error('[Firestore] write failed:', err);
+      bnSetSyncStatus('offline');
+    }
+  }, 800);
+};
+
+// ===== Sign-in flow (popup) =====
+function bnWireLoginScreen() {
+  const btn = document.getElementById('bnGoogleSignInBtn');
+  const errEl = document.getElementById('bnLoginError');
+  const reconf = document.getElementById('bnLoginReconfigureBtn');
+  if (btn) btn.addEventListener('click', async () => {
+    if (!bnFirebase) return;
+    errEl.style.display = 'none';
+    try {
+      const provider = new bnFirebase.authMod.GoogleAuthProvider();
+      provider.setCustomParameters({ hd: 'bookline.ai' });
+      await bnFirebase.authMod.signInWithPopup(bnFirebase.auth, provider);
+    } catch (err) {
+      console.error('[Auth] sign-in failed:', err);
+      errEl.textContent = (err.code === 'auth/popup-blocked')
+        ? 'Popup blocked — please allow popups for this site and retry.'
+        : ('Sign-in failed: ' + (err.message || err));
+      errEl.style.display = 'block';
+    }
+  });
+  if (reconf) reconf.addEventListener('click', () => { bnClearFirebaseConfig(); window.location.reload(); });
+  const blockedBtn = document.getElementById('bnBlockedSignOutBtn');
+  if (blockedBtn) blockedBtn.addEventListener('click', async () => {
+    try { if (bnFirebase) await bnFirebase.authMod.signOut(bnFirebase.auth); } catch (_) {}
+    bnShowOverlay('bnLoginOverlay');
+  });
+}
+
+bnWireSetupScreen();
+bnWireLoginScreen();
+bnBootstrapFirebase();
 </script>
 </body>
 </html>
