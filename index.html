@@ -5273,19 +5273,25 @@ function bnEndFromStartAndDuration(startStr, n) {
       });
       inp.parentElement.insertBefore(pill, inp);
       srcEl.innerHTML = '';
-      const disp = document.createElement('button');
-      disp.type = 'button';
-      disp.className = 'rm-modal-date-display';
-      disp.title = 'Click to clear and pick a date';
-      disp.textContent = '= ' + (inp.value || '—');
-      disp.addEventListener('click', ev => {
-        ev.preventDefault(); ev.stopPropagation();
-        setSourceChip(srcEl, '');
-        if (!isStart && daysEl) daysEl.value = '';
-        autoSave();
-      });
-      srcEl.appendChild(disp);
-      srcEl.style.display = '';
+      // Only render the "= DD/MM/YYYY" reference line when the input actually has a date.
+      // (E.g. "N days" pill set without a start → no resolved end yet → hide the "= date".)
+      if (inp.value) {
+        const disp = document.createElement('button');
+        disp.type = 'button';
+        disp.className = 'rm-modal-date-display';
+        disp.title = 'Click to clear and pick a date';
+        disp.textContent = '= ' + bnFormatDateDMY(inp.value);
+        disp.addEventListener('click', ev => {
+          ev.preventDefault(); ev.stopPropagation();
+          setSourceChip(srcEl, '');
+          if (!isStart && daysEl) daysEl.value = '';
+          autoSave();
+        });
+        srcEl.appendChild(disp);
+        srcEl.style.display = '';
+      } else {
+        srcEl.style.display = 'none';
+      }
     } else {
       inp.style.display = '';
       srcEl.removeAttribute('style');
@@ -5383,14 +5389,47 @@ function bnEndFromStartAndDuration(startStr, n) {
     saveStore(STORE);
     if (typeof window.__renderTaskAggregatedSchedule === 'function') window.__renderTaskAggregatedSchedule(t);
   }
+  // Returns true if the END pill is currently the "N days" variant (vs a real source label like "end of X").
+  function isDaysPillActive() {
+    if (!eSrcEl) return false;
+    const lbl = window.__taskDatesEndSrcLbl || '';
+    return /^\d+\s+day/.test(lbl);
+  }
+  // Live-update the days input from the inclusive span between start and end. Only runs in
+  // "hint mode" (no active N days pill); when the pill IS active, days drives end, not the other way.
+  function refreshDaysHint() {
+    if (!daysEl) return;
+    if (isDaysPillActive()) return;
+    const sv = startEl.value;
+    const ev = endEl.value;
+    if (sv && ev) {
+      const n = bnDaysInclusive(sv, ev);
+      daysEl.value = n > 0 ? String(n) : '';
+    } else {
+      daysEl.value = '';
+    }
+  }
   startEl.addEventListener('input', () => {
     setSourceChip(sSrcEl, '');
-    if (daysEl && daysEl.value) recomputeEndFromDays();
+    if (isDaysPillActive()) {
+      // Days drives end: recompute end (or clear end if start was cleared).
+      if (startEl.value) {
+        recomputeEndFromDays();
+      } else {
+        endEl.value = '';
+        // Refresh the pill so the now-empty "= date" line gets hidden.
+        const n = daysEl ? parseInt(daysEl.value, 10) : NaN;
+        if (Number.isFinite(n) && n >= 1) setSourceChip(eSrcEl, n + ' day' + (n === 1 ? '' : 's'), '');
+      }
+    } else {
+      refreshDaysHint();
+    }
   });
   startEl.addEventListener('change', autoSave);
   endEl.addEventListener('input', () => {
-    setSourceChip(eSrcEl, '');
+    setSourceChip(eSrcEl, '');   // Clear end pill (including any N-days pill)
     if (daysEl) daysEl.value = '';
+    refreshDaysHint();           // Recompute days hint from new end
   });
   endEl.addEventListener('change', autoSave);
   // Delete / Backspace clears the date input (and its source pill if any), then auto-saves.
@@ -5399,10 +5438,13 @@ function bnEndFromStartAndDuration(startStr, n) {
       e.preventDefault();
       startEl.value = '';
       setSourceChip(sSrcEl, '');
-      // If End is days-driven, recompute / clear it too.
-      if (daysEl && daysEl.value) {
+      if (isDaysPillActive()) {
+        // Keep the pill but clear end; the pill will re-render without "= date" because end is empty.
         endEl.value = '';
-        setSourceChip(eSrcEl, '');
+        const n = daysEl ? parseInt(daysEl.value, 10) : NaN;
+        if (Number.isFinite(n) && n >= 1) setSourceChip(eSrcEl, n + ' day' + (n === 1 ? '' : 's'), '');
+      } else {
+        refreshDaysHint();
       }
       autoSave();
     }
@@ -5413,6 +5455,7 @@ function bnEndFromStartAndDuration(startStr, n) {
       endEl.value = '';
       setSourceChip(eSrcEl, '');
       if (daysEl) daysEl.value = '';
+      refreshDaysHint();
       autoSave();
     }
   });
@@ -5420,36 +5463,50 @@ function bnEndFromStartAndDuration(startStr, n) {
     daysEl.addEventListener('input', () => {
       const n = parseInt(daysEl.value, 10);
       if (!Number.isFinite(n) || n < 1) {
-        // Clearing days clears the End-from-days chip; End stays as-is.
-        if (eSrcEl && /\d+\s+day/.test(eSrcEl.textContent || '')) {
+        // Clearing days: if the pill was active, drop it and clear end. Then re-hint from dates.
+        if (isDaysPillActive()) {
           endEl.value = '';
           setSourceChip(eSrcEl, '');
         }
+        refreshDaysHint();
         return;
       }
-      if (!startEl.value) return;
-      recomputeEndFromDays();
+      // Activate the "N days" pill unconditionally (even when start is empty).
+      if (startEl.value) {
+        const newEnd = bnEndFromStartAndDuration(startEl.value, n);
+        if (newEnd) endEl.value = newEnd;
+      } else {
+        endEl.value = '';  // No start → can't compute end; pill stays but no "= date" below.
+      }
+      setSourceChip(eSrcEl, n + ' day' + (n === 1 ? '' : 's'), '');
     });
     daysEl.addEventListener('change', autoSave);
     daysEl.addEventListener('keydown', e => {
       if ((e.key === 'Delete' || e.key === 'Backspace') && daysEl.value) {
         e.preventDefault();
         daysEl.value = '';
-        if (eSrcEl && /\d+\s+day/.test(eSrcEl.textContent || '')) {
+        if (isDaysPillActive()) {
           endEl.value = '';
           setSourceChip(eSrcEl, '');
         }
+        refreshDaysHint();
         autoSave();
       }
     });
   }
-  // Pin pickers — reuse the same picker. After pick, fill input + chip and auto-save.
+  // Pin pickers — after pick, fill input + chip and live-update the days hint (or recompute end if
+  // the days pill is active and we just changed the start).
   function openPicker(anchorBtn, side, inp, srcEl) {
     bnOpenAggregatedPicker(anchorBtn, editingId, side, (absDate, label, srcTaskId) => {
       inp.value = absDate;
       setSourceChip(srcEl, label, srcTaskId);
-      if (inp === startEl && daysEl && daysEl.value) recomputeEndFromDays();
-      if (inp === endEl && daysEl) daysEl.value = '';
+      if (inp === startEl) {
+        if (isDaysPillActive()) recomputeEndFromDays();
+        else refreshDaysHint();
+      } else if (inp === endEl) {
+        if (daysEl) daysEl.value = '';   // picking end overrides days
+        refreshDaysHint();
+      }
       autoSave();
     });
   }
