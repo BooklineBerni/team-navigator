@@ -3293,6 +3293,51 @@ try {
 // Sync aggregated task.startDate/endDate from all roadmap entries (one-time after load).
 // Safe to call here — function declarations hoist within this same <script> tag.
 try { recomputeAllTaskDates(); saveStore(STORE); } catch (_) {}
+// One-time migration: copy the per-entry pill labels (startSrcLabel / endSrcLabel /
+// startSrcTaskId / endSrcTaskId / durationDays / startAnchor / endAnchor) onto the parent
+// task whenever every entry agrees. Ensures the new task-level "Task dates" field — and the
+// aggregate display — show the same pills the user has been seeing.
+try {
+  if (!localStorage.getItem('bn-migrated-task-pills-v1')) {
+    let pillsMigrated = 0;
+    function _common(arr) {
+      if (arr.length === 0) return undefined;
+      const first = arr[0];
+      if (first === undefined || first === null || first === '') return undefined;
+      return arr.every(x => x === first) ? first : undefined;
+    }
+    (STORE.tasks || []).forEach(t => {
+      const ents = (STORE.roadmaps || [])
+        .map(rm => (rm.tasks || []).find(x => x.taskId === t.id))
+        .filter(Boolean);
+      if (ents.length === 0) return;
+      // Derive each entry's effective label / task id, then check if they all agree.
+      const sLabels = ents.map(e => bnDeriveSrcLabel(e, 'start'));
+      const sTids   = ents.map(e => bnDeriveSrcTaskId(e, 'start'));
+      const eLabels = ents.map(e => bnDeriveSrcLabel(e, 'end'));
+      const eTids   = ents.map(e => bnDeriveSrcTaskId(e, 'end'));
+      const sAnchors = ents.map(e => e.startAnchor || '');
+      const eAnchors = ents.map(e => e.endAnchor || '');
+      const durs     = ents.map(e => (typeof e.durationDays === 'number' && e.durationDays >= 1) ? e.durationDays : null);
+      const cSLbl = _common(sLabels);
+      const cSTid = _common(sTids);
+      const cELbl = _common(eLabels);
+      const cETid = _common(eTids);
+      const cSAnc = _common(sAnchors);
+      const cEAnc = _common(eAnchors);
+      const cDur  = (durs.length > 0 && durs[0] !== null && durs.every(d => d === durs[0])) ? durs[0] : null;
+      if (!t.startSrcLabel && cSLbl)   { t.startSrcLabel = cSLbl;   pillsMigrated++; }
+      if (!t.startSrcTaskId && cSTid)  { t.startSrcTaskId = cSTid; }
+      if (!t.endSrcLabel && cELbl)     { t.endSrcLabel = cELbl;     pillsMigrated++; }
+      if (!t.endSrcTaskId && cETid)    { t.endSrcTaskId = cETid; }
+      if (!t.startAnchor && cSAnc)     { t.startAnchor = cSAnc;     pillsMigrated++; }
+      if (!t.endAnchor && cEAnc)       { t.endAnchor = cEAnc;       pillsMigrated++; }
+      if ((typeof t.durationDays !== 'number' || t.durationDays < 1) && cDur !== null) { t.durationDays = cDur; pillsMigrated++; }
+    });
+    if (pillsMigrated > 0) saveStore(STORE);
+    localStorage.setItem('bn-migrated-task-pills-v1', '1');
+  }
+} catch (_) {}
 rebuildTeam();
 
 function uid() { return "loc" + Math.random().toString(36).slice(2, 10); }
@@ -5295,20 +5340,51 @@ function bnEndFromStartAndDuration(startStr, n) {
       srcEl.innerHTML = '';
     }
   }
-  // Pre-fill from the task (= aggregate values, since dates live on the task).
+  // Pre-fill from the task and entries — uses the SAME logic the Aggregated display uses
+  // so the new "Task dates" row shows exactly the same pills as the aggregate.
   window.__refreshTaskDatesRowFromTask = function(t) {
     row.style.display = '';
     startEl.value = (t && t.startDate) || '';
     endEl.value   = (t && t.endDate)   || '';
     if (daysEl) daysEl.value = (t && typeof t.durationDays === 'number' && t.durationDays >= 1) ? String(t.durationDays) : '';
-    const sLbl = (t && t.startSrcLabel) || '';
-    const sTid = (t && t.startSrcTaskId) || '';
-    setSourceChip(sSrcEl, sLbl, sTid);
-    let eLbl = (t && t.endSrcLabel) || '';
-    const eTid = (t && t.endSrcTaskId) || '';
-    if (!eLbl && t && typeof t.durationDays === 'number' && t.durationDays >= 1) {
-      eLbl = t.durationDays + ' day' + (t.durationDays === 1 ? '' : 's');
+    // Compute the common pill across roadmap entries — exact same path as the Aggregated row.
+    function commonLabel(arr) {
+      if (arr.length === 0) return '';
+      const first = arr[0];
+      if (!first) return '';
+      return arr.every(x => x === first) ? first : '';
     }
+    let sLbl = '', sTid = '', eLbl = '', eTid = '';
+    if (t) {
+      const entries = (STORE.roadmaps || [])
+        .map(rm => (rm.tasks || []).find(x => x.taskId === t.id))
+        .filter(Boolean);
+      if (entries.length > 0) {
+        const sLabels = entries.map(e => bnDeriveSrcLabel(e, 'start'));
+        const sTids   = entries.map(e => bnDeriveSrcTaskId(e, 'start'));
+        const eLabels = entries.map(e => {
+          const d = bnDeriveSrcLabel(e, 'end');
+          if (d) return d;
+          if (typeof e.durationDays === 'number' && e.durationDays >= 1) {
+            return e.durationDays + ' day' + (e.durationDays === 1 ? '' : 's');
+          }
+          return '';
+        });
+        const eTids = entries.map(e => bnDeriveSrcTaskId(e, 'end'));
+        sLbl = commonLabel(sLabels);
+        sTid = commonLabel(sTids);
+        eLbl = commonLabel(eLabels);
+        eTid = commonLabel(eTids);
+      }
+      // Fall back to task-level fields if entries didn't yield a common label.
+      if (!sLbl && t.startSrcLabel) { sLbl = t.startSrcLabel; sTid = t.startSrcTaskId || ''; }
+      if (!eLbl && t.endSrcLabel)   { eLbl = t.endSrcLabel;   eTid = t.endSrcTaskId   || ''; }
+      // Last resort for End: task.durationDays
+      if (!eLbl && typeof t.durationDays === 'number' && t.durationDays >= 1) {
+        eLbl = t.durationDays + ' day' + (t.durationDays === 1 ? '' : 's');
+      }
+    }
+    setSourceChip(sSrcEl, sLbl, sTid);
     setSourceChip(eSrcEl, eLbl, eTid);
   };
   function recomputeEndFromDays() {
@@ -5360,6 +5436,29 @@ function bnEndFromStartAndDuration(startStr, n) {
     if (daysEl) daysEl.value = '';
   });
   endEl.addEventListener('change', autoSave);
+  // Delete / Backspace clears the date input (and its source pill if any), then auto-saves.
+  startEl.addEventListener('keydown', e => {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && startEl.value) {
+      e.preventDefault();
+      startEl.value = '';
+      setSourceChip(sSrcEl, '');
+      // If End is days-driven, recompute / clear it too.
+      if (daysEl && daysEl.value) {
+        endEl.value = '';
+        setSourceChip(eSrcEl, '');
+      }
+      autoSave();
+    }
+  });
+  endEl.addEventListener('keydown', e => {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && endEl.value) {
+      e.preventDefault();
+      endEl.value = '';
+      setSourceChip(eSrcEl, '');
+      if (daysEl) daysEl.value = '';
+      autoSave();
+    }
+  });
   if (daysEl) {
     daysEl.addEventListener('input', () => {
       const n = parseInt(daysEl.value, 10);
@@ -5375,6 +5474,17 @@ function bnEndFromStartAndDuration(startStr, n) {
       recomputeEndFromDays();
     });
     daysEl.addEventListener('change', autoSave);
+    daysEl.addEventListener('keydown', e => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && daysEl.value) {
+        e.preventDefault();
+        daysEl.value = '';
+        if (eSrcEl && /\d+\s+day/.test(eSrcEl.textContent || '')) {
+          endEl.value = '';
+          setSourceChip(eSrcEl, '');
+        }
+        autoSave();
+      }
+    });
   }
   // Pin pickers — reuse the same picker. After pick, fill input + chip and auto-save.
   function openPicker(anchorBtn, side, inp, srcEl) {
