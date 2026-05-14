@@ -2321,6 +2321,21 @@
   .proposed-chips { display: flex; flex-wrap: wrap; gap: 4px; }
   .proposed-chip { display: inline-flex; align-items: center; gap: 6px; background: #f1f3f4; border: 1px solid #e2e4e7; padding: 2px 4px 2px 2px; border-radius: 16px; font-size: 12px; color: #1a1a1a; }
   .proposed-chip.proposed-chip-external { background: #fff7ed; border-color: #fed7aa; }
+  /* Section-based coloring of Proposed By chips/picker rows */
+  .proposed-chip.psec-disabled .proposed-chip-name { color: #6b6b6b; }
+  .proposed-chip.psec-bookline .proposed-chip-name { color: #1a1a1a; }
+  .proposed-chip.psec-team .proposed-chip-name { color: #3b82f6; }
+  .proposed-chip.psec-supplementary .proposed-chip-name { color: #16a34a; }
+  .proposed-dd-item.psec-disabled .proposed-dd-name { color: #6b6b6b; }
+  .proposed-dd-item.psec-bookline .proposed-dd-name { color: #1a1a1a; }
+  .proposed-dd-item.psec-team .proposed-dd-name { color: #3b82f6; }
+  .proposed-dd-item.psec-supplementary .proposed-dd-name { color: #16a34a; }
+  /* Section dots in cards (next to Proposed By names) */
+  .proposed-card-name { color: #1a1a1a; }
+  .proposed-card-name.psec-disabled { color: #6b6b6b; }
+  .proposed-card-name.psec-bookline { color: #1a1a1a; }
+  .proposed-card-name.psec-team { color: #3b82f6; }
+  .proposed-card-name.psec-supplementary { color: #16a34a; }
   .proposed-chip .av-mini { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; overflow: hidden; position: relative; }
   .proposed-chip .av-mini img,
   .proposed-dd-item .av-mini img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; position: absolute; top: 0; left: 0; }
@@ -2616,6 +2631,7 @@
       <div class="filters" id="tagFilterBar" style="margin-bottom:8px"></div>
       <div class="filters" id="taskTagFilterBar" style="margin-bottom:8px"></div>
       <div class="filters" id="roadmapFilterBar" style="margin-bottom:14px"></div>
+      <div class="filters" id="dateStatusFilterBar" style="margin-bottom:14px"></div>
 
       <!-- Mode-specific bodies -->
       <div id="view-tasks-byperson">
@@ -3143,7 +3159,7 @@ function loadStore() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) 
 function saveStore(st) { localStorage.setItem(STORE_KEY, JSON.stringify(st)); }
 
 let STORE = loadStore();
-let statusInclude = new Set(), statusExclude = new Set(), prioInclude = new Set(), prioExclude = new Set(), personInclude = new Set(), personExclude = new Set(), tagInclude = new Set(), tagExclude = new Set(), taskTagInclude = new Set(), taskTagExclude = new Set(), roadmapInclude = new Set(), roadmapExclude = new Set(), sortMembers = "default", sortTasks = "default", searchQuery = "", editingId = null;
+let statusInclude = new Set(), statusExclude = new Set(), prioInclude = new Set(), prioExclude = new Set(), personInclude = new Set(), personExclude = new Set(), tagInclude = new Set(), tagExclude = new Set(), taskTagInclude = new Set(), taskTagExclude = new Set(), roadmapInclude = new Set(), roadmapExclude = new Set(), dateStatusInclude = new Set(), dateStatusExclude = new Set(), sortMembers = "default", sortTasks = "default", searchQuery = "", editingId = null;
 // Backwards-compat shim — older code still references currentPersonIds.
 // Treat it as the include set so existing reads "just work".
 const currentPersonIds = personInclude;
@@ -3163,6 +3179,8 @@ function saveFilterState() {
     taskTagExclude: [...taskTagExclude],
     roadmapInclude: [...roadmapInclude],
     roadmapExclude: [...roadmapExclude],
+    dateStatusInclude: [...dateStatusInclude],
+    dateStatusExclude: [...dateStatusExclude],
     currentPersonIds: [...currentPersonIds],
     sortMembers, sortTasks, searchQuery
   };
@@ -3183,6 +3201,8 @@ function loadFilterState() {
     taskTagExclude = new Set(s.taskTagExclude || []);
     roadmapInclude = new Set(s.roadmapInclude || []);
     roadmapExclude = new Set(s.roadmapExclude || []);
+    dateStatusInclude = new Set(s.dateStatusInclude || []);
+    dateStatusExclude = new Set(s.dateStatusExclude || []);
     currentPersonIds = new Set(s.currentPersonIds || []);
     sortMembers = s.sortMembers || "default";
     sortTasks = s.sortTasks || "default";
@@ -3620,8 +3640,39 @@ function taskMatchesFilters(t, opts) {
   for (const tag of taskTagExclude) if (tag !== "__none" && tt.includes(tag)) return false;
   // Roadmap include/exclude
   if (!taskMatchesRoadmapFilter(t)) return false;
+  // Date-status include/exclude
+  if (!taskMatchesDateStatusFilter(t)) return false;
   return true;
 }
+
+// Date status of a task: "scheduled" (both dates set), "partial" (one missing), "unscheduled" (none).
+function taskDateStatus(t) {
+  let s = '', e = '';
+  try {
+    if (typeof effectiveDatesForTask === 'function') {
+      const r = effectiveDatesForTask(t) || {};
+      s = r.start || ''; e = r.end || '';
+    }
+  } catch (_) {}
+  if (!s) s = t.startDate || '';
+  if (!e) e = t.endDate || '';
+  if (s && e) return 'scheduled';
+  if (!s && !e) return 'unscheduled';
+  return 'partial';
+}
+function taskMatchesDateStatusFilter(t) {
+  if (dateStatusInclude.size === 0 && dateStatusExclude.size === 0) return true;
+  const k = taskDateStatus(t);
+  if (dateStatusInclude.size > 0 && !dateStatusInclude.has(k)) return false;
+  if (dateStatusExclude.has(k)) return false;
+  return true;
+}
+function cycleDateStatusFilter(name) {
+  if (!dateStatusInclude.has(name) && !dateStatusExclude.has(name)) dateStatusInclude.add(name);
+  else if (dateStatusInclude.has(name)) { dateStatusInclude.delete(name); dateStatusExclude.add(name); }
+  else dateStatusExclude.delete(name);
+}
+function clearDateStatusFilter() { dateStatusInclude.clear(); dateStatusExclude.clear(); }
 
 function cycleTaskTagFilter(name) {
   if (!taskTagInclude.has(name) && !taskTagExclude.has(name)) taskTagInclude.add(name);
@@ -3726,10 +3777,15 @@ function renderTeamStrip() {
   if (personInclude.size > 0) visibleCount = personInclude.size;
   else visibleCount = availableCount - Array.from(personExclude).filter(id => availableTeam.some(p => p.id === id)).length;
   html.push('<div class="team-pill ' + (!anyPersonFilter ? 'active' : '') + '" data-uid="all"><span class="av" style="background:#1a1a1a"><span class="ini">&Sigma;</span></span>All' + (showCounts ? '<span class="count">' + visibleCount + ' / ' + availableCount + '</span>' : '') + '</div>');
-  // Unassigned pill — shown only when the "Show Unassigned" checkbox is on. Click → open profile.
+  // Unassigned pill — shown only when the "Show Unassigned" checkbox is on. Click → toggle filter (like other person pills).
   if (typeof getShowUnassigned === 'function' ? getShowUnassigned() : (localStorage.getItem('bookline-showUnassigned') === '1')) {
     const unassignedCount = (STORE.tasks || []).filter(t => !t.responsibleId).length;
-    html.push('<div class="team-pill" data-uid="__unassigned" title="Open Unassigned profile"><span class="av" style="background:#9aa0a6"><span class="ini">?</span></span>Unassigned' + (showCounts ? '<span class="count">' + unassignedCount + '</span>' : '') + '</div>');
+    const _uIncl = personInclude.has('__unassigned');
+    const _uExcl = personExclude.has('__unassigned');
+    let _uCls = 'team-pill';
+    if (_uIncl) _uCls += ' active';
+    else if (_uExcl) _uCls += ' excluded';
+    html.push('<div class="' + _uCls + '" data-uid="__unassigned" title="Filter by unassigned tasks (click to toggle)"><span class="av" style="background:#9aa0a6"><span class="ini">?</span></span>Unassigned' + (showCounts ? '<span class="count">' + unassignedCount + '</span>' : '') + '</div>');
   }
   const sortedTeamIds = sortPersons(availableTeam.map(p => p.id), all);
   sortedTeamIds.forEach(pid => {
@@ -3848,6 +3904,9 @@ function countTasksMatchingExcept(dim, optKey) {
     if (dim !== "roadmap") {
       if (!taskMatchesRoadmapFilter(t)) return false;
     }
+    if (dim !== "dateStatus") {
+      if (!taskMatchesDateStatusFilter(t)) return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const hay = (t.subject + " " + (t.extraComments||"") + " " + (t.slackStatus||"")).toLowerCase();
@@ -3872,6 +3931,10 @@ function countTasksMatchingExcept(dim, optKey) {
       const rmIds = taskRoadmapIds(t.id);
       if (optKey === "__none") return rmIds.size === 0;
       return rmIds.has(optKey);
+    }
+    if (dim === "dateStatus") {
+      if (optKey === "__all") return true;
+      return taskDateStatus(t) === optKey;
     }
     return true;
   }).length;
@@ -4022,6 +4085,43 @@ function renderRoadmapFilter() {
       const v = b.dataset.rmFilter;
       if (v === "__all") clearRoadmapFilter();
       else cycleRoadmapFilter(v);
+      saveFilterState();
+      render();
+    });
+  });
+}
+
+// Date-status filter: differentiate tasks that are fully scheduled (both dates),
+// partially scheduled (only one of the dates), or unscheduled (no dates).
+function renderDateStatusFilter() {
+  const bar = document.getElementById("dateStatusFilterBar");
+  if (!bar) return;
+  bar.style.display = "flex";
+  const anyActive = dateStatusInclude.size > 0 || dateStatusExclude.size > 0;
+  let inner = '<div class="filter-group">';
+  inner += '<span class="label">Dates:</span>';
+  inner += '<button class="pill ' + (!anyActive ? 'active' : '') + '" data-ds-filter="__all">All' + countBadgePair(visibleTasksCount(), STORE.tasks.length) + '</button>';
+  const opts = [
+    { key: 'scheduled',   label: 'Scheduled',   title: 'Both start and end dates set' },
+    { key: 'partial',     label: 'Partial',     title: 'Only one date set (start XOR end)' },
+    { key: 'unscheduled', label: 'Unscheduled', title: 'Neither start nor end date set' }
+  ];
+  opts.forEach(o => {
+    const incl = dateStatusInclude.has(o.key);
+    const excl = dateStatusExclude.has(o.key);
+    let cls = 'pill';
+    let prefix = '';
+    if (incl) cls += ' active';
+    else if (excl) { cls += ' excluded'; prefix = '− '; }
+    inner += '<button class="' + cls + '" data-ds-filter="' + o.key + '" title="' + o.title + ' — click cycles: include → exclude → off">' + prefix + escapeHtml(o.label) + countBadge(countTasksMatchingExcept("dateStatus", o.key)) + '</button>';
+  });
+  inner += '</div>';
+  bar.innerHTML = inner;
+  bar.querySelectorAll("button[data-ds-filter]").forEach(b => {
+    b.addEventListener("click", () => {
+      const v = b.dataset.dsFilter;
+      if (v === "__all") clearDateStatusFilter();
+      else cycleDateStatusFilter(v);
       saveFilterState();
       render();
     });
@@ -4185,6 +4285,7 @@ function render() {
   renderTagFilter();
   renderTaskTagFilter();
   renderRoadmapFilter();
+  renderDateStatusFilter();
   if (tasksViewMode === "list") {
     renderFlatTasks();
     // We still render team strip + filters above (shared), but skip the per-person grid.
@@ -4486,12 +4587,25 @@ populateUserSelects();
 // =========================== Multi-select Proposed By picker ===========================
 let proposedSelectedIds = [];
 
+// Map a person's section to a CSS class suffix for chip / dropdown coloring.
+// Disabled=gray, Bookline=black, team=light blue, supplementary=green.
+function _proposedSectionClass(p) {
+  if (!p) return 'psec-bookline';
+  try {
+    const sec = (typeof getPersonSection === 'function') ? getPersonSection(p.id) : '';
+    if (sec === 'disabled') return 'psec-disabled';
+    if (sec === 'team') return 'psec-team';
+    if (sec === 'supplementary') return 'psec-supplementary';
+    return 'psec-bookline'; // empty section = Bookline
+  } catch (_) { return 'psec-bookline'; }
+}
 function proposedChipHtml(p) {
   const ini = initials(p.name||'');
   const color = p.color || '#9a9a9a';
   const photoImg = p.photo ? '<img src="'+escapeHtml(p.photo)+'" alt="" onerror="this.remove()">' : '';
   const ext = p.external ? ' proposed-chip-external' : '';
-  return '<span class="proposed-chip'+ext+'" data-pid="'+escapeHtml(p.id)+'">' +
+  const sc = ' ' + _proposedSectionClass(p);
+  return '<span class="proposed-chip'+ext+sc+'" data-pid="'+escapeHtml(p.id)+'">' +
     '<span class="av-mini" style="background:'+color+'">'+photoImg+'<span class="ini">'+escapeHtml(ini)+'</span></span>' +
     '<span class="proposed-chip-name">'+escapeHtml(p.displayName||p.name||'?')+'</span>' +
     '<button type="button" class="proposed-chip-x" title="Remove">×</button>' +
@@ -4539,7 +4653,8 @@ function filterProposedDropdown(query) {
     const ini = initials(p.name||'');
     const photoImg = p.photo ? '<img src="'+escapeHtml(p.photo)+'" alt="" onerror="this.remove()">' : '';
     const extLabel = p.external ? '<span class="proposed-dd-ext">extended</span>' : '';
-    return '<div class="proposed-dd-item" data-pid="'+escapeHtml(p.id)+'">' +
+    const sc = ' ' + _proposedSectionClass(p);
+    return '<div class="proposed-dd-item'+sc+'" data-pid="'+escapeHtml(p.id)+'">' +
       '<span class="av-mini" style="background:'+(p.color||'#9a9a9a')+'">'+photoImg+'<span class="ini">'+escapeHtml(ini)+'</span></span>' +
       '<div class="proposed-dd-meta"><div class="proposed-dd-name">'+escapeHtml(p.name||'')+'</div>' +
       '<div class="proposed-dd-email">'+escapeHtml(p.email||'')+'</div></div>' +
@@ -7714,9 +7829,14 @@ function renderRoadmapCalendar(roadmapId) {
   const anyGroupExpanded = getAllGroupIds().some(g => isGroupExpanded(g));
   const collapseAllLabel = anyGroupExpanded ? '⊟ Collapse all' : '⊞ Expand all';
   const collapseAllTitle = anyGroupExpanded ? 'Collapse every group' : 'Expand every group';
-  // Toolbar order — left side: Month/Year label, then the view toggle (Week/Month/Year + 6m) right
-  // after it. Right side (auto-margin pushes them right): nav arrows + Today, hide weekends, collapse-all, side toggle.
+  // Toolbar order: nav (prev/today/next) → month label → view toggle (Week/Month/Year + 6m) on the left.
+  // The cal-toggle (Hide weekends) has margin-left:auto in CSS to push everything after it to the right.
   html += '<div class="cal-toolbar">' +
+    '<div class="cal-nav-group">' +
+      '<button class="cal-nav-btn" id="calPrev" title="' + prevTitle + '"' + (atStart ? ' disabled' : '') + '>‹</button>' +
+      '<button class="cal-today-btn" id="calToday">Today</button>' +
+      '<button class="cal-nav-btn" id="calNext" title="' + nextTitle + '">›</button>' +
+    '</div>' +
     '<div class="cal-month-label">' + periodLabel + '</div>' +
     '<div class="cal-view-toggle" role="group" aria-label="View mode">' +
       '<button type="button" class="cal-view-btn ' + (viewMode === 'week'  ? 'active' : '') + '" id="calViewWeek"  title="Week view">Week</button>' +
@@ -7724,11 +7844,7 @@ function renderRoadmapCalendar(roadmapId) {
       '<button type="button" class="cal-view-btn ' + (viewMode === 'year'  ? 'active' : '') + '" id="calViewYear"  title="Year view">Year</button>' +
     '</div>' +
     '<button type="button" class="cal-view-btn cal-view-6m' + (viewMode === '6m' ? ' active' : '') + '" id="calView6m" title="6-month rolling view" style="margin-left:4px">6 MFN</button>' +
-    '<div class="cal-nav-group" style="margin-left:auto">' +
-      '<button class="cal-nav-btn" id="calPrev" title="' + prevTitle + '"' + (atStart ? ' disabled' : '') + '>‹</button>' +
-      '<button class="cal-today-btn" id="calToday">Today</button>' +
-      '<button class="cal-nav-btn" id="calNext" title="' + nextTitle + '">›</button>' +
-    '</div>' +
+    '<div class="cal-toolbar-spacer" style="margin-left:auto"></div>' +
     ((viewMode === 'year' || viewMode === '6m') ? '' : '<label class="cal-toggle"><input type="checkbox" id="calHideWeekends" ' + (roadmapCalState.hideWeekends ? "checked" : "") + '> <span>Hide weekends</span></label>') +
     '<button type="button" class="cal-view-btn" id="calCollapseAll" title="' + collapseAllTitle + '" style="margin-left:6px">' + collapseAllLabel + '</button>' +
     (hasSideContent
@@ -8970,6 +9086,7 @@ document.getElementById("resetFiltersBtn").addEventListener("click", () => {
   tagInclude.clear(); tagExclude.clear();
   taskTagInclude.clear(); taskTagExclude.clear();
   roadmapInclude.clear(); roadmapExclude.clear();
+  dateStatusInclude.clear(); dateStatusExclude.clear();
   currentPersonIds.clear();
   searchQuery = "";
   document.getElementById("searchInput").value = "";
