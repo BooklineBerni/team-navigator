@@ -5346,7 +5346,19 @@ function bnEndFromStartAndDuration(startStr, n) {
     row.style.display = '';
     startEl.value = (t && t.startDate) || '';
     endEl.value   = (t && t.endDate)   || '';
-    if (daysEl) daysEl.value = (t && typeof t.durationDays === 'number' && t.durationDays >= 1) ? String(t.durationDays) : '';
+    // Days input default: if the task has a stored durationDays, use it. Otherwise show the
+    // inclusive total between start and end as a hint (without activating the "N days" pill —
+    // that only kicks in when the user actually edits the days input).
+    if (daysEl) {
+      let daysDefault = '';
+      if (t && typeof t.durationDays === 'number' && t.durationDays >= 1) {
+        daysDefault = String(t.durationDays);
+      } else if (t && t.startDate && t.endDate) {
+        const n = bnDaysInclusive(t.startDate, t.endDate);
+        if (n > 0) daysDefault = String(n);
+      }
+      daysEl.value = daysDefault;
+    }
     // Compute the common pill across roadmap entries — exact same path as the Aggregated row.
     function commonLabel(arr) {
       if (arr.length === 0) return '';
