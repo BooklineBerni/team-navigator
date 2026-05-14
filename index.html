@@ -1526,6 +1526,12 @@
   .profile-pr-gantt .cal-year-label { font-size: 12px; padding: 3px 8px; }
   .profile-pr-gantt .cal-year-track { height: 24px; }
   .profile-pr-gantt .cal-year-bar { top: 3px; height: 18px; line-height: 18px; font-size: 10.5px; }
+  .profile-pr-expand-btn {
+    appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a;
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 8px; cursor: pointer;
+  }
+  .profile-pr-expand-btn:hover { background: #f0efeb; }
   #view-roadmaps { padding-top: 18px; }
   #view-members { padding-top: 18px; }
   #view-requests { padding-top: 18px; }
@@ -10398,7 +10404,8 @@ let profilePickerSearch = "";
 let profileTasksCollapsed = (localStorage.getItem("bookline-profileTasksCollapsed") !== "0"); // collapsed by default
 let profileRoadmapsCollapsed = (localStorage.getItem("bookline-profileRoadmapsCollapsed") === "1");
 // Personal "6 MFN" roadmap inside the profile — horizontal Gantt across 6 rolling months.
-let profilePersonalRoadmapCollapsed = (localStorage.getItem("bookline-profilePersonalRoadmapCollapsed") === "1");
+// Collapsed by default (user can pin it open via the Expand button).
+let profilePersonalRoadmapCollapsed = (localStorage.getItem("bookline-profilePersonalRoadmapCollapsed") !== "0");
 let profilePersonalRoadmapOffset = 0;  // months from "current month" (0 = starting at the month we're in)
 const profileCollapsedGroups = new Set(JSON.parse(localStorage.getItem("bookline-profileCollapsedGroups") || "[]"));
 
@@ -10572,9 +10579,13 @@ function renderProfilePage() {
   // Personal roadmap (6 MFN-style horizontal Gantt of this person's tasks, collapsible).
   // Counts only tasks that fall within the visible 6-month window.
   const _prCounts = renderProfilePersonalRoadmapCount(personTasks);
+  const _prBtnLabel = profilePersonalRoadmapCollapsed ? '⊞ Expand' : '⊟ Collapse';
   html += '<div class="profile-section-title profile-section-toggle" id="profilePersonalRoadmapToggle">' +
     '<span><span class="caret">' + (profilePersonalRoadmapCollapsed ? '▸' : '▾') + '</span> Personal roadmap <span style="font-weight:500;color:#9a9a9a;font-size:11px;margin-left:6px">(6 months)</span></span>' +
-    '<span class="count">' + _prCounts.visible + '</span>' +
+    '<span style="display:inline-flex;align-items:center;gap:10px">' +
+      '<button type="button" class="profile-pr-expand-btn" id="profilePersonalRoadmapExpandBtn" title="' + (profilePersonalRoadmapCollapsed ? 'Show the 6-month timeline' : 'Hide the 6-month timeline') + '">' + _prBtnLabel + '</button>' +
+      '<span class="count">' + _prCounts.visible + '</span>' +
+    '</span>' +
     '</div>';
   if (!profilePersonalRoadmapCollapsed) {
     html += renderProfilePersonalRoadmap(personTasks);
@@ -10761,14 +10772,18 @@ function renderProfilePersonalRoadmap(personTasks) {
 }
 
 function wireProfilePersonalRoadmap(personTasks) {
-  const head = document.getElementById('profilePersonalRoadmapToggle');
-  if (head) {
-    head.addEventListener('click', () => {
-      profilePersonalRoadmapCollapsed = !profilePersonalRoadmapCollapsed;
-      localStorage.setItem('bookline-profilePersonalRoadmapCollapsed', profilePersonalRoadmapCollapsed ? '1' : '0');
-      renderProfilePage();
-    });
+  function _togglePersonalRoadmap() {
+    profilePersonalRoadmapCollapsed = !profilePersonalRoadmapCollapsed;
+    localStorage.setItem('bookline-profilePersonalRoadmapCollapsed', profilePersonalRoadmapCollapsed ? '1' : '0');
+    renderProfilePage();
   }
+  const head = document.getElementById('profilePersonalRoadmapToggle');
+  if (head) head.addEventListener('click', _togglePersonalRoadmap);
+  const expandBtn = document.getElementById('profilePersonalRoadmapExpandBtn');
+  if (expandBtn) expandBtn.addEventListener('click', e => {
+    e.stopPropagation();   // don't double-trigger via the header click handler
+    _togglePersonalRoadmap();
+  });
   const prev  = document.getElementById('profilePrPrev');
   const next  = document.getElementById('profilePrNext');
   const today = document.getElementById('profilePrToday');
