@@ -3009,16 +3009,9 @@
     <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
     <div class="field" id="f_roadmapsField">
       <label>Roadmaps</label>
-      <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
-      <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
-      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap. The schedule below applies to all of them.</div>
-    </div>
-    <!-- Schedule (task-level) — every change saves immediately to task.startDate / task.endDate /
-         task.startAnchor / task.endAnchor / task.durationDays, and every roadmap this task is in
-         picks up the new dates automatically (no Apply button). -->
-    <div class="field f_taskOnlyRow" id="f_taskDatesField">
-      <label>Schedule</label>
+      <!-- "Apply to all roadmaps" — original Apply-button row. Commits to task on Apply click. -->
       <div id="f_quickApplyRow" class="bn-quick-apply">
+        <span class="bn-quick-apply-lbl">Apply to all roadmaps</span>
         <div class="bn-quick-apply-inputs">
           <div class="bn-quick-apply-cell">
             <div class="bn-quick-apply-input-wrap">
@@ -3040,10 +3033,60 @@
             </div>
             <div id="f_quickApplyEndSrc" class="bn-quick-apply-src" style="display:none"></div>
           </div>
+          <button type="button" id="f_quickApplyBtn" class="btn primary bn-quick-apply-btn">Apply</button>
         </div>
         <span id="f_quickApplyFeedback" class="bn-quick-apply-feedback" style="display:none"></span>
       </div>
-      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Edits save automatically. These dates apply to every roadmap this task is in (now and on any roadmap added later).</div>
+      <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
+      <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
+      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap.</div>
+      <!-- Aggregated visual — min Start / max End / total days across all assigned roadmaps. -->
+      <div class="f_taskOnlyRow bn-agg-display" id="f_taskDatesField">
+        <span class="bn-agg-display-lbl">Aggregated</span>
+        <span class="bn-agg-display-pair">
+          <span class="bn-agg-display-key">Start</span>
+          <span class="bn-agg-display-stack" id="f_aggMinStartStack">
+            <span class="bn-agg-display-pill" id="f_aggMinStartPill" style="display:none"></span>
+            <span class="bn-agg-display-val" id="f_aggMinStart">—</span>
+          </span>
+        </span>
+        <span class="bn-agg-display-span" id="f_aggSpan" style="display:none"></span>
+        <span class="bn-agg-display-pair">
+          <span class="bn-agg-display-key">End</span>
+          <span class="bn-agg-display-stack" id="f_aggMaxEndStack">
+            <span class="bn-agg-display-pill" id="f_aggMaxEndPill" style="display:none"></span>
+            <span class="bn-agg-display-val" id="f_aggMaxEnd">—</span>
+          </span>
+        </span>
+      </div>
+      <!-- Task dates (same component shape as "Apply to all roadmaps" above). Pre-filled with the
+           task's current values; every change auto-saves to task.* so all roadmaps inherit immediately. -->
+      <div id="f_taskDatesRow" class="bn-quick-apply" style="margin-top:10px">
+        <span class="bn-quick-apply-lbl">Task dates</span>
+        <div class="bn-quick-apply-inputs">
+          <div class="bn-quick-apply-cell">
+            <div class="bn-quick-apply-input-wrap">
+              <button type="button" id="f_taskDatesStartPin" class="bn-quick-apply-pin" title="Use another task's aggregated start/end as this Start">📌</button>
+              <input type="date" id="f_taskDatesStart" class="bn-quick-apply-input" title="Start">
+            </div>
+            <div id="f_taskDatesStartSrc" class="bn-quick-apply-src" style="display:none"></div>
+          </div>
+          <div class="bn-quick-apply-cell bn-quick-apply-days-cell">
+            <div class="bn-quick-apply-input-wrap">
+              <input type="number" id="f_taskDatesDays" class="bn-quick-apply-input bn-quick-apply-days" min="1" step="1" placeholder="N" title="Duration in days (inclusive). Sets End = Start + (N − 1) days.">
+              <span class="bn-quick-apply-days-unit">days</span>
+            </div>
+          </div>
+          <div class="bn-quick-apply-cell">
+            <div class="bn-quick-apply-input-wrap">
+              <input type="date" id="f_taskDatesEnd" class="bn-quick-apply-input" title="End">
+              <button type="button" id="f_taskDatesEndPin" class="bn-quick-apply-pin" title="Use another task's aggregated start/end as this End">📌</button>
+            </div>
+            <div id="f_taskDatesEndSrc" class="bn-quick-apply-src" style="display:none"></div>
+          </div>
+        </div>
+        <span id="f_taskDatesFeedback" class="bn-quick-apply-feedback" style="display:none"></span>
+      </div>
     </div>
     <div class="field f_taskOnlyRow"><label>Task tags</label>
       <div id="f_taskTagsContainer" class="person-modal-tags"></div>
@@ -4640,6 +4683,7 @@ function openModal(tid, overrides) {
   if (typeof window.__renderTaskAggregatedSchedule === 'function') window.__renderTaskAggregatedSchedule(t);
   // Pre-fill the quick "Apply to all roadmaps" row at top of the Roadmaps field
   if (typeof window.__refreshQuickApplyFromTask === 'function') window.__refreshQuickApplyFromTask(t);
+  if (typeof window.__refreshTaskDatesRowFromTask === 'function') window.__refreshTaskDatesRowFromTask(t);
   document.getElementById("deleteBtn").style.display = t._isNew ? "none" : "inline-block";
   document.getElementById("modalBg").classList.add("show");
   document.getElementById("modal").__newTask = t._isNew ? t : null;
@@ -4798,7 +4842,7 @@ function bnEndFromStartAndDuration(startStr, n) {
   const fbEl    = document.getElementById('f_quickApplyFeedback');
   const sPinEl  = document.getElementById('f_quickApplyStartPin');
   const ePinEl  = document.getElementById('f_quickApplyEndPin');
-  if (!row || !startEl || !endEl) return;   // btnEl is no longer required — schedule auto-saves on input change
+  if (!row || !startEl || !endEl || !btnEl) return;
   function showFeedback(msg, isError) {
     if (!fbEl) return;
     fbEl.textContent = msg;
@@ -5127,8 +5171,6 @@ function bnEndFromStartAndDuration(startStr, n) {
         if (inp === endEl && daysEl) {
           daysEl.value = '';
         }
-        // Auto-save: writes the new state to the task so every roadmap picks it up immediately.
-        if (typeof window.__quickApplyAutoSave === 'function') window.__quickApplyAutoSave();
         menu.remove();
       });
     });
@@ -5147,10 +5189,8 @@ function bnEndFromStartAndDuration(startStr, n) {
   }
   if (sPinEl) sPinEl.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openQuickApplyPicker(sPinEl, 'start', startEl, sSrcEl); });
   if (ePinEl) ePinEl.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openQuickApplyPicker(ePinEl, 'end',   endEl,   eSrcEl); });
-  // Auto-save the task schedule on EVERY input change — no Apply button needed. The values written
-  // here flow into task.startDate / task.endDate / task.startAnchor / task.endAnchor / task.durationDays,
-  // and every roadmap the task is in (now or added later) reads those task-level dates automatically.
-  function autoSaveSchedule() {
+  // Apply button → commit the staged values to the task immediately.
+  btnEl.addEventListener('click', () => {
     if (!editingId) return;
     const t = STORE.tasks.find(x => x.id === editingId);
     if (!t) return;
@@ -5179,16 +5219,175 @@ function bnEndFromStartAndDuration(startStr, n) {
     }
     saveStore(STORE);
     if (typeof window.__renderTaskAggregatedSchedule === 'function') window.__renderTaskAggregatedSchedule(t);
-  }
-  // Expose for inputs/pin pickers to call after they update the staged state.
-  window.__quickApplyAutoSave = autoSaveSchedule;
-  // Re-bind change handlers to also auto-save (the existing handlers update derived state first).
-  [startEl, endEl, daysEl].forEach(inp => {
-    if (!inp) return;
-    inp.addEventListener('change', autoSaveSchedule);
+    if (typeof window.__refreshTaskDatesRowFromTask === 'function') window.__refreshTaskDatesRowFromTask(t);
+    const rmsCount = (STORE.roadmaps || []).filter(rm => (rm.tasks || []).some(e => e.taskId === t.id)).length;
+    showFeedback('Schedule saved' + (rmsCount > 0 ? ' · applies to ' + rmsCount + ' roadmap' + (rmsCount === 1 ? '' : 's') : ''));
   });
-  // The old button is gone; ignore any leftover ref.
-  if (btnEl) btnEl.style.display = 'none';
+})();
+// "Task dates" row — same DOM shape as "Apply to all roadmaps" but pre-filled with the task's
+// current values (which equal the aggregate, since dates live on the task). Every change
+// auto-saves to task.* so all roadmaps inherit immediately and the aggregate refreshes.
+(function wireTaskDatesRow() {
+  const row     = document.getElementById('f_taskDatesRow');
+  const startEl = document.getElementById('f_taskDatesStart');
+  const endEl   = document.getElementById('f_taskDatesEnd');
+  const daysEl  = document.getElementById('f_taskDatesDays');
+  const sPinEl  = document.getElementById('f_taskDatesStartPin');
+  const ePinEl  = document.getElementById('f_taskDatesEndPin');
+  const sSrcEl  = document.getElementById('f_taskDatesStartSrc');
+  const eSrcEl  = document.getElementById('f_taskDatesEndSrc');
+  if (!row || !startEl || !endEl) return;
+  // Module-level state for picked sources (so the saver can persist them).
+  window.__taskDatesStartSrcLbl = '';
+  window.__taskDatesEndSrcLbl   = '';
+  window.__taskDatesStartSrcTid = '';
+  window.__taskDatesEndSrcTid   = '';
+  function setSourceChip(srcEl, label, srcTaskId) {
+    if (!srcEl) return;
+    const cell = srcEl.parentElement;
+    const wrap = cell && cell.querySelector('.bn-quick-apply-input-wrap');
+    if (!wrap) return;
+    const isStart = (srcEl === sSrcEl);
+    const inp = isStart ? startEl : endEl;
+    if (isStart) {
+      window.__taskDatesStartSrcLbl = label || '';
+      window.__taskDatesStartSrcTid = srcTaskId || '';
+    } else {
+      window.__taskDatesEndSrcLbl = label || '';
+      window.__taskDatesEndSrcTid = srcTaskId || '';
+    }
+    const oldPill = wrap.querySelector('.rm-modal-pill-btn');
+    if (oldPill) oldPill.remove();
+    if (label) {
+      inp.style.display = 'none';
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'rm-modal-pill-btn';
+      pill.title = label + ' — click to clear and pick a date';
+      pill.innerHTML = escapeHtml(label) + '<span class="bn-pill-x" aria-hidden="true">×</span>';
+      const stl = bnPillStyleForLabel(label, srcTaskId);
+      if (stl) pill.setAttribute('style', bnPillInlineStyle(stl));
+      pill.addEventListener('click', ev => {
+        ev.preventDefault(); ev.stopPropagation();
+        setSourceChip(srcEl, '');
+        if (!isStart && daysEl) daysEl.value = '';
+        autoSave();
+      });
+      inp.parentElement.insertBefore(pill, inp);
+      srcEl.innerHTML = '';
+      const disp = document.createElement('button');
+      disp.type = 'button';
+      disp.className = 'rm-modal-date-display';
+      disp.title = 'Click to clear and pick a date';
+      disp.textContent = '= ' + (inp.value || '—');
+      disp.addEventListener('click', ev => {
+        ev.preventDefault(); ev.stopPropagation();
+        setSourceChip(srcEl, '');
+        if (!isStart && daysEl) daysEl.value = '';
+        autoSave();
+      });
+      srcEl.appendChild(disp);
+      srcEl.style.display = '';
+    } else {
+      inp.style.display = '';
+      srcEl.removeAttribute('style');
+      srcEl.style.display = 'none';
+      srcEl.innerHTML = '';
+    }
+  }
+  // Pre-fill from the task (= aggregate values, since dates live on the task).
+  window.__refreshTaskDatesRowFromTask = function(t) {
+    row.style.display = '';
+    startEl.value = (t && t.startDate) || '';
+    endEl.value   = (t && t.endDate)   || '';
+    if (daysEl) daysEl.value = (t && typeof t.durationDays === 'number' && t.durationDays >= 1) ? String(t.durationDays) : '';
+    const sLbl = (t && t.startSrcLabel) || '';
+    const sTid = (t && t.startSrcTaskId) || '';
+    setSourceChip(sSrcEl, sLbl, sTid);
+    let eLbl = (t && t.endSrcLabel) || '';
+    const eTid = (t && t.endSrcTaskId) || '';
+    if (!eLbl && t && typeof t.durationDays === 'number' && t.durationDays >= 1) {
+      eLbl = t.durationDays + ' day' + (t.durationDays === 1 ? '' : 's');
+    }
+    setSourceChip(eSrcEl, eLbl, eTid);
+  };
+  function recomputeEndFromDays() {
+    if (!daysEl) return;
+    const n = parseInt(daysEl.value, 10);
+    if (!Number.isFinite(n) || n < 1 || !startEl.value) return;
+    const newEnd = bnEndFromStartAndDuration(startEl.value, n);
+    if (!newEnd) return;
+    endEl.value = newEnd;
+    setSourceChip(eSrcEl, n + ' day' + (n === 1 ? '' : 's'), '');
+  }
+  function autoSave() {
+    if (!editingId) return;
+    const t = STORE.tasks.find(x => x.id === editingId);
+    if (!t) return;
+    const startV = startEl.value || '';
+    const endV   = endEl.value || '';
+    const startSrcLbl = window.__taskDatesStartSrcLbl || '';
+    const endSrcLbl   = window.__taskDatesEndSrcLbl   || '';
+    const startSrcTid = window.__taskDatesStartSrcTid || '';
+    const endSrcTid   = window.__taskDatesEndSrcTid   || '';
+    const daysNum     = daysEl ? parseInt(daysEl.value, 10) : NaN;
+    const hasDays     = Number.isFinite(daysNum) && daysNum >= 1;
+    t.startDate = startV;
+    t.endDate   = endV;
+    t.startAnchor = '';
+    t.endAnchor   = '';
+    if (startSrcLbl) t.startSrcLabel = startSrcLbl; else delete t.startSrcLabel;
+    if (startSrcTid) t.startSrcTaskId = startSrcTid; else delete t.startSrcTaskId;
+    if (hasDays) {
+      t.durationDays = daysNum;
+      delete t.endSrcLabel;
+      delete t.endSrcTaskId;
+    } else {
+      delete t.durationDays;
+      if (endSrcLbl) t.endSrcLabel = endSrcLbl; else delete t.endSrcLabel;
+      if (endSrcTid) t.endSrcTaskId = endSrcTid; else delete t.endSrcTaskId;
+    }
+    saveStore(STORE);
+    if (typeof window.__renderTaskAggregatedSchedule === 'function') window.__renderTaskAggregatedSchedule(t);
+  }
+  startEl.addEventListener('input', () => {
+    setSourceChip(sSrcEl, '');
+    if (daysEl && daysEl.value) recomputeEndFromDays();
+  });
+  startEl.addEventListener('change', autoSave);
+  endEl.addEventListener('input', () => {
+    setSourceChip(eSrcEl, '');
+    if (daysEl) daysEl.value = '';
+  });
+  endEl.addEventListener('change', autoSave);
+  if (daysEl) {
+    daysEl.addEventListener('input', () => {
+      const n = parseInt(daysEl.value, 10);
+      if (!Number.isFinite(n) || n < 1) {
+        // Clearing days clears the End-from-days chip; End stays as-is.
+        if (eSrcEl && /\d+\s+day/.test(eSrcEl.textContent || '')) {
+          endEl.value = '';
+          setSourceChip(eSrcEl, '');
+        }
+        return;
+      }
+      if (!startEl.value) return;
+      recomputeEndFromDays();
+    });
+    daysEl.addEventListener('change', autoSave);
+  }
+  // Pin pickers — reuse the same picker. After pick, fill input + chip and auto-save.
+  function openPicker(anchorBtn, side, inp, srcEl) {
+    bnOpenAggregatedPicker(anchorBtn, editingId, side, (absDate, label, srcTaskId) => {
+      inp.value = absDate;
+      setSourceChip(srcEl, label, srcTaskId);
+      if (inp === startEl && daysEl && daysEl.value) recomputeEndFromDays();
+      if (inp === endEl && daysEl) daysEl.value = '';
+      autoSave();
+    });
+  }
+  if (sPinEl) sPinEl.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openPicker(sPinEl, 'start', startEl, sSrcEl); });
+  if (ePinEl) ePinEl.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openPicker(ePinEl, 'end',   endEl,   eSrcEl); });
 })();
 // Anchors staged at the task level for the Apply-to-all flow.
 // These are committed to task.startAnchor / task.endAnchor on Save (via window.__pendingApplyToRoadmaps).
