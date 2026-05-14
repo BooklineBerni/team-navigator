@@ -686,7 +686,7 @@
   .cal-event.continues-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
   .cal-event.continues-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
   /* Group container bar: transparent backdrop tinted by status with a dashed border. Children render on top. */
-  /* z-index 10 sits ABOVE .no-work-stripes (z-index 8) so the title text isn't crossed by stripes. */
+  /* z-index 6 sits ABOVE .no-work-stripes (z-index 5) so the title text isn't crossed by stripes. */
   .cal-event.cal-event-group {
     font-weight: 700;
     border: 1.5px dashed #d97706;
@@ -696,9 +696,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    z-index: 10;
+    z-index: 6;
   }
-  .cal-event.cal-event-group:hover { transform: none; z-index: 12; filter: brightness(0.96) saturate(1.1); }
+  .cal-event.cal-event-group:hover { transform: none; z-index: 7; filter: brightness(0.96) saturate(1.1); }
   .cal-event.cal-event-group.expanded { border-style: solid; }
   /* When the group bar hosts children, only the title strip area should catch clicks/hover for the bar itself;
      the body below is "open" so children inside receive pointer events directly */
@@ -811,23 +811,20 @@
   .cal-day.worked .holiday-name { color: #027a48; }
   .cal-day.time-off { background: #fef2f2; }
   .cal-day.time-off .holiday-name { color: #b42318; }
-  /* Striped overlay over non-working day columns inside events overlay.
-     Bumped opacity + line thickness so the stripes stay readable when they cross a task bar.
-     z-index 8 puts stripes ABOVE regular task bars (auto z-index) but still BELOW group
-     bars (z-index 6 + their child events) — wait, that needs adjusting. */
+  /* Striped overlay over non-working day columns inside events overlay */
   .no-work-stripes {
     position: absolute; top: 0; bottom: 0;
     background-image: repeating-linear-gradient(
       135deg,
       transparent 0,
-      transparent 6px,
-      var(--stripe-color, rgba(15,23,42,0.42)) 6px,
-      var(--stripe-color, rgba(15,23,42,0.42)) 9px
+      transparent 5px,
+      var(--stripe-color, rgba(100,116,139,0.30)) 5px,
+      var(--stripe-color, rgba(100,116,139,0.30)) 7px
     );
     pointer-events: none;
-    z-index: 8;
+    z-index: 5;
   }
-  .no-work-stripes.time-off { --stripe-color: rgba(220,38,38,0.50); }
+  .no-work-stripes.time-off { --stripe-color: rgba(220,38,38,0.32); }
   /* Time-off day cell */
   .cal-day.time-off { background: #fef2f2; }
   .cal-day.time-off .holiday-name { color: #b42318; }
@@ -2077,6 +2074,25 @@
     pointer-events: none;
     z-index: 4;
   }
+  /* Stripes overlay rendered AFTER the events overlay so weekends/holidays/time-off
+     are still visible when they cross a task bar. The per-column stripe pieces are
+     positioned by the renderer at the same percentages as the day cells underneath. */
+  .mini-7day-noworking-overlay {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 6;
+  }
+  .mini-7day-noworking-overlay .mini-noworking-stripe {
+    position: absolute; top: 38px; bottom: 0;
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 5px,
+      var(--stripe-color, rgba(100,116,139,0.30)) 5px,
+      var(--stripe-color, rgba(100,116,139,0.30)) 7px
+    );
+  }
+  .mini-7day-noworking-overlay .mini-noworking-stripe.time-off { --stripe-color: rgba(220,38,38,0.32); }
   .mini-7day-events-overlay .mini-event-bar {
     position: absolute;
     height: 16px;
@@ -2728,14 +2744,15 @@
   .task-tags-row .task-tag.applied { box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
   .task-tags-row .task-tag.applied .tag-remove { margin-left: 4px; opacity: 0.7; font-weight: 700; }
   .task-tags-row .task-tag.applied:hover { filter: brightness(0.95); }
-  /* "Available" suggested tags: outline only, white inside, lower opacity to fade vs applied. */
+  /* "Available" suggested tags: keep the tag's own bg+text (so light-text tags stay readable)
+     but dim with opacity and add a dashed outline to distinguish them from applied tags. */
   .task-tags-row .task-tag.suggest {
-    background: transparent !important;
-    border: 1px dashed currentColor;
     opacity: 0.55;
+    outline: 1px dashed rgba(0,0,0,0.30);
+    outline-offset: -1px;
     font-weight: 500;
   }
-  .task-tags-row .task-tag.suggest:hover { opacity: 1; transform: scale(1.04); }
+  .task-tags-row .task-tag.suggest:hover { opacity: 1; transform: scale(1.04); outline-color: rgba(0,0,0,0.50); }
   .task-tags-row .task-tags-divider {
     display: inline-flex; align-items: center;
     height: 16px; width: 1px; background: #d8d6d1;
@@ -4937,7 +4954,7 @@ function render() {
       STORE.tasks.push({
         id: uid(), subject: text, completed: false,
         responsibleId: isUnassigned ? "" : pid, responsibleRaw: respPerson ? respPerson.email : "",
-        proposedById: "U07E6NHMLBV", proposedByRaw: "bernat@bookline.ai",
+        proposedById: "", proposedByRaw: "", proposedByIds: [],
         priority: "Media", type: "", dueDate: "",
         slackStatus: "Proposed",
         dedicatedHours: 0, estimatedHours: 0, shareWith: "", extraComments: "", sharing: false,
@@ -5545,7 +5562,7 @@ function applyGroupModeToModal(isGroup) {
 function openModal(tid, overrides) {
   let t;
   if (tid === "new") {
-    t = { id: uid(), subject: "", completed: false, responsibleId: currentPersonIds.size === 1 ? Array.from(currentPersonIds)[0] : "U07E6NHMLBV", responsibleRaw: "", proposedById: "U07E6NHMLBV", proposedByRaw: "bernat@bookline.ai", priority: "", type: "", dueDate: "", slackStatus: "Proposed", dedicatedHours: "", estimatedHours: "", shareWith: "", extraComments: "", sharing: false, isGroup: false, groupId: "", _pendingSync: true, _createdLocal: Date.now(), _isNew: true };
+    t = { id: uid(), subject: "", completed: false, responsibleId: currentPersonIds.size === 1 ? Array.from(currentPersonIds)[0] : "", responsibleRaw: "", proposedById: "", proposedByRaw: "", proposedByIds: [], priority: "", type: "", dueDate: "", slackStatus: "Proposed", dedicatedHours: "", estimatedHours: "", shareWith: "", extraComments: "", sharing: false, isGroup: false, groupId: "", _pendingSync: true, _createdLocal: Date.now(), _isNew: true };
     if (overrides && typeof overrides === 'object') Object.assign(t, overrides);
   } else {
     t = STORE.tasks.find(x => x.id === tid);
@@ -11134,6 +11151,9 @@ function renderProfileRoadmapCard(rm, personId) {
   // Mini 7-day calendar — wrapper holds day cells + absolute overlay so multi-day bars span continuously
   html += '<div class="mini-7day-wrap">';
   html += '<div class="mini-7day">';
+  // Track non-working columns so we can render a stripes overlay ABOVE the task bars
+  // (visible even when a bar crosses a weekend/holiday/time-off cell).
+  const noWorkingCols = [];
   days.forEach((d, idx) => {
     const wd = d.getDay();
     const wdMon = (wd + 6) % 7;
@@ -11154,6 +11174,8 @@ function renderProfileRoadmapCard(rm, personId) {
       html += '<div class="mini-hol" title="' + escapeHtml(hol) + '">' + escapeHtml(hol) + '</div>';
     }
     html += '</div>';   // .mini-day
+    if (timeOff)                     noWorkingCols.push({ idx, type: 'time-off' });
+    else if ((isWeekend && !worked) || (hol && !worked)) noWorkingCols.push({ idx, type: 'weekend' });
   });
   html += '</div>';   // .mini-7day (grid of day cells)
   // ----- Continuous events overlay: spans days as single bars, no gap breaks -----
@@ -11229,6 +11251,18 @@ function renderProfileRoadmapCard(rm, personId) {
     html += '<div class="' + cls + '" style="background:' + color + '; left:calc(' + leftPct + '% + 2px); width:calc(' + widthPct + '% - 4px); top:' + top + 'px" title="' + escapeHtml(labelText) + '" data-tid="' + task.id + '">' + chev + escapeHtml(labelText) + '</div>';
   });
   html += '</div>';   // .mini-7day-events-overlay
+  // Stripes overlay — sits on top of the events overlay so weekends/holidays/time-off
+  // patterns remain visible when task bars cross those day cells.
+  if (noWorkingCols.length > 0) {
+    html += '<div class="mini-7day-noworking-overlay">';
+    noWorkingCols.forEach(({ idx, type }) => {
+      const leftPct  = (idx / 7) * 100;
+      const widthPct = (1   / 7) * 100;
+      const cls = 'mini-noworking-stripe' + (type === 'time-off' ? ' time-off' : '');
+      html += '<div class="' + cls + '" style="left:calc(' + leftPct + '% + 1px); width:calc(' + widthPct + '% - 2px)"></div>';
+    });
+    html += '</div>';
+  }
   html += '</div>';   // .mini-7day-wrap
   html += '</div>';   // .profile-rm-card
   return html;
