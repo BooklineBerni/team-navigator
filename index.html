@@ -1505,6 +1505,27 @@
 
   /* Profile page */
   #view-profile { padding-top: 18px; }
+  /* === Profile: personal roadmap (6-month horizontal Gantt) === */
+  .profile-pr-wrap { margin-top: 8px; }
+  .profile-pr-toolbar {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 8px;
+  }
+  .profile-pr-nav { display: inline-flex; align-items: center; gap: 6px; }
+  .profile-pr-btn {
+    appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a;
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: inherit;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .profile-pr-btn:hover { background: #f0efeb; }
+  .profile-pr-today-btn { width: auto; padding: 0 12px; font-size: 12px; font-weight: 600; }
+  .profile-pr-period { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .profile-pr-gantt .cal-year-headers,
+  .profile-pr-gantt .cal-year-track-bg,
+  .profile-pr-gantt .cal-year-row { grid-template-columns: 200px 1fr; }
+  .profile-pr-gantt .cal-year-label { font-size: 12px; padding: 3px 8px; }
+  .profile-pr-gantt .cal-year-track { height: 24px; }
+  .profile-pr-gantt .cal-year-bar { top: 3px; height: 18px; line-height: 18px; font-size: 10.5px; }
   #view-roadmaps { padding-top: 18px; }
   #view-members { padding-top: 18px; }
   #view-requests { padding-top: 18px; }
@@ -10376,6 +10397,9 @@ let profilePickerOpen = false;
 let profilePickerSearch = "";
 let profileTasksCollapsed = (localStorage.getItem("bookline-profileTasksCollapsed") !== "0"); // collapsed by default
 let profileRoadmapsCollapsed = (localStorage.getItem("bookline-profileRoadmapsCollapsed") === "1");
+// Personal "6 MFN" roadmap inside the profile — horizontal Gantt across 6 rolling months.
+let profilePersonalRoadmapCollapsed = (localStorage.getItem("bookline-profilePersonalRoadmapCollapsed") === "1");
+let profilePersonalRoadmapOffset = 0;  // months from "current month" (0 = starting at the month we're in)
 const profileCollapsedGroups = new Set(JSON.parse(localStorage.getItem("bookline-profileCollapsedGroups") || "[]"));
 
 function setProfilePerson(id) {
@@ -10545,6 +10569,17 @@ function renderProfilePage() {
   });
   html += '</div>';
 
+  // Personal roadmap (6 MFN-style horizontal Gantt of this person's tasks, collapsible).
+  // Counts only tasks that fall within the visible 6-month window.
+  const _prCounts = renderProfilePersonalRoadmapCount(personTasks);
+  html += '<div class="profile-section-title profile-section-toggle" id="profilePersonalRoadmapToggle">' +
+    '<span><span class="caret">' + (profilePersonalRoadmapCollapsed ? '▸' : '▾') + '</span> Personal roadmap <span style="font-weight:500;color:#9a9a9a;font-size:11px;margin-left:6px">(6 months)</span></span>' +
+    '<span class="count">' + _prCounts.visible + '</span>' +
+    '</div>';
+  if (!profilePersonalRoadmapCollapsed) {
+    html += renderProfilePersonalRoadmap(personTasks);
+  }
+
   // Roadmaps section (collapsible)
   html += '<div class="profile-section-title profile-section-toggle" id="profileRoadmapsToggle">' +
     '<span><span class="caret">' + (profileRoadmapsCollapsed ? '▸' : '▾') + '</span> Roadmaps</span>' +
@@ -10584,6 +10619,170 @@ function renderProfilePage() {
   wireProfilePicker();
   wireProfileHeader(person);
   wireProfileTasks();
+  wireProfilePersonalRoadmap(personTasks);
+}
+
+// ===== Personal roadmap (6-month horizontal Gantt of the profile person's tasks) =====
+// Returns the set of events visible in the current 6-month window.
+function _profilePersonalRoadmapBuildEvents(personTasks) {
+  const baseDate = new Date(); baseDate.setHours(0,0,0,0);
+  const firstOfMonth = new Date(baseDate.getFullYear(), baseDate.getMonth() + profilePersonalRoadmapOffset, 1);
+  const lastOfMonth  = new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth() + 6, 0);
+  const yearStartMs = firstOfMonth.getTime();
+  const yearEndMs   = lastOfMonth.getTime();
+  const events = [];
+  (personTasks || []).forEach(t => {
+    let sStr = t.startDate || '';
+    let eStr = t.endDate   || '';
+    if ((!sStr || !eStr) && typeof effectiveDatesForTask === 'function') {
+      try {
+        const eff = effectiveDatesForTask(t);
+        if (!sStr && eff.startStr) sStr = eff.startStr;
+        if (!eStr && eff.endStr)   eStr = eff.endStr;
+      } catch (_) {}
+    }
+    let sD = sStr ? parseDate(sStr) : null;
+    let eD = eStr ? parseDate(eStr) : null;
+    if (!sD && !eD) return;
+    if (!sD) sD = eD;
+    if (!eD) eD = sD;
+    if (eD < sD) return;
+    if (eD.getTime() < yearStartMs || sD.getTime() > yearEndMs) return;
+    events.push({ task: t, start: sD, end: eD });
+  });
+  events.sort((a, b) => a.start - b.start || (a.task.subject || '').localeCompare(b.task.subject || ''));
+  return { events, firstOfMonth, lastOfMonth, yearStartMs, yearEndMs };
+}
+
+function renderProfilePersonalRoadmapCount(personTasks) {
+  const { events } = _profilePersonalRoadmapBuildEvents(personTasks);
+  return { visible: events.length };
+}
+
+function renderProfilePersonalRoadmap(personTasks) {
+  const { events, firstOfMonth, yearStartMs, yearEndMs } = _profilePersonalRoadmapBuildEvents(personTasks);
+  const daysInYear = Math.round((yearEndMs - yearStartMs) / DAY_MS) + 1;
+  const monthCount = 6;
+  const monthStarts = [];
+  const monthDays   = [];
+  for (let mi = 0; mi < monthCount; mi++) {
+    const ms = new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth() + mi, 1);
+    const me = new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth() + mi + 1, 0);
+    monthStarts.push(ms);
+    monthDays.push(me.getDate());
+  }
+  const monthsGridTemplate = monthDays.map(d => d + 'fr').join(' ');
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const statusColors = {
+    "": "#cbd5e1",
+    "Waiting": "#38bdf8", "Proposed": "#1d4ed8", "Later / Next": "#dc2626",
+    "In Progress": "#f97316", "Under Review": "#7c3aed", "Completed": "#16a34a",
+    "Archived": "#a98c5a", "Discarded": "#9a9a9a"
+  };
+  function _toRgba(hex, a) {
+    const h = (hex && hex.length === 4) ? ('#' + hex[1]+hex[1]+hex[2]+hex[2]+hex[3]+hex[3]) : hex;
+    if (!h || h[0] !== '#') return 'rgba(217,119,6,' + a + ')';
+    const r2 = parseInt(h.slice(1,3),16), g2 = parseInt(h.slice(3,5),16), b2 = parseInt(h.slice(5,7),16);
+    return 'rgba(' + r2 + ',' + g2 + ',' + b2 + ',' + a + ')';
+  }
+  // Header label + nav controls
+  const periodLabel = monthNames[firstOfMonth.getMonth()] + ' ' + firstOfMonth.getFullYear()
+    + ' — ' + monthNames[monthStarts[monthCount-1].getMonth()] + ' ' + monthStarts[monthCount-1].getFullYear();
+  let html = '<div class="profile-pr-wrap">';
+  html += '<div class="profile-pr-toolbar">' +
+    '<div class="profile-pr-nav">' +
+      '<button type="button" class="profile-pr-btn" id="profilePrPrev" title="Previous month">‹</button>' +
+      '<button type="button" class="profile-pr-btn profile-pr-today-btn" id="profilePrToday" title="Reset to current month">Today</button>' +
+      '<button type="button" class="profile-pr-btn" id="profilePrNext" title="Next month">›</button>' +
+    '</div>' +
+    '<div class="profile-pr-period">' + escapeHtml(periodLabel) + '</div>' +
+    '</div>';
+  // Today line position (only visible if today falls inside the range)
+  const today = new Date(); today.setHours(0,0,0,0);
+  let todayLineHtml = '';
+  if (today.getTime() >= yearStartMs && today.getTime() <= yearEndMs) {
+    const off = Math.round((today.getTime() - yearStartMs) / DAY_MS);
+    const leftPct = (off / daysInYear) * 100;
+    todayLineHtml = '<div class="cal-year-today-line" style="left:calc(' + leftPct + '% )"></div>';
+  }
+  html += '<div class="cal-year profile-pr-gantt">';
+  html += '<div class="cal-year-headers">' +
+            '<div class="cal-year-label-spacer"></div>' +
+            '<div class="cal-year-months" style="grid-template-columns: ' + monthsGridTemplate + '">';
+  for (let mi = 0; mi < monthCount; mi++) {
+    const ms = monthStarts[mi];
+    const lbl = monthNames[ms.getMonth()] + ' ' + String(ms.getFullYear()).slice(2);
+    html += '<div class="cal-year-month-cell">' + lbl + '</div>';
+  }
+  html += '</div></div>';
+  html += '<div class="cal-year-rows-wrap">';
+  html += '<div class="cal-year-track-bg"><div class="cal-year-months-bg" style="grid-template-columns: ' + monthsGridTemplate + '">';
+  for (let mi = 0; mi < monthCount; mi++) {
+    html += '<div class="cal-year-month-bg' + (mi % 2 ? ' alt' : '') + '"></div>';
+  }
+  html += todayLineHtml + '</div></div>';
+  html += '<div class="cal-year-rows">';
+  if (events.length === 0) {
+    html += '<div class="rm-empty" style="margin:14px">No scheduled tasks in this range.</div>';
+  } else {
+    events.forEach(ev => {
+      const isG = !!ev.task.isGroup;
+      const startMs = Math.max(ev.start.getTime(), yearStartMs);
+      const endMs   = Math.min(ev.end.getTime(),   yearEndMs);
+      if (endMs < startMs) return;
+      const off = Math.round((startMs - yearStartMs) / DAY_MS);
+      const span = Math.round((endMs - startMs) / DAY_MS) + 1;
+      const leftPct  = (off  / daysInYear) * 100;
+      const widthPct = (span / daysInYear) * 100;
+      const stHex = statusColors[ev.task.slackStatus] || (isG ? '#d97706' : '#1a1a1a');
+      const barStyle = isG
+        ? 'background:' + _toRgba(stHex, 0.18) + '; border:1.5px dashed ' + stHex + '; color:' + stHex + ';'
+        : 'background:' + stHex + '; color:#fff;';
+      const continuesLeft  = ev.start.getTime() < yearStartMs;
+      const continuesRight = ev.end.getTime()   > yearEndMs;
+      const subj = ev.task.subject || '';
+      const tooltip = subj + ' — ' + (ev.task.startDate || '?') + ' → ' + (ev.task.endDate || '?');
+      html += '<div class="cal-year-row' + (isG ? ' is-group' : '') + '" data-tid="' + escapeHtml(ev.task.id) + '">' +
+        '<div class="cal-year-label" title="' + escapeHtml(subj) + '" style="padding-left:8px">' +
+          (isG ? '<span class="folder-emoji">📁</span> ' : '') +
+          '<span class="cal-year-label-text">' + escapeHtml(subj.slice(0,42)) + (subj.length > 42 ? '…' : '') + '</span>' +
+        '</div>' +
+        '<div class="cal-year-track">' +
+          '<div class="cal-event cal-year-bar profile-pr-bar' + (isG ? ' cal-event-group' : '') + '" data-tid="' + escapeHtml(ev.task.id) + '" title="' + escapeHtml(tooltip) + '" style="left:' + leftPct + '%; width:' + widthPct + '%; ' + barStyle + '">' +
+            (continuesLeft ? '◂ ' : '') + escapeHtml(subj) + (continuesRight ? ' ▸' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    });
+  }
+  html += '</div></div></div>';   // rows / wrap / cal-year
+  html += '</div>';   // profile-pr-wrap
+  return html;
+}
+
+function wireProfilePersonalRoadmap(personTasks) {
+  const head = document.getElementById('profilePersonalRoadmapToggle');
+  if (head) {
+    head.addEventListener('click', () => {
+      profilePersonalRoadmapCollapsed = !profilePersonalRoadmapCollapsed;
+      localStorage.setItem('bookline-profilePersonalRoadmapCollapsed', profilePersonalRoadmapCollapsed ? '1' : '0');
+      renderProfilePage();
+    });
+  }
+  const prev  = document.getElementById('profilePrPrev');
+  const next  = document.getElementById('profilePrNext');
+  const today = document.getElementById('profilePrToday');
+  if (prev)  prev.addEventListener('click', () => { profilePersonalRoadmapOffset -= 1; renderProfilePage(); });
+  if (next)  next.addEventListener('click', () => { profilePersonalRoadmapOffset += 1; renderProfilePage(); });
+  if (today) today.addEventListener('click', () => { profilePersonalRoadmapOffset = 0; renderProfilePage(); });
+  // Click on a bar → open the task modal
+  document.querySelectorAll('#profilePageContent .profile-pr-bar').forEach(bar => {
+    bar.addEventListener('click', e => {
+      e.stopPropagation();
+      const tid = bar.dataset.tid;
+      if (tid && typeof openModal === 'function') openModal(tid);
+    });
+  });
 }
 
 function buildProfilePickerTrigger(person) {
