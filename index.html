@@ -2153,6 +2153,31 @@
   .modal { background: #fff; border-radius: 14px; max-width: 640px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
   .modal h2 { margin: 0 0 16px; font-size: 18px; font-weight: 650; }
   .modal .close-x { float: right; cursor: pointer; opacity: .5; font-size: 22px; line-height: 1; padding: 0 4px; }
+  /* Title bar inside the task modal: title left, inline task tags middle, × right */
+  .modal-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px;
+  }
+  .modal-header h2 { margin: 0; }
+  .modal-header .close-x { float: none; margin-left: auto; flex-shrink: 0; }
+  .modal-header .task-tags-row {
+    flex: 1; min-width: 0;
+    overflow-x: auto; overflow-y: hidden;
+    padding: 2px 0; margin: 0;
+    flex-wrap: nowrap;
+    scrollbar-width: thin;
+  }
+  .modal-header .task-tags-row::-webkit-scrollbar { height: 6px; }
+  .modal-header .task-tags-row::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 3px; }
+  /* Side-by-side rows of fields inside the modal (different from .field-row which is a strict 1fr 1fr grid) */
+  .bn-modal-row {
+    display: flex; gap: 12px; align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  .bn-modal-row > .field { margin-bottom: 0; }
+  /* Standalone Task dates row: drops the leading "Task dates" label pill since the field now has its own label */
+  .bn-quick-apply--standalone { padding-left: 0; }
+  .bn-quick-apply--standalone .bn-quick-apply-lbl { display: none; }
   .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
   .field label { font-size: 11px; color: #6b6b6b; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; }
   .field input, .field select, .field textarea { border: 1px solid #d8d6d1; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; background: #fff; }
@@ -3251,8 +3276,15 @@
 
 <div class="modal-bg" id="modalBg">
   <div class="modal" id="modal">
-    <span class="close-x" onclick="closeModal()">&times;</span>
-    <h2 id="modalTitle">Edit task</h2>
+    <!-- Header: title on left, inline task tags in the middle, close × on the right.
+         Task tags here render in a single horizontally-scrolling row so they never push the body down. -->
+    <div class="modal-header f_taskOnlyRow">
+      <h2 id="modalTitle">Edit task</h2>
+      <div id="f_taskTagsContainer" class="task-tags-row task-tags-row--header"></div>
+      <span class="close-x" onclick="closeModal()">&times;</span>
+    </div>
+    <!-- Suggested tags still render inline within #f_taskTagsContainer, after a divider. -->
+    <div id="f_presetTaskTagsContainer" style="display:none"></div>
     <div class="field"><label>Title <span style="color:#dc2626">*</span></label><input type="text" id="f_subject"></div>
     <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
     <div class="field-row-3 f_taskOnlyRow">
@@ -3302,62 +3334,67 @@
         </div>
       </div>
     </div>
-    <div class="field f_taskOnlyRow">
-      <label>Share with <span style="color:#dc2626">*</span></label>
-      <div class="bn-cp-box" data-cp-id="f_shareWith" style="max-width:240px">
-        <div class="bn-cp-chip" tabindex="0"><span class="bn-cp-label">(empty)</span><span class="bn-cp-caret">▾</span></div>
-        <div class="bn-cp-dropdown" style="display:none"></div>
-        <input type="hidden" id="f_shareWith" value="">
+    <!-- Roadmaps (left, flex:1) + Share with (right, fixed width). -->
+    <div class="bn-modal-row">
+      <div class="field" id="f_roadmapsField" style="flex:1; min-width:0">
+        <label>Roadmaps</label>
+        <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
+        <div id="f_addRoadmapBox" class="rm-add-box">
+          <div id="f_addRoadmapChip" class="rm-add-chip" tabindex="0">+ Add to roadmap…</div>
+          <div id="f_addRoadmapDropdown" class="rm-add-dropdown" style="display:none">
+            <input type="text" id="f_addRoadmapInput" class="rm-add-search" placeholder="Search a roadmap…" autocomplete="off">
+            <div id="f_addRoadmapList" class="rm-add-list"></div>
+          </div>
+          <input type="hidden" id="f_addRoadmapSel" value="">
+        </div>
+      </div>
+      <div class="field f_taskOnlyRow" style="width:220px; flex-shrink:0">
+        <label>Share with <span style="color:#dc2626">*</span></label>
+        <div class="bn-cp-box" data-cp-id="f_shareWith">
+          <div class="bn-cp-chip" tabindex="0"><span class="bn-cp-label">(empty)</span><span class="bn-cp-caret">▾</span></div>
+          <div class="bn-cp-dropdown" style="display:none"></div>
+          <input type="hidden" id="f_shareWith" value="">
+        </div>
       </div>
     </div>
-    <div class="field" id="f_roadmapsField">
-      <label>Roadmaps</label>
-      <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
-      <div id="f_addRoadmapBox" class="rm-add-box">
-        <div id="f_addRoadmapChip" class="rm-add-chip" tabindex="0">+ Add to roadmap…</div>
-        <div id="f_addRoadmapDropdown" class="rm-add-dropdown" style="display:none">
-          <input type="text" id="f_addRoadmapInput" class="rm-add-search" placeholder="Search a roadmap…" autocomplete="off">
-          <div id="f_addRoadmapList" class="rm-add-list"></div>
-        </div>
-        <input type="hidden" id="f_addRoadmapSel" value="">
-      </div>
+    <!-- Task dates (left, flex:1) + Dedicated/Estimated hours (right). -->
+    <div class="bn-modal-row">
       <!-- Task dates — auto-saves every change to task.startDate / task.endDate / task.durationDays /
            anchors / source labels. All roadmaps the task is in read these task-level values. -->
-      <div id="f_taskDatesRow" class="bn-quick-apply" style="margin-top:10px">
-        <span class="bn-quick-apply-lbl">Task dates</span>
-        <div class="bn-quick-apply-inputs">
-          <div class="bn-quick-apply-cell">
-            <div class="bn-quick-apply-input-wrap">
-              <button type="button" id="f_taskDatesStartPin" class="bn-quick-apply-pin" title="Use another task's aggregated start/end as this Start">📌</button>
-              <input type="date" id="f_taskDatesStart" class="bn-quick-apply-input" title="Start">
+      <div class="field" style="flex:1; min-width:0">
+        <label>Task dates</label>
+        <div id="f_taskDatesRow" class="bn-quick-apply bn-quick-apply--standalone">
+          <div class="bn-quick-apply-inputs">
+            <div class="bn-quick-apply-cell">
+              <div class="bn-quick-apply-input-wrap">
+                <button type="button" id="f_taskDatesStartPin" class="bn-quick-apply-pin" title="Use another task's aggregated start/end as this Start">📌</button>
+                <input type="date" id="f_taskDatesStart" class="bn-quick-apply-input" title="Start">
+              </div>
+              <div id="f_taskDatesStartSrc" class="bn-quick-apply-src" style="display:none"></div>
             </div>
-            <div id="f_taskDatesStartSrc" class="bn-quick-apply-src" style="display:none"></div>
-          </div>
-          <div class="bn-quick-apply-cell bn-quick-apply-days-cell">
-            <div class="bn-quick-apply-input-wrap">
-              <input type="number" id="f_taskDatesDays" class="bn-quick-apply-input bn-quick-apply-days" min="1" step="1" placeholder="N" title="Duration in days (inclusive). Sets End = Start + (N − 1) days.">
-              <span class="bn-quick-apply-days-unit">days</span>
+            <div class="bn-quick-apply-cell bn-quick-apply-days-cell">
+              <div class="bn-quick-apply-input-wrap">
+                <input type="number" id="f_taskDatesDays" class="bn-quick-apply-input bn-quick-apply-days" min="1" step="1" placeholder="N" title="Duration in days (inclusive). Sets End = Start + (N − 1) days.">
+                <span class="bn-quick-apply-days-unit">days</span>
+              </div>
+            </div>
+            <div class="bn-quick-apply-cell">
+              <div class="bn-quick-apply-input-wrap">
+                <input type="date" id="f_taskDatesEnd" class="bn-quick-apply-input" title="End">
+                <button type="button" id="f_taskDatesEndPin" class="bn-quick-apply-pin" title="Use another task's aggregated start/end as this End">📌</button>
+              </div>
+              <div id="f_taskDatesEndSrc" class="bn-quick-apply-src" style="display:none"></div>
             </div>
           </div>
-          <div class="bn-quick-apply-cell">
-            <div class="bn-quick-apply-input-wrap">
-              <input type="date" id="f_taskDatesEnd" class="bn-quick-apply-input" title="End">
-              <button type="button" id="f_taskDatesEndPin" class="bn-quick-apply-pin" title="Use another task's aggregated start/end as this End">📌</button>
-            </div>
-            <div id="f_taskDatesEndSrc" class="bn-quick-apply-src" style="display:none"></div>
-          </div>
+          <span id="f_taskDatesFeedback" class="bn-quick-apply-feedback" style="display:none"></span>
         </div>
-        <span id="f_taskDatesFeedback" class="bn-quick-apply-feedback" style="display:none"></span>
       </div>
-    </div>
-    <div class="field-row f_taskOnlyRow">
-      <div class="field"><label>Dedicated hours</label><input type="number" id="f_dedicatedHours" step="0.5" min="0"></div>
-      <div class="field"><label>Estimated hours</label><input type="number" id="f_estimatedHours" step="0.5" min="0"></div>
-    </div>
-    <div class="field f_taskOnlyRow"><label>Task tags</label>
-      <div id="f_taskTagsContainer" class="task-tags-row"></div>
-      <!-- Suggested tags are now rendered inline inside f_taskTagsContainer, after a divider. -->
-      <div id="f_presetTaskTagsContainer" style="display:none"></div>
+      <div class="field f_taskOnlyRow" style="width:100px; flex-shrink:0">
+        <label>Dedicated h.</label><input type="number" id="f_dedicatedHours" step="0.5" min="0">
+      </div>
+      <div class="field f_taskOnlyRow" style="width:100px; flex-shrink:0">
+        <label>Estimated h.</label><input type="number" id="f_estimatedHours" step="0.5" min="0">
+      </div>
     </div>
     <div class="field" id="f_groupRow" style="display:none">
       <label>Group (optional)</label>
