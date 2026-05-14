@@ -5340,60 +5340,52 @@ function bnEndFromStartAndDuration(startStr, n) {
       srcEl.innerHTML = '';
     }
   }
-  // Pre-fill from the task and entries — uses the SAME logic the Aggregated display uses
-  // so the new "Task dates" row shows exactly the same pills as the aggregate.
+  // Pre-fill from the task. Displays the RESOLVED dates (anchors followed) so the "= date" chip
+  // below each pill always shows the real value, even when the literal task.startDate/endDate is
+  // empty. The "N days" pill only activates when the stored durationDays matches the actual span.
   window.__refreshTaskDatesRowFromTask = function(t) {
     row.style.display = '';
-    startEl.value = (t && t.startDate) || '';
-    endEl.value   = (t && t.endDate)   || '';
-    // Days input default: if the task has a stored durationDays, use it. Otherwise show the
-    // inclusive total between start and end as a hint (without activating the "N days" pill —
-    // that only kicks in when the user actually edits the days input).
-    if (daysEl) {
-      let daysDefault = '';
-      if (t && typeof t.durationDays === 'number' && t.durationDays >= 1) {
-        daysDefault = String(t.durationDays);
-      } else if (t && t.startDate && t.endDate) {
-        const n = bnDaysInclusive(t.startDate, t.endDate);
-        if (n > 0) daysDefault = String(n);
-      }
-      daysEl.value = daysDefault;
+    const r = t ? effectiveDatesForTask(t) : { startStr: '', endStr: '' };
+    startEl.value = r.startStr || '';
+    endEl.value   = r.endStr   || '';
+    const cDays = (r.startStr && r.endStr) ? bnDaysInclusive(r.startStr, r.endStr) : 0;
+    // Days input: always show the actual span as a hint. The "N days" pill is activated separately
+    // below when (and only when) the user has explicitly stored a matching durationDays.
+    if (daysEl) daysEl.value = cDays > 0 ? String(cDays) : '';
+    function _matchesDays(lbl) {
+      if (!lbl) return false;
+      const m = lbl.match(/^(\d+)\s+day/);
+      if (!m) return false;
+      return parseInt(m[1], 10) === cDays;
     }
-    // Compute the common pill across roadmap entries — exact same path as the Aggregated row.
-    function commonLabel(arr) {
-      if (arr.length === 0) return '';
-      const first = arr[0];
-      if (!first) return '';
-      return arr.every(x => x === first) ? first : '';
-    }
-    let sLbl = '', sTid = '', eLbl = '', eTid = '';
-    if (t) {
-      const entries = (STORE.roadmaps || [])
-        .map(rm => (rm.tasks || []).find(x => x.taskId === t.id))
-        .filter(Boolean);
-      if (entries.length > 0) {
-        const sLabels = entries.map(e => bnDeriveSrcLabel(e, 'start'));
-        const sTids   = entries.map(e => bnDeriveSrcTaskId(e, 'start'));
-        const eLabels = entries.map(e => {
-          const d = bnDeriveSrcLabel(e, 'end');
-          if (d) return d;
-          if (typeof e.durationDays === 'number' && e.durationDays >= 1) {
-            return e.durationDays + ' day' + (e.durationDays === 1 ? '' : 's');
-          }
-          return '';
-        });
-        const eTids = entries.map(e => bnDeriveSrcTaskId(e, 'end'));
-        sLbl = commonLabel(sLabels);
-        sTid = commonLabel(sTids);
-        eLbl = commonLabel(eLabels);
-        eTid = commonLabel(eTids);
+    // Pills come from task fields. Fall back to deriving from task anchors when the explicit label
+    // is missing (so anchors set via the roadmap calendar still surface as pills).
+    let sLbl = (t && t.startSrcLabel) || '';
+    let sTid = (t && t.startSrcTaskId) || '';
+    if (!sLbl && t && t.startAnchor) {
+      const ref = parseAnchorRefGlobal({ taskId: t.id }, t.startAnchor);
+      if (ref) {
+        const tt = (STORE.tasks || []).find(x => x.id === ref.taskId);
+        if (tt) { sLbl = ref.side + ' of ' + (tt.subject || ''); sTid = ref.taskId; }
       }
-      // Fall back to task-level fields if entries didn't yield a common label.
-      if (!sLbl && t.startSrcLabel) { sLbl = t.startSrcLabel; sTid = t.startSrcTaskId || ''; }
-      if (!eLbl && t.endSrcLabel)   { eLbl = t.endSrcLabel;   eTid = t.endSrcTaskId   || ''; }
-      // Last resort for End: task.durationDays
-      if (!eLbl && typeof t.durationDays === 'number' && t.durationDays >= 1) {
-        eLbl = t.durationDays + ' day' + (t.durationDays === 1 ? '' : 's');
+    }
+    let eLbl = (t && t.endSrcLabel) || '';
+    let eTid = (t && t.endSrcTaskId) || '';
+    if (!eLbl && t && t.endAnchor) {
+      const ref = parseAnchorRefGlobal({ taskId: t.id }, t.endAnchor);
+      if (ref) {
+        const tt = (STORE.tasks || []).find(x => x.id === ref.taskId);
+        if (tt) { eLbl = ref.side + ' of ' + (tt.subject || ''); eTid = ref.taskId; }
+      }
+    }
+    // Stale "N days" label (stored value no longer matches the actual span)? Drop it.
+    if (eLbl && /^\d+\s+day/.test(eLbl) && !_matchesDays(eLbl)) { eLbl = ''; eTid = ''; }
+    if (sLbl && /^\d+\s+day/.test(sLbl) && !_matchesDays(sLbl)) { sLbl = ''; sTid = ''; }
+    // If end still has no source but durationDays matches the span, show "N days" pill.
+    if (!eLbl) {
+      const sDays = (t && typeof t.durationDays === 'number' && t.durationDays >= 1) ? t.durationDays : 0;
+      if (sDays > 0 && sDays === cDays) {
+        eLbl = cDays + ' day' + (cDays === 1 ? '' : 's');
       }
     }
     setSourceChip(sSrcEl, sLbl, sTid);
@@ -5605,10 +5597,20 @@ window.__renderTaskAggregatedSchedule = function(t) {
     return '';
   });
   const endTids = entries.map(({ entry }) => bnDeriveSrcTaskId(entry, 'end'));
-  const commonStartLbl = commonLabel(startLabels);
-  const commonStartTid = commonLabel(startTids);
-  const commonEndLbl = commonLabel(endLabels);
-  const commonEndTid = commonLabel(endTids);
+  let commonStartLbl = commonLabel(startLabels);
+  let commonStartTid = commonLabel(startTids);
+  let commonEndLbl = commonLabel(endLabels);
+  let commonEndTid = commonLabel(endTids);
+  // Drop stale "N days" pills whose number doesn't match the actual aggregated span.
+  const cDays = (aggStart && aggEnd) ? bnDaysInclusive(aggStart, aggEnd) : 0;
+  function _stale(lbl) {
+    if (!lbl) return false;
+    const m = lbl.match(/^(\d+)\s+day/);
+    if (!m) return false;
+    return parseInt(m[1], 10) !== cDays;
+  }
+  if (_stale(commonStartLbl)) { commonStartLbl = ''; commonStartTid = ''; }
+  if (_stale(commonEndLbl))   { commonEndLbl   = ''; commonEndTid   = ''; }
   setPill(startPill, commonStartLbl, commonStartTid);
   setPill(endPill,   commonEndLbl,   commonEndTid);
 };
