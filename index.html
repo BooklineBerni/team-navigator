@@ -2160,7 +2160,17 @@
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
   .checkbox-field { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-  .modal-actions { display: flex; gap: 8px; justify-content: space-between; margin-top: 16px; padding-top: 14px; border-top: 1px solid #eee; }
+  .modal-actions {
+    display: flex; gap: 8px; justify-content: space-between;
+    margin: 16px -24px -24px;
+    padding: 14px 24px;
+    border-top: 1px solid #eee;
+    background: #fff;
+    position: sticky;
+    bottom: -24px;
+    z-index: 5;
+    box-shadow: 0 -6px 12px -10px rgba(0,0,0,0.25);
+  }
 
   /* Info banners */
   .info-banner { background: #fffbeb; border: 1px solid #fde68a; color: #713f12; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; margin-bottom: 14px; }
@@ -2561,6 +2571,38 @@
   .subtask-suggestion .subtask-status[data-status="Completed"]     { background: #a7f3d0; color: #027a48; }
   .subtask-suggestion .subtask-status[data-status="Archived"]      { background: #d6c5a8; color: #78350f; }
   .subtask-suggestion .subtask-status[data-status="Discarded"]     { background: #e2e4e7; color: #64748b; }
+
+  /* === Custom colored picklist component (used by status/priority/type/share-with) === */
+  /* Native <option> elements aren't stylable on macOS native popups, so we use a custom chip+dropdown. */
+  .bn-cp-box { position: relative; }
+  .bn-cp-chip {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+    border: 1px solid #d8d6d1; border-radius: 8px;
+    padding: 8px 12px;
+    background: #fff; color: #1a1a1a;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; outline: none;
+    min-height: 36px;
+  }
+  .bn-cp-chip:focus, .bn-cp-chip:hover { filter: brightness(0.98); }
+  .bn-cp-chip .bn-cp-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+  .bn-cp-chip .bn-cp-caret { font-size: 10px; opacity: 0.7; }
+  .bn-cp-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px;
+    background: #fff; border: 1px solid #d8d6d1; border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10); z-index: 100;
+    max-height: 280px; overflow-y: auto; padding: 4px 0;
+  }
+  .bn-cp-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 12px; cursor: pointer;
+    font-size: 13px; font-weight: 600;
+    border-left: 3px solid transparent;
+  }
+  .bn-cp-item:hover { filter: brightness(0.95); border-left-color: rgba(0,0,0,0.25); }
+  .bn-cp-item.active { border-left-color: #1a1a1a; }
+  .bn-cp-item .bn-cp-check { width: 14px; opacity: 0.7; font-size: 11px; }
 
   /* === Combined Task tags row inside the task modal === */
   /* All tags (assigned + available) live in one wrap; clear visual distinction between the two. */
@@ -3212,40 +3254,29 @@
     <span class="close-x" onclick="closeModal()">&times;</span>
     <h2 id="modalTitle">Edit task</h2>
     <div class="field"><label>Title <span style="color:#dc2626">*</span></label><input type="text" id="f_subject"></div>
-    <div class="field" id="f_groupRow" style="display:none">
-      <label>Group (optional)</label>
-      <div id="f_groupBox" class="group-picker-box">
-        <div id="f_groupChip" class="group-picker-chip" tabindex="0">
-          <span class="gp-empty">— No group —</span>
-          <span class="gp-caret">▾</span>
-        </div>
-        <div id="f_groupDropdown" class="group-picker-dropdown" style="display:none">
-          <input type="text" id="f_groupInput" class="group-picker-search" placeholder="Search a group…" autocomplete="off">
-          <div id="f_groupList" class="group-picker-list"></div>
-        </div>
-        <input type="hidden" id="f_groupId" value="">
-      </div>
-    </div>
-    <div class="field f_taskOnlyRow" id="f_statusRow">
-      <label>Status <span style="color:#dc2626">*</span></label><select id="f_slackStatus" class="f-colored-status">
-        <option value="">(empty)</option>
-        <option value="Proposed">Proposed</option><option value="Under Review">Under Review</option>
-        <option value="In Progress">In Progress</option><option value="Waiting">Waiting</option>
-        <option value="Later / Next">Later / Next</option><option value="Completed">Completed</option>
-        <option value="Archived">Archived</option><option value="Discarded">Discarded</option>
-      </select>
-    </div>
+    <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
     <div class="field-row-3 f_taskOnlyRow">
-      <div class="field"><label>Priority <span style="color:#dc2626">*</span></label><select id="f_priority" class="f-colored-prio">
-        <option value="">(empty)</option><option value="Critical">Critical</option>
-        <option value="Alta">Alta</option><option value="Media">Media</option>
-        <option value="Baja">Baja</option><option value="Muy Baja">Muy Baja</option>
-      </select></div>
-      <div class="field"><label>Type <span style="color:#dc2626">*</span></label><select id="f_type" class="f-colored-type">
-        <option value="">(empty)</option><option value="Project">Project</option>
-        <option value="Responsability">Responsability</option><option value="Request">Request</option>
-        <option value="ERROR">ERROR</option><option value="Infinite">Infinite</option>
-      </select></div>
+      <div class="field"><label>Status <span style="color:#dc2626">*</span></label>
+        <div class="bn-cp-box" data-cp-id="f_slackStatus">
+          <div class="bn-cp-chip" tabindex="0"><span class="bn-cp-label">(empty)</span><span class="bn-cp-caret">▾</span></div>
+          <div class="bn-cp-dropdown" style="display:none"></div>
+          <input type="hidden" id="f_slackStatus" value="">
+        </div>
+      </div>
+      <div class="field"><label>Priority <span style="color:#dc2626">*</span></label>
+        <div class="bn-cp-box" data-cp-id="f_priority">
+          <div class="bn-cp-chip" tabindex="0"><span class="bn-cp-label">(empty)</span><span class="bn-cp-caret">▾</span></div>
+          <div class="bn-cp-dropdown" style="display:none"></div>
+          <input type="hidden" id="f_priority" value="">
+        </div>
+      </div>
+      <div class="field"><label>Type <span style="color:#dc2626">*</span></label>
+        <div class="bn-cp-box" data-cp-id="f_type">
+          <div class="bn-cp-chip" tabindex="0"><span class="bn-cp-label">(empty)</span><span class="bn-cp-caret">▾</span></div>
+          <div class="bn-cp-dropdown" style="display:none"></div>
+          <input type="hidden" id="f_type" value="">
+        </div>
+      </div>
     </div>
     <div class="field-row f_taskOnlyRow">
       <div class="field">
@@ -3271,19 +3302,14 @@
         </div>
       </div>
     </div>
-    <div class="field-row-3 f_taskOnlyRow">
-      <div class="field"><label>Dedicated hours</label><input type="number" id="f_dedicatedHours" step="0.5" min="0"></div>
-      <div class="field"><label>Estimated hours</label><input type="number" id="f_estimatedHours" step="0.5" min="0"></div>
-      <div class="field"><label>Share with <span style="color:#dc2626">*</span></label>
-        <select id="f_shareWith" class="f-colored-share">
-          <option value="">(empty)</option>
-          <option value="Private">Private</option>
-          <option value="Team">Team</option>
-          <option value="Everyone">Everyone</option>
-        </select>
+    <div class="field f_taskOnlyRow">
+      <label>Share with <span style="color:#dc2626">*</span></label>
+      <div class="bn-cp-box" data-cp-id="f_shareWith" style="max-width:240px">
+        <div class="bn-cp-chip" tabindex="0"><span class="bn-cp-label">(empty)</span><span class="bn-cp-caret">▾</span></div>
+        <div class="bn-cp-dropdown" style="display:none"></div>
+        <input type="hidden" id="f_shareWith" value="">
       </div>
     </div>
-    <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
     <div class="field" id="f_roadmapsField">
       <label>Roadmaps</label>
       <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
@@ -3324,10 +3350,28 @@
         <span id="f_taskDatesFeedback" class="bn-quick-apply-feedback" style="display:none"></span>
       </div>
     </div>
+    <div class="field-row f_taskOnlyRow">
+      <div class="field"><label>Dedicated hours</label><input type="number" id="f_dedicatedHours" step="0.5" min="0"></div>
+      <div class="field"><label>Estimated hours</label><input type="number" id="f_estimatedHours" step="0.5" min="0"></div>
+    </div>
     <div class="field f_taskOnlyRow"><label>Task tags</label>
       <div id="f_taskTagsContainer" class="task-tags-row"></div>
       <!-- Suggested tags are now rendered inline inside f_taskTagsContainer, after a divider. -->
       <div id="f_presetTaskTagsContainer" style="display:none"></div>
+    </div>
+    <div class="field" id="f_groupRow" style="display:none">
+      <label>Group (optional)</label>
+      <div id="f_groupBox" class="group-picker-box">
+        <div id="f_groupChip" class="group-picker-chip" tabindex="0">
+          <span class="gp-empty">— No group —</span>
+          <span class="gp-caret">▾</span>
+        </div>
+        <div id="f_groupDropdown" class="group-picker-dropdown" style="display:none">
+          <input type="text" id="f_groupInput" class="group-picker-search" placeholder="Search a group…" autocomplete="off">
+          <div id="f_groupList" class="group-picker-list"></div>
+        </div>
+        <input type="hidden" id="f_groupId" value="">
+      </div>
     </div>
     <div class="field" id="f_subtasksField">
       <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none">
@@ -5102,17 +5146,130 @@ function _respPickerCloseDropdown() {
   });
 })();
 
-// Mirror each colored select's value to its data-value attribute so the CSS
-// can paint the background to match the picklist colors (status/priority/type/share).
-(function wireColoredSelects(){
-  const ids = ['f_slackStatus', 'f_priority', 'f_type', 'f_shareWith'];
-  ids.forEach(id => {
-    const sel = document.getElementById(id);
-    if (!sel) return;
-    sel.setAttribute('data-value', sel.value || '');
-    sel.addEventListener('change', () => sel.setAttribute('data-value', sel.value || ''));
+// =========================== Custom colored picklist component ===========================
+// Native <option> elements can't be styled on macOS native popups. We render a custom
+// chip + dropdown that visually applies the option's bg/fg/border, and write the chosen
+// value into a hidden input with the same id as the original <select> so all existing
+// read/write code (e.g. `document.getElementById('f_slackStatus').value`) keeps working.
+const COLORED_PICKLIST_OPTIONS = {
+  f_slackStatus: [
+    { value: '',              label: '(empty)',      bg: '#ffffff', fg: '#6b6b6b', border: '#d8d6d1' },
+    { value: 'Waiting',       label: 'Waiting',      bg: '#e0f2fe', fg: '#0369a1', border: '#7dd3fc' },
+    { value: 'Proposed',      label: 'Proposed',     bg: '#c7d2fe', fg: '#1e3a8a', border: '#818cf8' },
+    { value: 'Under Review',  label: 'Under Review', bg: '#ede9fe', fg: '#5b21b6', border: '#c4b5fd' },
+    { value: 'In Progress',   label: 'In Progress',  bg: '#ffedd5', fg: '#9a3412', border: '#fed7aa' },
+    { value: 'Later / Next',  label: 'Later / Next', bg: '#fee2e2', fg: '#b91c1c', border: '#fca5a5' },
+    { value: 'Completed',     label: 'Completed',    bg: '#ecfdf3', fg: '#027a48', border: '#a7f3d0' },
+    { value: 'Archived',      label: 'Archived',     bg: '#f5efe6', fg: '#78350f', border: '#d6c5a8' },
+    { value: 'Discarded',     label: 'Discarded',    bg: '#f1f5f9', fg: '#64748b', border: '#d8d6d1' },
+  ],
+  f_priority: [
+    { value: '',          label: '(empty)',   bg: '#ffffff', fg: '#6b6b6b', border: '#d8d6d1' },
+    { value: 'Critical',  label: 'Critical',  bg: '#fee4e2', fg: '#b42318', border: '#fecaca' },
+    { value: 'Alta',      label: 'Alta',      bg: '#fef0c7', fg: '#b54708', border: '#fde68a' },
+    { value: 'Media',     label: 'Media',     bg: '#d1fadf', fg: '#027a48', border: '#a7f3d0' },
+    { value: 'Baja',      label: 'Baja',      bg: '#eaecf0', fg: '#475467', border: '#d8d6d1' },
+    { value: 'Muy Baja',  label: 'Muy Baja',  bg: '#f2f4f7', fg: '#98a2b3', border: '#e2e4e7' },
+  ],
+  f_type: [
+    { value: '',               label: '(empty)',        bg: '#ffffff', fg: '#6b6b6b', border: '#d8d6d1' },
+    { value: 'Project',        label: 'Project',        bg: '#f4ebff', fg: '#6941c6', border: '#d6bbfb' },
+    { value: 'Responsability', label: 'Responsability', bg: '#e0eaff', fg: '#3538cd', border: '#c7d7fe' },
+    { value: 'Request',        label: 'Request',        bg: '#ecfdf3', fg: '#027a48', border: '#a7f3d0' },
+    { value: 'ERROR',          label: 'ERROR',          bg: '#fee4e2', fg: '#b42318', border: '#fecaca' },
+    { value: 'Infinite',       label: 'Infinite',       bg: '#fef0c7', fg: '#92400e', border: '#fde68a' },
+  ],
+  f_shareWith: [
+    { value: '',         label: '(empty)',  bg: '#ffffff', fg: '#6b6b6b', border: '#d8d6d1' },
+    { value: 'Private',  label: 'Private',  bg: '#fee2e2', fg: '#b91c1c', border: '#fca5a5' },
+    { value: 'Team',     label: 'Team',     bg: '#cffafe', fg: '#0e7490', border: '#67e8f9' },
+    { value: 'Everyone', label: 'Everyone', bg: '#1a1a1a', fg: '#ffffff', border: '#1a1a1a' },
+  ],
+};
+function setColoredPicker(id, value) {
+  const opts = COLORED_PICKLIST_OPTIONS[id];
+  if (!opts) return;
+  const opt = opts.find(o => o.value === value) || opts[0];
+  const box = document.querySelector('[data-cp-id="' + id + '"]');
+  if (!box) return;
+  const chip = box.querySelector('.bn-cp-chip');
+  const hidden = box.querySelector('input[type="hidden"]');
+  if (hidden) hidden.value = opt.value;
+  if (chip) {
+    chip.style.background = opt.bg;
+    chip.style.color = opt.fg;
+    chip.style.borderColor = opt.border;
+    const labelEl = chip.querySelector('.bn-cp-label');
+    if (labelEl) labelEl.textContent = opt.label;
+    const caretEl = chip.querySelector('.bn-cp-caret');
+    if (caretEl) caretEl.style.color = opt.fg;
+  }
+  // Mark active in dropdown if rendered
+  const dd = box.querySelector('.bn-cp-dropdown');
+  if (dd) {
+    dd.querySelectorAll('.bn-cp-item').forEach(it => {
+      it.classList.toggle('active', it.dataset.value === opt.value);
+    });
+  }
+}
+(function wireColoredPickers(){
+  Object.keys(COLORED_PICKLIST_OPTIONS).forEach(id => {
+    const box = document.querySelector('[data-cp-id="' + id + '"]');
+    if (!box) return;
+    const chip = box.querySelector('.bn-cp-chip');
+    const dd = box.querySelector('.bn-cp-dropdown');
+    if (!chip || !dd) return;
+    // Build items
+    const opts = COLORED_PICKLIST_OPTIONS[id];
+    dd.innerHTML = opts.map(o =>
+      '<div class="bn-cp-item" data-value="' + escapeHtml(o.value) + '" style="background:' + o.bg + '; color:' + o.fg + '">' +
+        '<span class="bn-cp-check">' + '</span>' +
+        '<span>' + escapeHtml(o.label) + '</span>' +
+      '</div>'
+    ).join('');
+    // Wire items
+    dd.querySelectorAll('.bn-cp-item').forEach(it => {
+      it.addEventListener('click', e => {
+        e.stopPropagation();
+        setColoredPicker(id, it.dataset.value);
+        dd.style.display = 'none';
+      });
+    });
+    // Toggle dropdown
+    chip.addEventListener('click', () => {
+      dd.style.display = (dd.style.display === 'none' || !dd.style.display) ? '' : 'none';
+    });
+    chip.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chip.click(); }
+      else if (e.key === 'Escape') dd.style.display = 'none';
+    });
+    // Close on outside click
+    document.addEventListener('click', e => {
+      if (!box.contains(e.target)) dd.style.display = 'none';
+    });
+    // Initial state
+    setColoredPicker(id, '');
+    // Update check mark on each item (set after items render, so the active state initialises)
+    dd.querySelectorAll('.bn-cp-item').forEach(it => {
+      const checkEl = it.querySelector('.bn-cp-check');
+      if (checkEl) checkEl.textContent = '';
+    });
   });
 })();
+// Re-render check marks on the active item whenever selection changes (visual cue inside dropdown).
+const _origSetColoredPicker = setColoredPicker;
+setColoredPicker = function(id, value) {
+  _origSetColoredPicker(id, value);
+  const box = document.querySelector('[data-cp-id="' + id + '"]');
+  if (!box) return;
+  const dd = box.querySelector('.bn-cp-dropdown');
+  if (!dd) return;
+  dd.querySelectorAll('.bn-cp-item').forEach(it => {
+    const check = it.querySelector('.bn-cp-check');
+    if (!check) return;
+    check.textContent = (it.dataset.value === (document.getElementById(id) || {}).value) ? '✓' : '';
+  });
+};
 
 (function wireProposedPicker(){
   const inp = document.getElementById('f_proposedInput');
@@ -5273,15 +5430,9 @@ function openModal(tid, overrides) {
     isGroupCb.title = '';
   }
   refreshGroupSelectOptions(t.groupId || "", t.id);
-  const _statusSel = document.getElementById("f_slackStatus");
-  _statusSel.value = t.slackStatus || "";
-  _statusSel.setAttribute('data-value', _statusSel.value);
-  const _prioSel = document.getElementById("f_priority");
-  _prioSel.value = t.priority || "";
-  _prioSel.setAttribute('data-value', _prioSel.value);
-  const _typeSel = document.getElementById("f_type");
-  _typeSel.value = t.type || "";
-  _typeSel.setAttribute('data-value', _typeSel.value);
+  setColoredPicker('f_slackStatus', t.slackStatus || '');
+  setColoredPicker('f_priority',    t.priority    || '');
+  setColoredPicker('f_type',        t.type        || '');
   // Responsible: searchable photo picker (Team + Supplementary only; Disabled hidden).
   setResponsiblePicker(t.responsibleId || "");
   // Proposed By: support new array model + legacy single id
@@ -5295,9 +5446,7 @@ function openModal(tid, overrides) {
   if (propDd) propDd.style.display = 'none';
   document.getElementById("f_dedicatedHours").value = (t.dedicatedHours === 0 || t.dedicatedHours) ? t.dedicatedHours : "";
   document.getElementById("f_estimatedHours").value = (t.estimatedHours === 0 || t.estimatedHours) ? t.estimatedHours : "";
-  const _shareSel = document.getElementById("f_shareWith");
-  _shareSel.value = t.shareWith || "";
-  _shareSel.setAttribute('data-value', _shareSel.value);
+  setColoredPicker('f_shareWith', t.shareWith || '');
   document.getElementById("f_extraComments").value = t.extraComments || "";
   renderTaskTagsInModal(t);
   renderRoadmapsInModal(t);
