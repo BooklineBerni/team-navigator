@@ -195,6 +195,26 @@
   .badge.due { background: #fff3eb; color: #c2410c; }
   .badge.hours { background: #f0f9ff; color: #075985; }
   .badge.pending-sync { background: #fef3c7; color: #92400e; }
+  /* Proposed-by mini avatars on task cards (small overlap, ring color by person section). */
+  .task-proposers { display: inline-flex; align-items: center; vertical-align: middle; margin-right: 2px; }
+  .task-proposer {
+    width: 18px; height: 18px; border-radius: 50%;
+    overflow: hidden; position: relative;
+    color: #fff; font-weight: 700; font-size: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1.5px #9a9a9a;
+  }
+  .task-proposer + .task-proposer { margin-left: -6px; }
+  .task-proposer img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+  .task-proposer .ini { position: relative; z-index: 0; }
+  /* Section-ring color: Disabled=gray, Bookline=black, Team=cyan, Supplementary=green. */
+  .task-proposer.psec-disabled      { box-shadow: 0 0 0 1.5px #9a9a9a; }
+  .task-proposer.psec-bookline      { box-shadow: 0 0 0 1.5px #1a1a1a; }
+  .task-proposer.psec-team          { box-shadow: 0 0 0 1.5px #06b6d4; }
+  .task-proposer.psec-supplementary { box-shadow: 0 0 0 1.5px #16a34a; }
+  .task-proposer-more { font-size: 10px; color: #6b6b6b; margin-left: 6px; font-weight: 600; }
   .task select { appearance: none; -webkit-appearance: none; border: 1px solid #e2e0db; background: #fff; border-radius: 6px; font-size: 11px; padding: 2px 18px 2px 8px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
   .task .edit-btn { appearance: none; border: none; background: transparent; cursor: pointer; color: #9a9a9a; font-size: 14px; padding: 0 6px; flex-shrink: 0; }
   .task .edit-btn:hover { color: #1a1a1a; }
@@ -3178,6 +3198,7 @@
     <select id="bulkRemoveTagSel" title="Remove a task tag from selected"><option value="">− Remove task tag…</option></select>
     <span class="sep"></span>
     <select id="bulkSetStatus" title="Set status on selected"><option value="">Set status…</option><option value="Proposed">Proposed</option><option value="Under Review">Under Review</option><option value="In Progress">In Progress</option><option value="Waiting">Waiting</option><option value="Later / Next">Later / Next</option><option value="Completed">Completed</option><option value="Archived">Archived</option><option value="Discarded">Discarded</option></select>
+    <select id="bulkSetType" title="Set task type on selected"><option value="">Set type…</option><option value="__empty">(clear)</option><option value="Project">Project</option><option value="Responsability">Responsability</option><option value="Request">Request</option><option value="ERROR">ERROR</option><option value="Infinite">Infinite</option></select>
     <select id="bulkSetResponsible" title="Set responsible on selected"><option value="">Set responsible…</option></select>
     <div class="bulk-rm-wrap" style="position:relative; display:inline-block">
       <button class="bulk-rm-btn" id="bulkSetParentBtn" type="button" title="Nest selected tasks under a parent (a task with subtasks enabled)">📁 Nest under…</button>
@@ -4054,6 +4075,35 @@ function tagBadgeHtml(tag, removable) {
   const klass = style ? "" : "tag-default";
   const x = removable ? '<span class="tag-remove">&times;</span>' : '';
   return '<span class="tag ' + klass + '" style="' + style + '" data-tag="' + escapeHtml(tag) + '">' + escapeHtml(tag) + x + '</span>';
+}
+
+// Mini avatar group rendering the Proposed By people on a task card.
+// Uses the same section colors as the modal's Proposed By chips.
+function renderTaskProposersMini(t) {
+  const ids = Array.isArray(t.proposedByIds) && t.proposedByIds.length > 0
+    ? t.proposedByIds
+    : (t.proposedById ? [t.proposedById] : []);
+  if (ids.length === 0) return '';
+  const names = [];
+  const maxShown = 4;
+  const chipsHtml = ids.slice(0, maxShown).map(pid => {
+    const p = (typeof findPerson === 'function') ? findPerson(pid) : null;
+    if (!p) return '';
+    names.push(p.displayName || p.name || '?');
+    const sec = (typeof getPersonSection === 'function') ? getPersonSection(p.id) : '';
+    const secCls = sec === 'disabled'      ? 'psec-disabled' :
+                   sec === 'team'          ? 'psec-team' :
+                   sec === 'supplementary' ? 'psec-supplementary' :
+                                             'psec-bookline';
+    const ini = (typeof initials === 'function') ? initials(p.name || '') : (p.name || '?').slice(0,1).toUpperCase();
+    const photo = p.photo ? '<img src="' + escapeHtml(p.photo) + '" alt="" onerror="this.remove()">' : '';
+    return '<span class="task-proposer ' + secCls + '" data-pid="' + escapeHtml(p.id) + '" style="background:' + (p.color || '#9a9a9a') + '">' +
+      photo + '<span class="ini">' + escapeHtml(ini) + '</span>' +
+    '</span>';
+  }).join('');
+  const moreHtml = ids.length > maxShown ? '<span class="task-proposer-more">+' + (ids.length - maxShown) + '</span>' : '';
+  const title = 'Proposed by: ' + names.join(', ') + (ids.length > maxShown ? ' and ' + (ids.length - maxShown) + ' more' : '');
+  return '<span class="task-proposers" title="' + escapeHtml(title) + '">' + chipsHtml + moreHtml + '</span>';
 }
 function tagMiniHtml(tag) {
   const style = getTagStyle(tag);
@@ -5022,7 +5072,7 @@ function taskHtml(t) {
   if (t.slackStatus) badges.push('<span class="badge slack-status">' + escapeHtml(t.slackStatus) + '</span>');
   if (t.dueDate)  badges.push('<span class="badge due">' + escapeHtml(t.dueDate) + '</span>');
   if (t.dedicatedHours || t.estimatedHours) badges.push('<span class="badge hours">' + (t.dedicatedHours||0) + 'h / ' + (t.estimatedHours||0) + 'h</span>');
-  if (t._pendingSync) badges.push('<span class="badge pending-sync">No sync</span>');
+  // (removed: "No sync" pending-sync badge)
   // Roadmap badges
   getTaskRoadmaps(t.id).forEach(rm => {
     badges.push(roadmapBadgeHtml(t.id, rm));
@@ -5043,11 +5093,13 @@ function taskHtml(t) {
   // Aggregated info — compact mini-pill rendered inline as a badge after the roadmap badges.
   const aggBadge = bnRenderTaskAggBadge(t);
   if (aggBadge) badges.push(aggBadge);
+  // Proposed-by mini avatars (inline before the badges so they're easy to spot).
+  const proposersHtml = renderTaskProposersMini(t);
   return '<div class="task' + (isG ? ' is-group' : '') + '" data-pstatus="' + escapeHtml(t.slackStatus||'') + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
     '<span class="checkbox ' + (sel?'checked':'') + '" title="Select task (use modal to mark completed)"></span>' +
     '<span class="text" title="Click to edit all fields">' + chevHtml + folderPrefix + escapeHtml(t.subject) + '</span>' +
     '<button class="edit-btn" title="Edit">&#9998;</button>' +
-    '<div class="badges">' + badges.join('') + ' ' + taskTagsHtml + '</div>' +
+    '<div class="badges">' + proposersHtml + badges.join('') + ' ' + taskTagsHtml + '</div>' +
     '</div>';
 }
 
@@ -11939,7 +11991,7 @@ function flatTaskHtml(t) {
   if (t.type) badges.push('<span class="badge ' + typeCls + '">' + escapeHtml(t.type) + '</span>');
   if (t.slackStatus) badges.push('<span class="badge slack-status">' + escapeHtml(t.slackStatus) + '</span>');
   if (t.dueDate) badges.push('<span class="badge due">' + escapeHtml(t.dueDate) + '</span>');
-  if (t._pendingSync) badges.push('<span class="badge pending-sync">No sync</span>');
+  // (removed: "No sync" pending-sync badge)
   getTaskRoadmaps(t.id).forEach(rm => {
     badges.push(roadmapBadgeHtml(t.id, rm));
   });
@@ -11967,12 +12019,13 @@ function flatTaskHtml(t) {
   // Aggregated info — compact mini-pill rendered inline with the other badges.
   const aggBadgeFlat = bnRenderTaskAggBadge(t);
   if (aggBadgeFlat) badges.push(aggBadgeFlat);
+  const proposersHtml = renderTaskProposersMini(t);
   return '<div class="flat-task' + (isG ? ' is-group' : '') + '" data-pstatus="' + escapeHtml(t.slackStatus||'') + '" data-tid="' + t.id + '"' + (sel ? ' data-selected="true"' : '') + '>' +
     '<span class="checkbox ' + (sel ? 'checked' : '') + '" title="Select"></span>' +
     '<span class="av-mini"' + avClickAttr + '><img src="' + photo + '" alt="" onerror="this.remove()"><span class="ini">' + escapeHtml(ini) + '</span></span>' +
     '<div>' +
       '<div class="text" title="Click to edit">' + chevHtml + folderPrefix + escapeHtml(t.subject) + groupCountSuffix + '</div>' +
-      '<div class="meta-line"><span class="badges-inline">' + badges.join(' ') + (taskTagsHtml ? ' ' + taskTagsHtml : '') + '</span></div>' +
+      '<div class="meta-line"><span class="badges-inline">' + proposersHtml + badges.join(' ') + (taskTagsHtml ? ' ' + taskTagsHtml : '') + '</span></div>' +
     '</div>' +
     '<span' + nameClickAttr + '>' + escapeHtml(respName) + '</span>' +
     '<button class="edit-btn" title="Edit">&#9998;</button>' +
@@ -12670,6 +12723,24 @@ document.getElementById("bulkSetStatus").addEventListener("change", e => {
     const t = STORE.tasks.find(x => x.id === tid);
     if (!t) return;
     t.slackStatus = ps;
+    t._pendingSync = true;
+  });
+  saveStore(STORE);
+  e.target.value = "";
+  render();
+});
+
+// Bulk: set task type on selected (use sentinel "__empty" to clear the type)
+document.getElementById("bulkSetType").addEventListener("change", e => {
+  const raw = e.target.value;
+  if (!raw || selectedTaskIds.size === 0) { e.target.value = ""; return; }
+  const newType = (raw === "__empty") ? "" : raw;
+  const lbl = (raw === "__empty") ? "(empty)" : newType;
+  if (!confirm("Set type to '" + lbl + "' on " + selectedTaskIds.size + " task(s)?")) { e.target.value = ""; return; }
+  selectedTaskIds.forEach(tid => {
+    const t = STORE.tasks.find(x => x.id === tid);
+    if (!t) return;
+    t.type = newType;
     t._pendingSync = true;
   });
   saveStore(STORE);
