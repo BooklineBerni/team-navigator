@@ -4842,12 +4842,25 @@ function render() {
   personIds = personIds.filter(personMatchesTagFilter);
   personIds = sortPersons(personIds, allTasks);
 
+  // When any TASK-LEVEL filter is active (status/priority/task-tag/roadmap/date-status/search),
+  // skip people whose visible-task count is zero so the grid only shows folks with matches.
+  function _anyTaskLevelFilterActive() {
+    return (statusInclude.size > 0 || statusExclude.size > 0 ||
+            prioInclude.size > 0 || prioExclude.size > 0 ||
+            taskTagInclude.size > 0 || taskTagExclude.size > 0 ||
+            roadmapInclude.size > 0 || roadmapExclude.size > 0 ||
+            (typeof dateStatusInclude !== 'undefined' && dateStatusInclude.size > 0) ||
+            (typeof dateStatusExclude !== 'undefined' && dateStatusExclude.size > 0) ||
+            (searchQuery && String(searchQuery).trim().length > 0));
+  }
+  const _hideEmptyByPerson = _anyTaskLevelFilterActive();
   personIds.forEach(pid => {
     const person = findPerson(pid);
     if (!person) return;
     const personTasks = allTasks.filter(t => t.responsibleId === pid);
     const visibleTasks = personTasks.filter(taskMatchesFilters);
-    // (skip removed: show all members)
+    // When task-level filters are active, hide people whose tasks all got filtered out.
+    if (_hideEmptyByPerson && visibleTasks.length === 0) return;
     // Total for "X of Y": tasks for this person matching all filters EXCEPT status (so "of Y" is meaningful even with status filter)
     const personTasksMatchingNonStatus = personTasks.filter(t => {
       const pk = t.priority || "__none";
@@ -4942,6 +4955,10 @@ function render() {
     const unassignedAll = allTasks.filter(t => !t.isGroup && !t.responsibleId);
     {
       const unassignedVisible = unassignedAll.filter(taskMatchesFilters);
+      // Skip the Unassigned card when task-level filters are active and nothing matches.
+      if (_hideEmptyByPerson && unassignedVisible.length === 0) {
+        // Don't render the card at all
+      } else {
       const u_counts = {
         proposed:     unassignedVisible.filter(t => t.slackStatus === "Proposed").length,
         under_review: unassignedVisible.filter(t => t.slackStatus === "Under Review").length,
@@ -4989,6 +5006,7 @@ function render() {
           if (typeof switchView === 'function') switchView('profile');
         });
       });
+      }   // close: else { (skip-empty guard)
     }
   }
 
