@@ -686,7 +686,7 @@
   .cal-event.continues-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
   .cal-event.continues-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
   /* Group container bar: transparent backdrop tinted by status with a dashed border. Children render on top. */
-  /* z-index 6 sits ABOVE .no-work-stripes (z-index 5) so the title text isn't crossed by stripes. */
+  /* z-index 10 sits ABOVE .no-work-stripes (z-index 8) so the title text isn't crossed by stripes. */
   .cal-event.cal-event-group {
     font-weight: 700;
     border: 1.5px dashed #d97706;
@@ -696,9 +696,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    z-index: 6;
+    z-index: 10;
   }
-  .cal-event.cal-event-group:hover { transform: none; z-index: 7; filter: brightness(0.96) saturate(1.1); }
+  .cal-event.cal-event-group:hover { transform: none; z-index: 12; filter: brightness(0.96) saturate(1.1); }
   .cal-event.cal-event-group.expanded { border-style: solid; }
   /* When the group bar hosts children, only the title strip area should catch clicks/hover for the bar itself;
      the body below is "open" so children inside receive pointer events directly */
@@ -811,20 +811,23 @@
   .cal-day.worked .holiday-name { color: #027a48; }
   .cal-day.time-off { background: #fef2f2; }
   .cal-day.time-off .holiday-name { color: #b42318; }
-  /* Striped overlay over non-working day columns inside events overlay */
+  /* Striped overlay over non-working day columns inside events overlay.
+     Bumped opacity + line thickness so the stripes stay readable when they cross a task bar.
+     z-index 8 puts stripes ABOVE regular task bars (auto z-index) but still BELOW group
+     bars (z-index 6 + their child events) — wait, that needs adjusting. */
   .no-work-stripes {
     position: absolute; top: 0; bottom: 0;
     background-image: repeating-linear-gradient(
       135deg,
       transparent 0,
-      transparent 5px,
-      var(--stripe-color, rgba(100,116,139,0.30)) 5px,
-      var(--stripe-color, rgba(100,116,139,0.30)) 7px
+      transparent 6px,
+      var(--stripe-color, rgba(15,23,42,0.42)) 6px,
+      var(--stripe-color, rgba(15,23,42,0.42)) 9px
     );
     pointer-events: none;
-    z-index: 5;
+    z-index: 8;
   }
-  .no-work-stripes.time-off { --stripe-color: rgba(220,38,38,0.32); }
+  .no-work-stripes.time-off { --stripe-color: rgba(220,38,38,0.50); }
   /* Time-off day cell */
   .cal-day.time-off { background: #fef2f2; }
   .cal-day.time-off .holiday-name { color: #b42318; }
@@ -3009,16 +3012,16 @@
           <div class="page-subtitle">Filter, sort and edit all <span id="tasks-page-total">157</span> tasks. Switch view to see them grouped by person or as a flat list.</div>
         </div>
         <div class="tasks-page-header-actions">
-          <div class="seg-toggle" id="tasksViewToggle">
-            <button data-mode="byperson" class="active">By person</button>
-            <button data-mode="list">List</button>
-          </div>
           <button class="btn" id="tasksFiltersToggleBtn" title="Hide or show the people strip and the filters below">⊟ Hide filters</button>
           <button class="btn" id="tasksResetFiltersBtn" title="Clear all active filters">Reset filters</button>
           <button class="btn" id="tasksCollapseAllBtnInline" title="Collapse / expand every group across all views (shared global state)">⊟ Collapse all</button>
           <button class="btn" id="tasksExportCsvBtn" title="Download currently-filtered tasks as Excel-compatible CSV (or all if filters are off)">Export CSV</button>
           <button class="btn" id="tasksManageTaskTagsBtn" title="Create, edit, recolor and reorder task tags">Task Tags</button>
           <button class="btn primary" id="tasksAddBtn">+ New task</button>
+          <div class="seg-toggle" id="tasksViewToggle">
+            <button data-mode="byperson" class="active">By person</button>
+            <button data-mode="list">List</button>
+          </div>
         </div>
       </div>
       <!-- Filter section (team strip + all filter bars). Toggled by #tasksFiltersToggleBtn. -->
