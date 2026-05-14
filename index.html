@@ -4388,7 +4388,8 @@ function countTasksForPersonContextual(personId) {
 
 function countTasksMatchingExcept(dim, optKey) {
   return STORE.tasks.filter(t => {
-    if (t.isGroup) return false;
+    // Groups ARE tasks (the "Subtasks" checkbox just marks a parent). Count them too
+    // so the pill totals match the number of items the user actually sees on screen.
     // Team-only mode: hide non-team / disabled / unassigned
     if (teamOnly) {
       if (!t.responsibleId) return false;
@@ -4470,7 +4471,8 @@ function countMembersWithTag(name) {
 }
 
 function visibleTasksCount() {
-  return STORE.tasks.filter(taskMatchesFilters).length;
+  // Groups count too — same rule as the per-pill counters in countTasksMatchingExcept.
+  return STORE.tasks.filter(t => taskMatchesFilters(t, { allowGroups: true })).length;
 }
 function countBadge(n) {
   if (!showCounts) return "";
