@@ -27,6 +27,14 @@
   .nav-item .nav-count { font-size: 11px; padding: 1px 7px; background: #f0efeb; border-radius: 999px; font-weight: 700; color: #6b6b6b; }
   .nav-item .nav-count:empty { display: none; }
   .nav-item.active .nav-count { background: #fff; color: #1a1a1a; }
+  /* Alert state — used for the Requests nav item when there are pending requests. */
+  .nav-item-alert { color: #b91c1c; }
+  .nav-item-alert .nav-icon { stroke: #b91c1c; }
+  .nav-item-alert:hover { background: #fee2e2; color: #b91c1c; }
+  .nav-item-alert.active { background: #b91c1c; color: #fff; }
+  .nav-item-alert.active .nav-icon { stroke: #fff; }
+  .nav-count-alert { background: #b91c1c !important; color: #fff !important; }
+  .nav-item.active .nav-count.nav-count-alert { background: #fff !important; color: #b91c1c !important; }
 
   /* Buttons */
   button.btn { appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a; padding: 7px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 500; font-family: inherit; transition: background .12s; }
@@ -4770,7 +4778,14 @@ function sortTaskList(tasks) {
     if (!b.dueDate) return -1;
     return a.dueDate.localeCompare(b.dueDate);
   });
-  else if (sortTasks === "status") arr.sort((a,b) => (STATUS_ORDER[a.slackStatus]??99) - (STATUS_ORDER[b.slackStatus]??99));
+  else if (sortTasks === "status") arr.sort((a,b) => {
+    // Same order as the Home pipeline buckets (driven by STATUS_ORDER).
+    // Normalize null/undefined to "" so untyped tasks land in the "(empty)" slot
+    // instead of being pushed to the end.
+    const ak = a.slackStatus || "";
+    const bk = b.slackStatus || "";
+    return (STATUS_ORDER[ak] ?? 99) - (STATUS_ORDER[bk] ?? 99);
+  });
   return arr;
 }
 
@@ -10369,7 +10384,8 @@ function renderMembersPage() {
   // Section-based grouping (single-choice picklist):
   //   team / supplementary / disabled / "" (Bookline = empty + has tasks OR proposals)
   function ownsTasks(pid) {
-    return (STORE.tasks || []).some(t => !t.isGroup && t.responsibleId === pid);
+    // Groups count as tasks too.
+    return (STORE.tasks || []).some(t => t.responsibleId === pid);
   }
   // Team: ONLY people whose explicit section is "team"
   const teamActive = pool.filter(p => getPersonSection(p.id) === "team" && matchesQuery(p));
@@ -10408,9 +10424,10 @@ function renderMembersPage() {
     let statsHtml = '';
     let roadmapsHtml = '';
     if (mode === 'team') {
-      const taskCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id).length;
-      const pendingCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id && t.slackStatus === "Proposed").length;
-      const inProgressCount = STORE.tasks.filter(t => !t.isGroup && t.responsibleId === p.id && t.slackStatus === "In Progress").length;
+      // Groups ARE tasks — include them in every people-card count.
+      const taskCount = STORE.tasks.filter(t => t.responsibleId === p.id).length;
+      const pendingCount = STORE.tasks.filter(t => t.responsibleId === p.id && t.slackStatus === "Proposed").length;
+      const inProgressCount = STORE.tasks.filter(t => t.responsibleId === p.id && t.slackStatus === "In Progress").length;
       // Roadmaps shown on People cards: only the ones this person OWNS (is responsible for).
       const personRoadmaps = getRoadmapsForPerson(p.id);
       roadmapsHtml = personRoadmaps.length
@@ -10424,7 +10441,7 @@ function renderMembersPage() {
     } else {
       // Bookline / disabled-non-team: show task phase counts (where they are proposer)
       const isProposer = (t) => Array.isArray(t.proposedByIds) ? t.proposedByIds.includes(p.id) : t.proposedById === p.id;
-      const all = STORE.tasks.filter(t => !t.isGroup && isProposer(t));
+      const all = STORE.tasks.filter(t => isProposer(t));
       const counts = {
         proposed:     all.filter(t => t.slackStatus === "Proposed").length,
         under_review: all.filter(t => t.slackStatus === "Under Review").length,
@@ -12217,8 +12234,8 @@ function renderRoadmapDetailInline(id) {
 
 // Update tab counts
 function updateTabCounts() {
-  // Don't count groups themselves as tasks
-  const taskCount = STORE.tasks.filter(t => !t.isGroup).length;
+  // Groups ARE tasks (just with subtasks enabled) — include them in the total.
+  const taskCount = (STORE.tasks || []).length;
   const rmCount = getRoadmaps().length;
   // People sidebar: no count
   document.getElementById("nav-members-count").textContent = "";
@@ -13799,10 +13816,19 @@ function bnHandledRequests() {
 function bnUpdateRequestsBadge() {
   const el = document.getElementById('nav-requests-count');
   if (!el) return;
+  // Reset previous state
+  el.classList.remove('nav-count-alert');
+  const navBtn = el.closest('.nav-item');
+  if (navBtn) navBtn.classList.remove('nav-item-alert');
   if (!bnGetPassphrase()) { el.textContent = '🔒'; el.title = 'Enter passphrase to unlock'; return; }
   const n = bnPendingRequests().length;
   el.textContent = n > 0 ? n : '';
-  el.title = '';
+  el.title = n > 0 ? (n + ' pending request' + (n === 1 ? '' : 's')) : '';
+  // When there are pending requests, paint the sidebar item red so it stands out.
+  if (n > 0) {
+    el.classList.add('nav-count-alert');
+    if (navBtn) navBtn.classList.add('nav-item-alert');
+  }
 }
 
 let bnLastSeenTs = parseFloat(localStorage.getItem('bn-requests-last-seen-ts') || '0');
