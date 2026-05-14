@@ -2406,11 +2406,31 @@
   .dashboard-card { background: #fff; border: 1px solid #ececea; border-radius: 14px; padding: 20px; }
   .dashboard-card h3 { margin: 0 0 14px; font-size: 14px; font-weight: 700; color: #1a1a1a; display: flex; align-items: center; gap: 8px; }
   .dashboard-card h3 .icon { width: 16px; height: 16px; opacity: 0.6; }
-  .donut-card { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .donut-card { display: flex; flex-direction: column; align-items: center; gap: 14px; }
   .donut-card .donut-label { font-size: 11px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; text-align: center; }
   .donut-svg { width: 200px; height: 200px; }
-  .donut-text { font-size: 24px; font-weight: 700; fill: #1a1a1a; }
+  .donut-text { font-size: 28px; font-weight: 700; fill: #1a1a1a; }
   .donut-sub { font-size: 11px; fill: #6b6b6b; }
+  .donut-wrap { position: relative; }
+  .donut-bucket-arc { transition: stroke-dasharray .35s ease, opacity .15s; }
+  .donut-bucket-arc:hover { opacity: 0.85; cursor: pointer; }
+  /* Legend below the donut — 2 columns when there's room, stacked otherwise */
+  .donut-legend {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 6px 14px;
+    width: 100%; max-width: 280px;
+    font-size: 12px;
+  }
+  .donut-legend .leg-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 2px;
+  }
+  .donut-legend .leg-dot {
+    width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
+  }
+  .donut-legend .leg-name { color: #1a1a1a; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .donut-legend .leg-num { color: #6b6b6b; font-variant-numeric: tabular-nums; font-weight: 700; }
+  .donut-legend .leg-pct { color: #9a9a9a; font-size: 10.5px; font-variant-numeric: tabular-nums; }
   .pipeline-bars { display: flex; align-items: flex-end; gap: 10px; height: 200px; padding: 10px 0; }
   .pipeline-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .pipeline-bar { width: 100%; max-width: 80px; min-height: 6px; border-radius: 8px 8px 0 0; transition: all .3s; }
@@ -2996,18 +3016,20 @@
       <div class="home-subtitle">Aquí tienes el resumen de tu actividad y la del equipo.</div>
 
       <div class="dashboard-grid">
-        <!-- Donut card: total tasks -->
+        <!-- Donut card: 4-bucket task breakdown (Solved / Doing / To do / Idle) -->
         <div class="dashboard-card donut-card">
-          <div class="donut-label">Tasks open vs total</div>
-          <svg class="donut-svg" viewBox="0 0 200 200">
-            <circle cx="100" cy="100" r="80" fill="none" stroke="#f0efeb" stroke-width="16"/>
-            <circle id="dashOpenArc" cx="100" cy="100" r="80" fill="none" stroke="#16a34a" stroke-width="16"
-                    stroke-linecap="round" transform="rotate(-90 100 100)"
-                    stroke-dasharray="0 502" />
-            <text id="dashOpenValue" class="donut-text" x="100" y="100" text-anchor="middle" dominant-baseline="middle">0</text>
-            <text id="dashOpenSub" class="donut-sub" x="100" y="120" text-anchor="middle">/ 0 total</text>
-          </svg>
-          <div style="font-size:12px; color:#6b6b6b; text-align:center" id="dashOpenPct">0% in progress or pending</div>
+          <div class="donut-label">Task breakdown</div>
+          <div class="donut-wrap">
+            <svg class="donut-svg" viewBox="0 0 200 200">
+              <!-- Track ring -->
+              <circle cx="100" cy="100" r="80" fill="none" stroke="#f0efeb" stroke-width="22"/>
+              <!-- Four arcs, each rotated and dash-sized at render time -->
+              <g id="dashBucketArcs" transform="rotate(-90 100 100)"></g>
+              <text id="dashTotalValue" class="donut-text" x="100" y="96" text-anchor="middle" dominant-baseline="middle">0</text>
+              <text id="dashTotalSub" class="donut-sub" x="100" y="120" text-anchor="middle">tasks</text>
+            </svg>
+          </div>
+          <div class="donut-legend" id="dashBucketLegend"></div>
         </div>
 
         <!-- Pipeline by status -->
@@ -10268,14 +10290,58 @@ function renderHomePage() {
   const archived = tasks.filter(t => t.slackStatus === "Archived").length;
   const discarded = tasks.filter(t => t.slackStatus === "Discarded").length;
 
-  // Donut: open / total ratio
-  const circumference = 2 * Math.PI * 80;
-  const openPct = total > 0 ? open / total : 0;
-  const arc = document.getElementById("dashOpenArc");
-  if (arc) arc.setAttribute("stroke-dasharray", (openPct * circumference).toFixed(1) + " " + circumference.toFixed(1));
-  document.getElementById("dashOpenValue").textContent = open;
-  document.getElementById("dashOpenSub").textContent = "/ " + total + " total";
-  document.getElementById("dashOpenPct").textContent = Math.round(openPct * 100) + "% open (active statuses)";
+  // ===== 4-bucket donut (Solved / Doing / To do / Idle) =====
+  // Buckets sum to `total`. Each bucket draws an arc on the ring; empty buckets are skipped.
+  const buckets4 = [
+    { key: 'solved', label: 'Solved',  color: '#16a34a',
+      hint: 'Completed + Discarded',
+      count: tasks.filter(t => t.slackStatus === 'Completed' || t.slackStatus === 'Discarded').length },
+    { key: 'doing',  label: 'Doing',   color: '#f97316',
+      hint: 'In Progress + Under Review',
+      count: tasks.filter(t => t.slackStatus === 'In Progress' || t.slackStatus === 'Under Review').length },
+    { key: 'todo',   label: 'To do',   color: '#1d4ed8',
+      hint: 'Proposed + Later / Next',
+      count: tasks.filter(t => t.slackStatus === 'Proposed' || t.slackStatus === 'Later / Next').length },
+    { key: 'idle',   label: 'Idle',    color: '#a8a29e',
+      hint: 'Waiting + Archived + (empty)',
+      count: tasks.filter(t => t.slackStatus === 'Waiting' || t.slackStatus === 'Archived' || !t.slackStatus).length },
+  ];
+  const arcsG  = document.getElementById('dashBucketArcs');
+  const legend = document.getElementById('dashBucketLegend');
+  const totalEl = document.getElementById('dashTotalValue');
+  if (totalEl) totalEl.textContent = total;
+  if (arcsG) {
+    const R = 80;
+    const C = 2 * Math.PI * R;
+    let cursor = 0; // cumulative length consumed
+    arcsG.innerHTML = buckets4.map(b => {
+      if (b.count <= 0 || total <= 0) return '';
+      const frac = b.count / total;
+      const arcLen = frac * C;
+      // Tiny visual gap between segments — only when there are 2+ non-empty segments
+      const gap = 2;
+      const dashArray = Math.max(0, arcLen - gap) + ' ' + (C - Math.max(0, arcLen - gap));
+      const dashOffset = -cursor;
+      cursor += arcLen;
+      return '<circle class="donut-bucket-arc" cx="100" cy="100" r="' + R + '" fill="none" ' +
+        'stroke="' + b.color + '" stroke-width="22" ' +
+        'stroke-dasharray="' + dashArray + '" ' +
+        'stroke-dashoffset="' + dashOffset + '">' +
+        '<title>' + escapeHtml(b.label) + ' — ' + b.count + ' (' + escapeHtml(b.hint) + ')</title>' +
+        '</circle>';
+    }).join('');
+  }
+  if (legend) {
+    legend.innerHTML = buckets4.map(b => {
+      const pct = total > 0 ? Math.round((b.count / total) * 100) : 0;
+      return '<div class="leg-row" title="' + escapeHtml(b.hint) + '">' +
+        '<span class="leg-dot" style="background:' + b.color + '"></span>' +
+        '<span class="leg-name">' + escapeHtml(b.label) + '</span>' +
+        '<span class="leg-num">' + b.count + '</span>' +
+        '<span class="leg-pct">(' + pct + '%)</span>' +
+      '</div>';
+    }).join('');
+  }
 
   // Pipeline bars in the user-defined order, with the new colors
   const buckets = [
