@@ -3009,58 +3009,11 @@
     <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
     <div class="field" id="f_roadmapsField">
       <label>Roadmaps</label>
-      <!-- "Apply to all roadmaps" — original Apply-button row. Commits to task on Apply click. -->
-      <div id="f_quickApplyRow" class="bn-quick-apply">
-        <span class="bn-quick-apply-lbl">Apply to all roadmaps</span>
-        <div class="bn-quick-apply-inputs">
-          <div class="bn-quick-apply-cell">
-            <div class="bn-quick-apply-input-wrap">
-              <button type="button" id="f_quickApplyStartPin" class="bn-quick-apply-pin" title="Use another task's aggregated start/end as this Start">📌</button>
-              <input type="date" id="f_quickApplyStart" class="bn-quick-apply-input" title="Start">
-            </div>
-            <div id="f_quickApplyStartSrc" class="bn-quick-apply-src" style="display:none"></div>
-          </div>
-          <div class="bn-quick-apply-cell bn-quick-apply-days-cell">
-            <div class="bn-quick-apply-input-wrap">
-              <input type="number" id="f_quickApplyDays" class="bn-quick-apply-input bn-quick-apply-days" min="1" step="1" placeholder="N" title="Duration in days (inclusive). Sets End = Start + (N − 1) days.">
-              <span class="bn-quick-apply-days-unit">days</span>
-            </div>
-          </div>
-          <div class="bn-quick-apply-cell">
-            <div class="bn-quick-apply-input-wrap">
-              <input type="date" id="f_quickApplyEnd" class="bn-quick-apply-input" title="End">
-              <button type="button" id="f_quickApplyEndPin" class="bn-quick-apply-pin" title="Use another task's aggregated start/end as this End">📌</button>
-            </div>
-            <div id="f_quickApplyEndSrc" class="bn-quick-apply-src" style="display:none"></div>
-          </div>
-          <button type="button" id="f_quickApplyBtn" class="btn primary bn-quick-apply-btn">Apply</button>
-        </div>
-        <span id="f_quickApplyFeedback" class="bn-quick-apply-feedback" style="display:none"></span>
-      </div>
       <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
       <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
-      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap.</div>
-      <!-- Aggregated visual — min Start / max End / total days across all assigned roadmaps. -->
-      <div class="f_taskOnlyRow bn-agg-display" id="f_taskDatesField">
-        <span class="bn-agg-display-lbl">Aggregated</span>
-        <span class="bn-agg-display-pair">
-          <span class="bn-agg-display-key">Start</span>
-          <span class="bn-agg-display-stack" id="f_aggMinStartStack">
-            <span class="bn-agg-display-pill" id="f_aggMinStartPill" style="display:none"></span>
-            <span class="bn-agg-display-val" id="f_aggMinStart">—</span>
-          </span>
-        </span>
-        <span class="bn-agg-display-span" id="f_aggSpan" style="display:none"></span>
-        <span class="bn-agg-display-pair">
-          <span class="bn-agg-display-key">End</span>
-          <span class="bn-agg-display-stack" id="f_aggMaxEndStack">
-            <span class="bn-agg-display-pill" id="f_aggMaxEndPill" style="display:none"></span>
-            <span class="bn-agg-display-val" id="f_aggMaxEnd">—</span>
-          </span>
-        </span>
-      </div>
-      <!-- Task dates (same component shape as "Apply to all roadmaps" above). Pre-filled with the
-           task's current values; every change auto-saves to task.* so all roadmaps inherit immediately. -->
+      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap. The dates below apply to every roadmap this task is in.</div>
+      <!-- Task dates — auto-saves every change to task.startDate / task.endDate / task.durationDays /
+           anchors / source labels. All roadmaps the task is in read these task-level values. -->
       <div id="f_taskDatesRow" class="bn-quick-apply" style="margin-top:10px">
         <span class="bn-quick-apply-lbl">Task dates</span>
         <div class="bn-quick-apply-inputs">
