@@ -2315,6 +2315,39 @@
   .flat-task .edit-btn { appearance: none; border: none; background: transparent; cursor: pointer; color: #9a9a9a; font-size: 14px; padding: 0 6px; }
   .flat-task .edit-btn:hover { color: #1a1a1a; }
 
+  /* Responsible single-select photo picker */
+  .resp-picker-box { position: relative; }
+  .resp-picker-chip {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid #d8d6d1; border-radius: 6px; padding: 6px 10px; background: #fff;
+    cursor: pointer; min-height: 36px; font-size: 13px; color: #1a1a1a; outline: none;
+  }
+  .resp-picker-chip:hover, .resp-picker-chip:focus { border-color: #1a1a1a; }
+  .resp-picker-chip .av-mini { width: 24px; height: 24px; border-radius: 50%; overflow: hidden; position: relative; background: #9aa0a6; color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .resp-picker-chip .av-mini img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; position: absolute; inset: 0; }
+  .resp-picker-chip .resp-picker-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .resp-picker-chip .resp-picker-empty { color: #9a9a9a; }
+  .resp-picker-chip .resp-picker-clear { appearance: none; border: none; background: transparent; color: #6b6b6b; font-size: 14px; cursor: pointer; padding: 0 4px; line-height: 1; }
+  .resp-picker-chip .resp-picker-clear:hover { color: #dc2626; }
+  .resp-picker-chip .resp-picker-caret { color: #9a9a9a; font-size: 10px; margin-left: 2px; }
+  .resp-picker-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px;
+    background: #fff; border: 1px solid #d8d6d1; border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10); z-index: 100;
+    max-height: 280px; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .resp-picker-search { border: none; outline: none; padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #ececec; background: #fafafa; }
+  .resp-picker-list { overflow-y: auto; flex: 1; padding: 4px 0; }
+  .resp-picker-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer; }
+  .resp-picker-item:hover, .resp-picker-item.active { background: #f1f3f4; }
+  .resp-picker-item .av-mini { width: 26px; height: 26px; border-radius: 50%; overflow: hidden; position: relative; flex-shrink: 0; color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .resp-picker-item .av-mini img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; position: absolute; inset: 0; }
+  .resp-picker-item-name { font-size: 13px; color: #1a1a1a; }
+  .resp-picker-item-email { font-size: 11px; color: #6b6b6b; }
+  .resp-picker-item-meta { flex: 1; min-width: 0; }
+  .resp-picker-section-label { font-size: 10px; font-weight: 700; color: #9a9a9a; text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 12px 4px; }
+  .resp-picker-empty-state { padding: 14px 12px; color: #9a9a9a; font-size: 12px; text-align: center; }
+
   /* Multi-select Proposed By picker */
   .proposed-box { position: relative; border: 1px solid #d8d6d1; border-radius: 6px; padding: 4px; background: #fff; min-height: 36px; cursor: text; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
   .proposed-box:focus-within { border-color: #1a1a1a; }
@@ -3004,7 +3037,20 @@
       </select></div>
     </div>
     <div class="field-row f_taskOnlyRow">
-      <div class="field"><label>Responsible</label><select id="f_responsibleId"></select></div>
+      <div class="field">
+        <label>Responsible</label>
+        <div id="f_responsibleBox" class="resp-picker-box">
+          <div id="f_responsibleChip" class="resp-picker-chip" tabindex="0">
+            <span class="resp-picker-empty">— Select a person…</span>
+          </div>
+          <div id="f_responsibleDropdown" class="resp-picker-dropdown" style="display:none">
+            <input type="text" id="f_responsibleInput" class="resp-picker-search" placeholder="Search team…" autocomplete="off">
+            <div id="f_responsibleList" class="resp-picker-list"></div>
+          </div>
+          <!-- Hidden input keeps a stable interface for code that reads f_responsibleId -->
+          <input type="hidden" id="f_responsibleId" value="">
+        </div>
+      </div>
       <div class="field">
         <label>Proposed by <span style="color:#dc2626">*</span></label>
         <div id="f_proposedBox" class="proposed-box">
@@ -3012,7 +3058,6 @@
           <input type="text" id="f_proposedInput" class="proposed-input" placeholder="Type a name or email…" autocomplete="off">
           <div id="f_proposedDropdown" class="proposed-dropdown" style="display:none"></div>
         </div>
-        <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Add one or more proposers. Click × on a chip to remove.</div>
       </div>
     </div>
     <div class="field-row-3 f_taskOnlyRow">
@@ -3027,16 +3072,11 @@
         </select>
       </div>
     </div>
-    <div class="field-row f_taskOnlyRow">
-      <div class="checkbox-field"><input type="checkbox" id="f_completed"><label for="f_completed" style="margin:0">Completed (boolean)</label></div>
-      <div class="checkbox-field"><input type="checkbox" id="f_sharing"><label for="f_sharing" style="margin:0">Sharing on</label></div>
-    </div>
     <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
     <div class="field" id="f_roadmapsField">
       <label>Roadmaps</label>
       <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
       <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
-      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap. The dates below apply to every roadmap this task is in.</div>
       <!-- Task dates — auto-saves every change to task.startDate / task.endDate / task.durationDays /
            anchors / source labels. All roadmaps the task is in read these task-level values. -->
       <div id="f_taskDatesRow" class="bn-quick-apply" style="margin-top:10px">
@@ -3069,7 +3109,6 @@
     <div class="field f_taskOnlyRow"><label>Task tags</label>
       <div id="f_taskTagsContainer" class="person-modal-tags"></div>
       <div class="preset-tags" id="f_presetTaskTagsContainer" style="margin-top:6px"></div>
-      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click an assigned tag to remove it. Click a suggested tag to add it. Manage the library from the "Task Tags" button in the header.</div>
     </div>
     <div class="field" id="f_subtasksField">
       <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none">
@@ -4595,10 +4634,9 @@ function taskHtml(t) {
     '</div>';
 }
 
-function populateUserSelects() {
-  const sel = document.getElementById("f_responsibleId");
-  if (sel) sel.innerHTML = '<option value="">(ninguno)</option>' + TEAM.map(p => '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>').join("");
-}
+// f_responsibleId is now a hidden input backing a custom photo picker (see wireResponsiblePicker).
+// This stub is kept so legacy callers that invoke populateUserSelects() don't break.
+function populateUserSelects() { /* no-op — responsible is now a picker */ }
 populateUserSelects();
 
 // =========================== Multi-select Proposed By picker ===========================
@@ -4693,6 +4731,158 @@ function filterProposedDropdown(query) {
   });
 }
 
+// =========================== Responsible (single-select photo picker) ===========================
+// Backed by the hidden input #f_responsibleId so existing save code keeps working.
+// Source list: Team + Supplementary members. Disabled members are excluded.
+let _respPickerSelectedId = '';
+let _respPickerActiveIndex = -1;
+function _respPickerAvatarHtml(p) {
+  const ini = (typeof initials === 'function') ? initials(p.name||'') : (p.name||'?').slice(0,1).toUpperCase();
+  const color = p.color || '#9a9a9a';
+  const photoImg = p.photo ? '<img src="'+escapeHtml(p.photo)+'" alt="" onerror="this.remove()">' : '';
+  return '<span class="av-mini" style="background:'+color+'">'+photoImg+'<span>'+escapeHtml(ini)+'</span></span>';
+}
+function _respPickerCandidates() {
+  // Only team + supplementary; disabled excluded. Sort: team first (alphabetical), then supplementary.
+  const all = [...TEAM, ...((typeof EXTERNAL_TEAM !== 'undefined') ? EXTERNAL_TEAM : [])];
+  const team = [], supp = [];
+  const seen = new Set();
+  all.forEach(p => {
+    if (!p || seen.has(p.id)) return;
+    seen.add(p.id);
+    const sec = (typeof getPersonSection === 'function') ? getPersonSection(p.id) : '';
+    if (sec === 'team') team.push(p);
+    else if (sec === 'supplementary') supp.push(p);
+    // disabled or empty section → excluded from picker
+  });
+  const byName = (a,b) => (a.displayName||a.name||'').localeCompare(b.displayName||b.name||'');
+  team.sort(byName); supp.sort(byName);
+  return { team, supp };
+}
+function setResponsiblePicker(id) {
+  _respPickerSelectedId = id || '';
+  const hidden = document.getElementById('f_responsibleId');
+  if (hidden) hidden.value = _respPickerSelectedId;
+  const chip = document.getElementById('f_responsibleChip');
+  if (!chip) return;
+  if (!_respPickerSelectedId) {
+    chip.innerHTML = '<span class="resp-picker-empty">— Select a person…</span><span class="resp-picker-caret">▾</span>';
+    return;
+  }
+  const p = (typeof findPerson === 'function') ? findPerson(_respPickerSelectedId) : null;
+  if (!p) {
+    chip.innerHTML = '<span class="resp-picker-empty">' + escapeHtml(_respPickerSelectedId) + '</span><button type="button" class="resp-picker-clear" title="Clear">×</button><span class="resp-picker-caret">▾</span>';
+  } else {
+    chip.innerHTML =
+      _respPickerAvatarHtml(p) +
+      '<span class="resp-picker-name">' + escapeHtml(p.displayName || p.name || '?') + '</span>' +
+      '<button type="button" class="resp-picker-clear" title="Clear">×</button>' +
+      '<span class="resp-picker-caret">▾</span>';
+  }
+  const clr = chip.querySelector('.resp-picker-clear');
+  if (clr) clr.addEventListener('click', e => { e.stopPropagation(); setResponsiblePicker(''); });
+}
+function _respPickerRenderList(query) {
+  const list = document.getElementById('f_responsibleList');
+  if (!list) return;
+  const q = (query||'').trim().toLowerCase();
+  const { team, supp } = _respPickerCandidates();
+  const matches = p => !q || (p.name||'').toLowerCase().includes(q) ||
+                              (p.displayName||'').toLowerCase().includes(q) ||
+                              (p.email||'').toLowerCase().includes(q);
+  const teamMatches = team.filter(matches);
+  const suppMatches = supp.filter(matches);
+  let html = '';
+  if (teamMatches.length === 0 && suppMatches.length === 0) {
+    html = '<div class="resp-picker-empty-state">No matches</div>';
+  } else {
+    if (teamMatches.length > 0) {
+      html += '<div class="resp-picker-section-label">Team</div>';
+      teamMatches.forEach(p => {
+        html += '<div class="resp-picker-item" data-pid="' + escapeHtml(p.id) + '">' +
+          _respPickerAvatarHtml(p) +
+          '<div class="resp-picker-item-meta"><div class="resp-picker-item-name">' + escapeHtml(p.displayName || p.name || '?') + '</div>' +
+          (p.email ? '<div class="resp-picker-item-email">' + escapeHtml(p.email) + '</div>' : '') + '</div>' +
+          '</div>';
+      });
+    }
+    if (suppMatches.length > 0) {
+      html += '<div class="resp-picker-section-label">Supplementary</div>';
+      suppMatches.forEach(p => {
+        html += '<div class="resp-picker-item" data-pid="' + escapeHtml(p.id) + '">' +
+          _respPickerAvatarHtml(p) +
+          '<div class="resp-picker-item-meta"><div class="resp-picker-item-name">' + escapeHtml(p.displayName || p.name || '?') + '</div>' +
+          (p.email ? '<div class="resp-picker-item-email">' + escapeHtml(p.email) + '</div>' : '') + '</div>' +
+          '</div>';
+      });
+    }
+  }
+  list.innerHTML = html;
+  _respPickerActiveIndex = -1;
+  list.querySelectorAll('.resp-picker-item').forEach(it => {
+    it.addEventListener('mousedown', e => { e.preventDefault(); }); // keep input focus
+    it.addEventListener('click', () => {
+      setResponsiblePicker(it.dataset.pid);
+      _respPickerCloseDropdown();
+    });
+  });
+}
+function _respPickerOpenDropdown() {
+  const dd = document.getElementById('f_responsibleDropdown');
+  if (!dd) return;
+  dd.style.display = '';
+  const inp = document.getElementById('f_responsibleInput');
+  if (inp) { inp.value = ''; inp.focus(); }
+  _respPickerRenderList('');
+}
+function _respPickerCloseDropdown() {
+  const dd = document.getElementById('f_responsibleDropdown');
+  if (dd) dd.style.display = 'none';
+}
+(function wireResponsiblePicker(){
+  const chip = document.getElementById('f_responsibleChip');
+  const dd = document.getElementById('f_responsibleDropdown');
+  const inp = document.getElementById('f_responsibleInput');
+  if (!chip || !dd || !inp) return;
+  chip.addEventListener('click', e => {
+    if (e.target && e.target.classList && e.target.classList.contains('resp-picker-clear')) return;
+    if (dd.style.display === 'none' || !dd.style.display) _respPickerOpenDropdown();
+    else _respPickerCloseDropdown();
+  });
+  chip.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _respPickerOpenDropdown(); }
+  });
+  inp.addEventListener('input', () => _respPickerRenderList(inp.value));
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { _respPickerCloseDropdown(); chip.focus(); return; }
+    const items = Array.from(dd.querySelectorAll('.resp-picker-item'));
+    if (items.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _respPickerActiveIndex = Math.min(items.length - 1, _respPickerActiveIndex + 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _respPickerActiveIndex = Math.max(0, _respPickerActiveIndex - 1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const idx = _respPickerActiveIndex >= 0 ? _respPickerActiveIndex : 0;
+      const it = items[idx];
+      if (it) { setResponsiblePicker(it.dataset.pid); _respPickerCloseDropdown(); }
+      return;
+    } else { return; }
+    items.forEach(it => it.classList.remove('active'));
+    if (items[_respPickerActiveIndex]) {
+      items[_respPickerActiveIndex].classList.add('active');
+      items[_respPickerActiveIndex].scrollIntoView({ block: 'nearest' });
+    }
+  });
+  document.addEventListener('click', e => {
+    const box = document.getElementById('f_responsibleBox');
+    if (!box) return;
+    if (!box.contains(e.target)) _respPickerCloseDropdown();
+  });
+})();
+
 (function wireProposedPicker(){
   const inp = document.getElementById('f_proposedInput');
   if (!inp) return;
@@ -4769,7 +4959,8 @@ function openModal(tid, overrides) {
   document.getElementById("f_slackStatus").value = t.slackStatus || "";
   document.getElementById("f_priority").value = t.priority || "";
   document.getElementById("f_type").value = t.type || "";
-  document.getElementById("f_responsibleId").value = t.responsibleId || "";
+  // Responsible: searchable photo picker (Team + Supplementary only; Disabled hidden).
+  setResponsiblePicker(t.responsibleId || "");
   // Proposed By: support new array model + legacy single id
   proposedSelectedIds = Array.isArray(t.proposedByIds) && t.proposedByIds.length > 0
     ? [...t.proposedByIds]
@@ -4782,8 +4973,6 @@ function openModal(tid, overrides) {
   document.getElementById("f_dedicatedHours").value = (t.dedicatedHours === 0 || t.dedicatedHours) ? t.dedicatedHours : "";
   document.getElementById("f_estimatedHours").value = (t.estimatedHours === 0 || t.estimatedHours) ? t.estimatedHours : "";
   document.getElementById("f_shareWith").value = t.shareWith || "";
-  document.getElementById("f_completed").checked = !!t.completed;
-  document.getElementById("f_sharing").checked = !!t.sharing;
   document.getElementById("f_extraComments").value = t.extraComments || "";
   renderTaskTagsInModal(t);
   renderRoadmapsInModal(t);
@@ -4875,8 +5064,7 @@ document.getElementById("saveBtn").addEventListener("click", () => {
     t.dedicatedHours = ded === "" ? "" : (parseFloat(ded) || 0);
     t.estimatedHours = est === "" ? "" : (parseFloat(est) || 0);
     t.shareWith = document.getElementById("f_shareWith").value;
-    t.completed = document.getElementById("f_completed").checked;
-    t.sharing = document.getElementById("f_sharing").checked;
+    // Completion is now derived from status — no separate completed/sharing booleans.
     // Persist the manual Start/End so it pre-fills new roadmap entries and the picker shows it.
     // For tasks already in roadmaps, these get auto-recomputed on next roadmap-entry change.
     const taskStartV = document.getElementById("f_taskStart");
@@ -4900,7 +5088,7 @@ document.getElementById("saveBtn").addEventListener("click", () => {
       return p ? (p.email || p.name) : id;
     }).join(', ');
   }
-  if (t.completed) { t.slackStatus = "Completed"; }
+  // Status is the single source of truth for completion now (no t.completed boolean).
   // If this task came from a Slack request approval, mark the request as handled
   if (t._fromRequestTs) {
     if (!STORE.requestActions) STORE.requestActions = {};
@@ -9131,7 +9319,6 @@ function exportToCsv() {
   const cols = [
     {h: "ID", g: t => t.id},
     {h: "Subject", g: t => t.subject},
-    {h: "Completed", g: t => t.completed ? "true" : "false"},
     {h: "Status", g: t => t.slackStatus},
     {h: "Priority", g: t => t.priority},
     {h: "Type", g: t => t.type},
@@ -9148,7 +9335,6 @@ function exportToCsv() {
     {h: "Dedicated Hours", g: t => t.dedicatedHours},
     {h: "Estimated Hours", g: t => t.estimatedHours},
     {h: "Share With", g: t => t.shareWith},
-    {h: "Sharing", g: t => t.sharing ? "true" : "false"},
     {h: "Roadmaps", g: t => {
       const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : [];
       const names = rms.filter(r => (r.tasks||[]).some(e => e.taskId === t.id)).map(r => r.name || '(unnamed)');
@@ -10518,7 +10704,7 @@ function findGroup(groupId) {
 }
 function groupProgress(groupId) {
   const kids = groupChildrenOf(groupId);
-  const done = kids.filter(t => t.slackStatus === "Completed" || t.completed).length;
+  const done = kids.filter(t => t.slackStatus === "Completed").length;
   const total = kids.length;
   const pct = total > 0 ? Math.round(100 * done / total) : 0;
   return { done, total, pct };
@@ -11398,8 +11584,6 @@ document.getElementById("bulkSetStatus").addEventListener("change", e => {
     const t = STORE.tasks.find(x => x.id === tid);
     if (!t) return;
     t.slackStatus = ps;
-    if (ps === "Completed") { t.completed = true; }
-    else { t.completed = false; }
     t._pendingSync = true;
   });
   saveStore(STORE);
