@@ -3009,12 +3009,16 @@
     <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
     <div class="field" id="f_roadmapsField">
       <label>Roadmaps</label>
-      <!-- Quick "Apply to all roadmaps" row — always visible. Commits IMMEDIATELY (no Save needed).
-           Layout: 📌 [start] · [N days] · [end] 📌  · [Apply]
-           Setting "N days" computes end = start + (N − 1) days and shows "= N days" as the End source.
-           Picking via 📌 fills the input behind the scenes and shows "= start/end of X" as the source. -->
+      <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
+      <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
+      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap. The schedule below applies to all of them.</div>
+    </div>
+    <!-- Schedule (task-level) — every change saves immediately to task.startDate / task.endDate /
+         task.startAnchor / task.endAnchor / task.durationDays, and every roadmap this task is in
+         picks up the new dates automatically (no Apply button). -->
+    <div class="field f_taskOnlyRow" id="f_taskDatesField">
+      <label>Schedule</label>
       <div id="f_quickApplyRow" class="bn-quick-apply">
-        <span class="bn-quick-apply-lbl">Apply to all roadmaps</span>
         <div class="bn-quick-apply-inputs">
           <div class="bn-quick-apply-cell">
             <div class="bn-quick-apply-input-wrap">
@@ -3036,34 +3040,10 @@
             </div>
             <div id="f_quickApplyEndSrc" class="bn-quick-apply-src" style="display:none"></div>
           </div>
-          <button type="button" id="f_quickApplyBtn" class="btn primary bn-quick-apply-btn">Apply</button>
         </div>
         <span id="f_quickApplyFeedback" class="bn-quick-apply-feedback" style="display:none"></span>
       </div>
-      <div id="f_roadmapsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px"></div>
-      <select id="f_addRoadmapSel" style="max-width:300px"><option value="">+ Add to roadmap…</option></select>
-      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Click × on a chip to remove the task from that roadmap.</div>
-      <!-- Visual-only aggregated display: min Start across all roadmaps (only if every roadmap has one),
-           max End across all roadmaps (only if every roadmap has one). Also shows source pill
-           ("start of X" / "end of Y" / "N days") when every roadmap shares the same source. -->
-      <div class="f_taskOnlyRow bn-agg-display" id="f_taskDatesField">
-        <span class="bn-agg-display-lbl">Aggregated</span>
-        <span class="bn-agg-display-pair">
-          <span class="bn-agg-display-key">Start</span>
-          <span class="bn-agg-display-stack" id="f_aggMinStartStack">
-            <span class="bn-agg-display-pill" id="f_aggMinStartPill" style="display:none"></span>
-            <span class="bn-agg-display-val" id="f_aggMinStart">—</span>
-          </span>
-        </span>
-        <span class="bn-agg-display-span" id="f_aggSpan" style="display:none"></span>
-        <span class="bn-agg-display-pair">
-          <span class="bn-agg-display-key">End</span>
-          <span class="bn-agg-display-stack" id="f_aggMaxEndStack">
-            <span class="bn-agg-display-pill" id="f_aggMaxEndPill" style="display:none"></span>
-            <span class="bn-agg-display-val" id="f_aggMaxEnd">—</span>
-          </span>
-        </span>
-      </div>
+      <div style="font-size:11px; color:#6b6b6b; margin-top:4px">Edits save automatically. These dates apply to every roadmap this task is in (now and on any roadmap added later).</div>
     </div>
     <div class="field f_taskOnlyRow"><label>Task tags</label>
       <div id="f_taskTagsContainer" class="person-modal-tags"></div>
@@ -4818,7 +4798,7 @@ function bnEndFromStartAndDuration(startStr, n) {
   const fbEl    = document.getElementById('f_quickApplyFeedback');
   const sPinEl  = document.getElementById('f_quickApplyStartPin');
   const ePinEl  = document.getElementById('f_quickApplyEndPin');
-  if (!row || !startEl || !endEl || !btnEl) return;
+  if (!row || !startEl || !endEl) return;   // btnEl is no longer required — schedule auto-saves on input change
   function showFeedback(msg, isError) {
     if (!fbEl) return;
     fbEl.textContent = msg;
@@ -4914,7 +4894,7 @@ function bnEndFromStartAndDuration(startStr, n) {
       eLbl = t.durationDays + ' day' + (t.durationDays === 1 ? '' : 's');
     }
     setSourceChip(eSrcEl, eLbl, window.__quickApplyEndSrcTid);
-    btnEl.title = 'Save schedule — applies to every roadmap this task is in';
+    if (btnEl) btnEl.title = 'Save schedule — applies to every roadmap this task is in';
     if (fbEl) fbEl.style.display = 'none';
   };
   // Recompute End from Start + (N − 1) days. Returns the new end string or ''.
@@ -5147,6 +5127,8 @@ function bnEndFromStartAndDuration(startStr, n) {
         if (inp === endEl && daysEl) {
           daysEl.value = '';
         }
+        // Auto-save: writes the new state to the task so every roadmap picks it up immediately.
+        if (typeof window.__quickApplyAutoSave === 'function') window.__quickApplyAutoSave();
         menu.remove();
       });
     });
@@ -5165,21 +5147,21 @@ function bnEndFromStartAndDuration(startStr, n) {
   }
   if (sPinEl) sPinEl.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openQuickApplyPicker(sPinEl, 'start', startEl, sSrcEl); });
   if (ePinEl) ePinEl.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openQuickApplyPicker(ePinEl, 'end',   endEl,   eSrcEl); });
-  // Apply button → write to every assigned roadmap, clear anchors, save immediately.
-  btnEl.addEventListener('click', () => {
+  // Auto-save the task schedule on EVERY input change — no Apply button needed. The values written
+  // here flow into task.startDate / task.endDate / task.startAnchor / task.endAnchor / task.durationDays,
+  // and every roadmap the task is in (now or added later) reads those task-level dates automatically.
+  function autoSaveSchedule() {
     if (!editingId) return;
     const t = STORE.tasks.find(x => x.id === editingId);
     if (!t) return;
     const startV = startEl.value || '';
     const endV   = endEl.value || '';
-    // Read the current source labels + task IDs + days from the top component so they propagate.
     const startSrcLbl = window.__quickApplyStartSrcLbl || '';
     const endSrcLbl   = window.__quickApplyEndSrcLbl   || '';
     const startSrcTid = window.__quickApplyStartSrcTid || '';
     const endSrcTid   = window.__quickApplyEndSrcTid   || '';
     const daysNum     = daysEl ? parseInt(daysEl.value, 10) : NaN;
     const hasDays     = Number.isFinite(daysNum) && daysNum >= 1;
-    // Task-level schedule: write directly to the task. Every roadmap the task is in shares these.
     t.startDate = startV;
     t.endDate   = endV;
     t.startAnchor = '';
@@ -5196,11 +5178,17 @@ function bnEndFromStartAndDuration(startStr, n) {
       if (endSrcTid) t.endSrcTaskId = endSrcTid; else delete t.endSrcTaskId;
     }
     saveStore(STORE);
-    if (typeof renderRoadmapsInModal === 'function') renderRoadmapsInModal(t);
     if (typeof window.__renderTaskAggregatedSchedule === 'function') window.__renderTaskAggregatedSchedule(t);
-    const rmsCount = (STORE.roadmaps || []).filter(rm => (rm.tasks || []).some(e => e.taskId === t.id)).length;
-    showFeedback('Schedule saved' + (rmsCount > 0 ? ' · applies to ' + rmsCount + ' roadmap' + (rmsCount === 1 ? '' : 's') : ''));
+  }
+  // Expose for inputs/pin pickers to call after they update the staged state.
+  window.__quickApplyAutoSave = autoSaveSchedule;
+  // Re-bind change handlers to also auto-save (the existing handlers update derived state first).
+  [startEl, endEl, daysEl].forEach(inp => {
+    if (!inp) return;
+    inp.addEventListener('change', autoSaveSchedule);
   });
+  // The old button is gone; ignore any leftover ref.
+  if (btnEl) btnEl.style.display = 'none';
 })();
 // Anchors staged at the task level for the Apply-to-all flow.
 // These are committed to task.startAnchor / task.endAnchor on Save (via window.__pendingApplyToRoadmaps).
