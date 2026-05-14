@@ -5269,6 +5269,8 @@ function bnEndFromStartAndDuration(startStr, n) {
         ev.preventDefault(); ev.stopPropagation();
         setSourceChip(srcEl, '');
         if (!isStart && daysEl) daysEl.value = '';
+        // After clearing the pill, immediately re-hint the days input from the remaining dates.
+        if (typeof refreshDaysHint === 'function') refreshDaysHint();
         autoSave();
       });
       inp.parentElement.insertBefore(pill, inp);
@@ -5285,6 +5287,7 @@ function bnEndFromStartAndDuration(startStr, n) {
           ev.preventDefault(); ev.stopPropagation();
           setSourceChip(srcEl, '');
           if (!isStart && daysEl) daysEl.value = '';
+          if (typeof refreshDaysHint === 'function') refreshDaysHint();
           autoSave();
         });
         srcEl.appendChild(disp);
