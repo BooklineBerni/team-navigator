@@ -273,13 +273,15 @@
   .rm-name-popover .pp-row .nm { flex: 1; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rm-name-popover .pp-row .cnt { font-size: 11px; opacity: 0.7; }
   .rm-name-popover .pp-empty { padding: 16px 12px; text-align: center; color: #9a9a9a; font-size: 12px; }
-  /* Task modal — per-roadmap rows with dates + jump link */
-  .rm-modal-list { display: flex; flex-direction: column; gap: 4px; }
+  /* Task modal — per-roadmap rows with dates + jump link.
+     Flex-wrap lets multiple chips sit side-by-side when there's horizontal room. */
+  .rm-modal-list { display: flex; flex-wrap: wrap; gap: 4px 6px; }
   .rm-modal-row {
-    display: flex; align-items: center; gap: 8px;
-    padding: 5px 8px;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px;
     background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;
     font-size: 12px;
+    flex: 0 1 auto; min-width: 0; max-width: 100%;
   }
   .rm-modal-link {
     appearance: none; border: none; background: transparent;
@@ -304,9 +306,10 @@
   .rm-modal-date-input:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
   .rm-modal-date-input:disabled { background: #fef3c7; color: #92400e; cursor: not-allowed; }
   .rm-modal-arrow { color: #92400e; font-weight: 600; font-size: 11px; }
-  /* Per-row Apply-style component: pin + start + N days + end + pin, with source chips below */
-  .rm-modal-row { flex-wrap: wrap; align-items: flex-start; }
-  .rm-modal-row .rm-modal-dates {
+  /* Per-row Apply-style component: pin + start + N days + end + pin, with source chips below.
+     (The modal chip no longer renders date editors; this is kept for legacy callers.) */
+  .rm-modal-row.has-dates { flex-wrap: wrap; align-items: flex-start; flex-basis: 100%; }
+  .rm-modal-row.has-dates .rm-modal-dates {
     display: inline-flex; align-items: flex-start; gap: 6px;
     flex-wrap: nowrap;
   }
@@ -850,6 +853,10 @@
   .badge.roadmap-badge.scheduled { background: #d1fadf; color: #047857; }
   .badge.roadmap-badge.partial   { background: #fef3c7; color: #92400e; }
   .badge.roadmap-badge .rm-dates { opacity: 0.85; font-weight: 600; margin-left: 4px; }
+  /* Owner avatar inside the roadmap badge: small, vertically centred with the text. */
+  .badge.roadmap-badge { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 3px; }
+  .badge.roadmap-badge .rm-owner-mini { width: 14px; height: 14px; font-size: 8px; flex: 0 0 auto; vertical-align: middle; }
+  .badge.roadmap-badge .rm-owner-mini .ini { font-size: 8px; }
 
 
   /* Roadmap page — full viewport, no outer scroll */
@@ -2173,11 +2180,16 @@
   .bn-modal-row {
     display: flex; gap: 12px; align-items: flex-start;
     margin-bottom: 12px;
+    flex-wrap: wrap;
   }
   .bn-modal-row > .field { margin-bottom: 0; }
   /* Standalone Task dates row: drops the leading "Task dates" label pill since the field now has its own label */
   .bn-quick-apply--standalone { padding-left: 0; }
   .bn-quick-apply--standalone .bn-quick-apply-lbl { display: none; }
+  /* Compact hours fields next to Task dates */
+  .bn-hours-field { width: 64px; flex-shrink: 0; }
+  .bn-hours-field input { padding: 8px 6px; text-align: right; }
+  .bn-hours-field label { white-space: nowrap; }
   .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
   .field label { font-size: 11px; color: #6b6b6b; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; }
   .field input, .field select, .field textarea { border: 1px solid #d8d6d1; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; background: #fff; }
@@ -3389,11 +3401,11 @@
           <span id="f_taskDatesFeedback" class="bn-quick-apply-feedback" style="display:none"></span>
         </div>
       </div>
-      <div class="field f_taskOnlyRow" style="width:100px; flex-shrink:0">
-        <label>Dedicated h.</label><input type="number" id="f_dedicatedHours" step="0.5" min="0">
+      <div class="field f_taskOnlyRow bn-hours-field">
+        <label title="Dedicated hours">Ded. h.</label><input type="number" id="f_dedicatedHours" step="0.5" min="0">
       </div>
-      <div class="field f_taskOnlyRow" style="width:100px; flex-shrink:0">
-        <label>Estimated h.</label><input type="number" id="f_estimatedHours" step="0.5" min="0">
+      <div class="field f_taskOnlyRow bn-hours-field">
+        <label title="Estimated hours">Est. h.</label><input type="number" id="f_estimatedHours" step="0.5" min="0">
       </div>
     </div>
     <div class="field" id="f_groupRow" style="display:none">
@@ -11649,6 +11661,8 @@ function getTaskRoadmaps(taskId) {
 //   • partial   (amber + 🕒) when only one resolves
 //   • plain     (blue + 📍) when no dates yet
 function roadmapBadgeHtml(taskId, rm) {
+  // Keep the scheduled/partial/unscheduled coloring of the badge, but drop the inline
+  // start→end date text and swap the calendar/clock/pin icon for the roadmap owner's avatar.
   const entry = (rm.tasks || []).find(e => e.taskId === taskId);
   let startStr = '', endStr = '';
   if (entry) {
@@ -11662,29 +11676,18 @@ function roadmapBadgeHtml(taskId, rm) {
     }
   }
   const hasStart = !!startStr;
-  const hasEnd = !!endStr;
+  const hasEnd   = !!endStr;
   const scheduled = hasStart && hasEnd;
-  const partial = !scheduled && (hasStart || hasEnd);
-  // "DD/MM/YYYY" formatter — locale-stable since dates are stored as ISO YYYY-MM-DD
-  function compact(d) {
-    if (!d) return '?';
-    const parts = d.split('-');
-    if (parts.length !== 3) return d;
-    return parts[2] + '/' + parts[1] + '/' + parts[0];
-  }
-  let icon, cls, dateText;
-  if (scheduled) {
-    icon = '📅'; cls = 'roadmap-badge scheduled';
-    dateText = compact(startStr) + '→' + compact(endStr);
-  } else if (partial) {
-    icon = '🕒'; cls = 'roadmap-badge partial';
-    dateText = hasStart ? (compact(startStr) + '→?') : ('?→' + compact(endStr));
-  } else {
-    icon = '📍'; cls = 'roadmap-badge'; dateText = '';
-  }
+  const partial   = !scheduled && (hasStart || hasEnd);
+  const cls = 'roadmap-badge' + (scheduled ? ' scheduled' : (partial ? ' partial' : ''));
   const name = escapeHtml((rm.name || '').slice(0, 18));
-  const tip = 'In roadmap: ' + (rm.name || '') + (dateText ? ' · ' + (scheduled ? startStr + ' → ' + endStr : dateText.replace('→', ' → ')) : ' · no dates yet');
-  return '<span class="badge ' + cls + '" title="' + escapeHtml(tip) + '">' + icon + ' ' + name + (dateText ? '<span class="rm-dates">· ' + dateText + '</span>' : '') + '</span>';
+  // Owner avatar — same helper used by the strip filter pills (and accessibility tooltip).
+  const ownerAv = (typeof roadmapOwnerAvatarHtml === 'function') ? roadmapOwnerAvatarHtml(rm, 14) : '📍';
+  const tip = 'In roadmap: ' + (rm.name || '') +
+    (scheduled ? ' · ' + startStr + ' → ' + endStr
+     : partial ? ' · ' + (hasStart ? startStr + ' → ?' : '? → ' + endStr)
+     : ' · no dates yet');
+  return '<span class="badge ' + cls + '" title="' + escapeHtml(tip) + '">' + ownerAv + ' ' + name + '</span>';
 }
 
 // ---- Roadmaps ----
