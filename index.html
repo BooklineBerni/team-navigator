@@ -4896,19 +4896,25 @@ function bnEndFromStartAndDuration(startStr, n) {
       srcEl.innerHTML = '';
     }
   }
-  // Always show the row; inputs always start empty when modal opens.
+  // Pre-fill from the task — dates are task-level now and apply to every roadmap automatically.
   window.__refreshQuickApplyFromTask = function(t) {
     row.style.display = '';
-    startEl.value = '';
-    endEl.value   = '';
-    if (daysEl) daysEl.value = '';
-    window.__quickApplyStartSrcLbl = '';
-    window.__quickApplyEndSrcLbl   = '';
-    window.__quickApplyStartSrcTid = '';
-    window.__quickApplyEndSrcTid   = '';
-    setSourceChip(sSrcEl, '');
-    setSourceChip(eSrcEl, '');
-    btnEl.title = 'Write these dates to every assigned roadmap immediately';
+    startEl.value = (t && t.startDate) || '';
+    endEl.value   = (t && t.endDate)   || '';
+    if (daysEl) daysEl.value = (t && typeof t.durationDays === 'number' && t.durationDays >= 1) ? String(t.durationDays) : '';
+    window.__quickApplyStartSrcLbl = (t && t.startSrcLabel) || '';
+    window.__quickApplyEndSrcLbl   = (t && t.endSrcLabel)   || '';
+    window.__quickApplyStartSrcTid = (t && t.startSrcTaskId) || '';
+    window.__quickApplyEndSrcTid   = (t && t.endSrcTaskId)   || '';
+    // Show pills when the task has labelled sources
+    setSourceChip(sSrcEl, window.__quickApplyStartSrcLbl, window.__quickApplyStartSrcTid);
+    // For end: prefer explicit label; else show "N days" if duration is set
+    let eLbl = window.__quickApplyEndSrcLbl;
+    if (!eLbl && t && typeof t.durationDays === 'number' && t.durationDays >= 1) {
+      eLbl = t.durationDays + ' day' + (t.durationDays === 1 ? '' : 's');
+    }
+    setSourceChip(eSrcEl, eLbl, window.__quickApplyEndSrcTid);
+    btnEl.title = 'Save schedule — applies to every roadmap this task is in';
     if (fbEl) fbEl.style.display = 'none';
   };
   // Recompute End from Start + (N − 1) days. Returns the new end string or ''.
@@ -5173,49 +5179,27 @@ function bnEndFromStartAndDuration(startStr, n) {
     const endSrcTid   = window.__quickApplyEndSrcTid   || '';
     const daysNum     = daysEl ? parseInt(daysEl.value, 10) : NaN;
     const hasDays     = Number.isFinite(daysNum) && daysNum >= 1;
+    // Task-level schedule: write directly to the task. Every roadmap the task is in shares these.
     t.startDate = startV;
     t.endDate   = endV;
     t.startAnchor = '';
     t.endAnchor   = '';
-    // Make sure the per-row source-label store exists (renderRoadmapsInModal uses it)
-    if (!window.__rmRowSrc) window.__rmRowSrc = {};
-    const rms = (typeof getRoadmaps === 'function' ? getRoadmaps() : (STORE.roadmaps || []));
-    let touched = 0;
-    rms.forEach(rm => {
-      const e = (rm.tasks || []).find(x => x.taskId === t.id);
-      if (!e) return;
-      e.startDate   = startV;
-      e.startAnchor = '';
-      e.endDate     = endV;
-      e.endAnchor   = '';
-      // Propagate START source label + task id (for status-colored pill).
-      if (startSrcLbl) e.startSrcLabel = startSrcLbl;
-      else delete e.startSrcLabel;
-      if (startSrcTid) e.startSrcTaskId = startSrcTid;
-      else delete e.startSrcTaskId;
-      // Days take precedence over an end pill label. If days is set, store durationDays only.
-      if (hasDays) {
-        e.durationDays = daysNum;
-        delete e.endSrcLabel;
-        delete e.endSrcTaskId;
-      } else {
-        delete e.durationDays;
-        if (endSrcLbl) e.endSrcLabel = endSrcLbl;
-        else delete e.endSrcLabel;
-        if (endSrcTid) e.endSrcTaskId = endSrcTid;
-        else delete e.endSrcTaskId;
-      }
-      touched++;
-    });
-    if (typeof recomputeTaskDates === 'function') recomputeTaskDates(t.id);
+    if (startSrcLbl) t.startSrcLabel = startSrcLbl; else delete t.startSrcLabel;
+    if (startSrcTid) t.startSrcTaskId = startSrcTid; else delete t.startSrcTaskId;
+    if (hasDays) {
+      t.durationDays = daysNum;
+      delete t.endSrcLabel;
+      delete t.endSrcTaskId;
+    } else {
+      delete t.durationDays;
+      if (endSrcLbl) t.endSrcLabel = endSrcLbl; else delete t.endSrcLabel;
+      if (endSrcTid) t.endSrcTaskId = endSrcTid; else delete t.endSrcTaskId;
+    }
     saveStore(STORE);
     if (typeof renderRoadmapsInModal === 'function') renderRoadmapsInModal(t);
     if (typeof window.__renderTaskAggregatedSchedule === 'function') window.__renderTaskAggregatedSchedule(t);
-    if (touched === 0) {
-      showFeedback('Task not in any roadmap yet', true);
-    } else {
-      showFeedback(touched + ' roadmap' + (touched === 1 ? '' : 's') + ' updated · saved');
-    }
+    const rmsCount = (STORE.roadmaps || []).filter(rm => (rm.tasks || []).some(e => e.taskId === t.id)).length;
+    showFeedback('Schedule saved' + (rmsCount > 0 ? ' · applies to ' + rmsCount + ' roadmap' + (rmsCount === 1 ? '' : 's') : ''));
   });
 })();
 // Anchors staged at the task level for the Apply-to-all flow.
@@ -5821,75 +5805,15 @@ function renderRoadmapsInModal(t) {
   if (assigned.length === 0) {
     cont.innerHTML = '<span style="color:#9a9a9a; font-size:12px">Not in any roadmap</span>';
   } else {
+    // Each roadmap chip is now JUST the link + × delete. Dates are task-level (set above in the
+    // "Apply to all roadmaps" component) and shared across every assigned roadmap, so there's no
+    // longer any per-roadmap date editor here.
     cont.innerHTML = '<div class="rm-modal-list">' + assigned.map(r => {
-      const entry = (r.tasks || []).find(e => e.taskId === t.id);
-      const sVal = (entry && entry.startDate) || '';
-      const eVal = (entry && entry.endDate)   || '';
-      const sAnchored = !!(entry && entry.startAnchor);
-      const eAnchored = !!(entry && entry.endAnchor);
-      const durVal = (entry && typeof entry.durationDays === 'number' && entry.durationDays >= 1) ? entry.durationDays : '';
-      const sSrcLbl = getRowSrc(r.id, 'start');
-      // End "source" can be either a picked-task label OR a "N days" computed label
-      let eSrcLbl = getRowSrc(r.id, 'end');
-      if (!eSrcLbl && durVal) eSrcLbl = durVal + ' day' + (durVal === 1 ? '' : 's');
-      // Build a start/end cell. When a source label is set, show a clickable pill (whole pill
-      // resets to date input on click) and the resolved date "= YYYY-MM-DD" below (also clickable
-      // to reset). Otherwise, show a normal date input. The END cell additionally shows a "= N days"
-      // line below whenever both start and end are resolvable — purely informational.
-      function buildSideCell(side, val, anchored, srcLbl) {
-        const pinHtml = '<button type="button" class="rm-modal-pin" data-rmid="' + escapeHtml(r.id) + '" data-side="' + side + '" title="Use another task\'s aggregated start/end as this ' + (side === 'start' ? 'Start' : 'End') + '">📌</button>';
-        const dateInput = '<input type="date" class="rm-modal-date-input rm-modal-' + side + '" data-rmid="' + escapeHtml(r.id) + '" value="' + escapeHtml(val) + '" title="' + (anchored ? 'Anchored — clear via the roadmap calendar to change' : (side === 'start' ? 'Start' : 'End') + ' in this roadmap') + '"' + (anchored ? ' disabled' : '') + '>';
-        // Pick the pill color: "N days" → gray; "start/end of TaskX" → that task's status color.
-        const isDaysLabel = srcLbl && /^\d+\s+day/.test(srcLbl);
-        let pillStyle = '';
-        if (srcLbl) {
-          const entry2 = entryFor(r.id).entry;
-          const srcTid = entry2 ? bnDeriveSrcTaskId(entry2, side) : '';
-          const stl = bnPillStyleForLabel(srcLbl, srcTid);
-          if (stl) pillStyle = bnPillInlineStyle(stl);
-        }
-        const pill = srcLbl
-          ? '<button type="button" class="rm-modal-pill rm-modal-pill-btn" data-side="' + side + '" data-rmid="' + escapeHtml(r.id) + '" style="' + pillStyle + '" title="' + escapeHtml(srcLbl) + ' — click to clear and pick a date">' +
-              escapeHtml(srcLbl) +
-              '<span class="bn-pill-x" aria-hidden="true">×</span>' +
-            '</button>'
-          : '';
-        const dateBelow = srcLbl
-          ? '<button type="button" class="rm-modal-date-display" data-side="' + side + '" data-rmid="' + escapeHtml(r.id) + '" title="Click to clear and pick a date">= ' + escapeHtml(val || '—') + '</button>'
-          : '';
-        // "= N days" indicator under the end date when both dates are present (read-only).
-        let daysBelow = '';
-        if (side === 'end' && sVal && eVal) {
-          const n = bnDaysInclusive(sVal, eVal);
-          if (n > 0) {
-            daysBelow = '<span class="rm-modal-days-display" title="Inclusive days between Start and End">= ' + n + ' day' + (n === 1 ? '' : 's') + '</span>';
-          }
-        }
-        const innerInput = srcLbl ? pill : dateInput;
-        // Pin position: start → left of input, end → right of input
-        const wrap = (side === 'start')
-          ? '<span class="rm-modal-input-wrap">' + pinHtml + innerInput + '</span>'
-          : '<span class="rm-modal-input-wrap">' + innerInput + pinHtml + '</span>';
-        return '<span class="rm-modal-cell">' + wrap + dateBelow + daysBelow + '</span>';
-      }
-      // Days cell — ALWAYS a number input. User edits the number here; the End date follows.
-      function buildDaysCell() {
-        const valHtml = durVal ? escapeHtml(String(durVal)) : '';
-        return '<span class="rm-modal-cell rm-modal-days-cell">' +
-          '<input type="number" class="rm-modal-days" data-rmid="' + escapeHtml(r.id) + '" value="' + valHtml + '" min="1" step="1" placeholder="N" title="Duration in days — sets End = Start + (N − 1) days">' +
-          '<span class="rm-modal-days-unit">days</span>' +
-        '</span>';
-      }
       return '<div class="rm-modal-row" data-rmid="' + escapeHtml(r.id) + '">' +
         '<button type="button" class="rm-modal-link" data-rmid="' + escapeHtml(r.id) + '" title="Open this roadmap">' +
           roadmapOwnerAvatarHtml(r, 18) +
           '<span>' + escapeHtml(r.name || '(unnamed)') + '</span>' +
         '</button>' +
-        '<span class="rm-modal-dates">' +
-          buildSideCell('start', sVal, sAnchored, sSrcLbl, true) +
-          buildDaysCell() +
-          buildSideCell('end', eVal, eAnchored, eSrcLbl, false) +
-        '</span>' +
         '<button type="button" class="rm-modal-x" data-rmid="' + escapeHtml(r.id) + '" title="Remove from this roadmap">×</button>' +
       '</div>';
     }).join('') + '</div>';
@@ -6553,18 +6477,21 @@ function parseAnchorRefGlobal(entry, anchorVal) {
   }
   return null;
 }
-function effectiveDatesForInRoadmap(entry, roadmap) {
-  function resolveSide(startEntry, sideField) {
+// Resolve task-level dates: walks task.startAnchor / task.endAnchor chains across tasks (not entries).
+// Predecessor/successor offset still applies when sides cross (start→end gets +1 day, etc.).
+function effectiveDatesForTask(task) {
+  if (!task) return { startStr: '', endStr: '' };
+  function resolveSide(cur, side) {
     const visited = new Set();
-    let curEntry = startEntry;
-    let curSide = sideField;
+    let curT = cur;
+    let curSide = side;
     let dayOffset = 0;
-    while (curEntry && !visited.has(curEntry.taskId + '|' + curSide)) {
-      visited.add(curEntry.taskId + '|' + curSide);
-      const anchorVal = curSide === 'start' ? curEntry.startAnchor : curEntry.endAnchor;
-      const ref = parseAnchorRefGlobal(curEntry, anchorVal);
+    while (curT && !visited.has(curT.id + '|' + curSide)) {
+      visited.add(curT.id + '|' + curSide);
+      const anchorVal = curSide === 'start' ? curT.startAnchor : curT.endAnchor;
+      const ref = parseAnchorRefGlobal({ taskId: curT.id }, anchorVal);
       if (!ref) {
-        const baseStr = (curSide === 'start' ? curEntry.startDate : curEntry.endDate) || '';
+        const baseStr = (curSide === 'start' ? curT.startDate : curT.endDate) || '';
         if (!baseStr) return '';
         if (dayOffset === 0) return baseStr;
         const d = parseDate(baseStr);
@@ -6573,90 +6500,32 @@ function effectiveDatesForInRoadmap(entry, roadmap) {
       }
       if (curSide === 'start' && ref.side === 'end') dayOffset += 1;
       else if (curSide === 'end' && ref.side === 'start') dayOffset -= 1;
-      const next = (roadmap.tasks || []).find(e => e.taskId === ref.taskId);
+      const next = (STORE.tasks || []).find(x => x.id === ref.taskId);
       if (!next) return '';
-      curEntry = next;
+      curT = next;
       curSide = ref.side;
     }
     return '';
   }
   return {
-    startStr: resolveSide(entry, 'start'),
-    endStr:   resolveSide(entry, 'end'),
+    startStr: resolveSide(task, 'start'),
+    endStr:   resolveSide(task, 'end'),
   };
 }
-// Recompute task.startDate / task.endDate from all roadmap entries this task is in.
-// Rule: take min(starts) only if ALL roadmaps have a resolvable start (else clear).
-//       take max(ends)   only if ALL roadmaps have a resolvable end   (else clear).
-// If the task is in 0 roadmaps, the manual task.startDate / endDate are kept.
-function recomputeTaskDates(taskId) {
-  const task = STORE.tasks.find(t => t.id === taskId);
-  if (!task) return;
-  const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : (STORE.roadmaps || []);
-  const entries = [];
-  rms.forEach(rm => {
-    const e = (rm.tasks || []).find(x => x.taskId === taskId);
-    if (e) entries.push({ entry: e, rm });
-  });
-  if (entries.length === 0) return;  // not in any roadmap → keep manual override
-  const starts = entries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).startStr);
-  task.startDate = starts.every(s => !!s)
-    ? starts.reduce((m, s) => (!m || s < m) ? s : m, '')
-    : '';
-  const ends = entries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).endStr);
-  task.endDate = ends.every(s => !!s)
-    ? ends.reduce((m, s) => (!m || s > m) ? s : m, '')
-    : '';
+// Dates per roadmap entry are now driven entirely by the parent task — every roadmap a task is
+// in shares the same start/end. Older per-entry overrides are ignored on read (still in STORE
+// untouched, but not used). Writers everywhere should write to task.startDate / task.endDate.
+function effectiveDatesForInRoadmap(entry, roadmap) {
+  const t = entry && (STORE.tasks || []).find(x => x.id === entry.taskId);
+  return effectiveDatesForTask(t);
 }
-// Bulk variant — recompute every task's dates, used after major changes (load/import).
-function recomputeAllTaskDates() {
-  (STORE.tasks || []).forEach(t => recomputeTaskDates(t.id));
-}
-// Convenience: save store AND sync the aggregated task.startDate/endDate from all roadmap entries.
-// Use this after any mutation that changes a roadmap entry's startDate/endDate/startAnchor/endAnchor.
-function saveAndSyncTaskDates() {
-  recomputeAllTaskDates();
-  saveStore(STORE);
-}
-// Apply task.startDate / task.endDate to all roadmap entries.
-// If task.startAnchor / task.endAnchor is set AND the target task is also in the same roadmap,
-// the entry inherits the anchor; otherwise it falls back to the absolute date.
-// Passing empty strings is a valid way to clear roadmap dates.
-function applyTaskDatesToRoadmaps(taskId) {
-  const task = STORE.tasks.find(t => t.id === taskId);
-  if (!task) return 0;
-  const rms = (typeof getRoadmaps === 'function') ? getRoadmaps() : (STORE.roadmaps || []);
-  let touched = 0;
-  function anchorTargetInRoadmap(anchorVal, rm) {
-    if (!anchorVal) return null;
-    const ref = parseAnchorRefGlobal({ taskId }, anchorVal);
-    if (!ref) return null;
-    const inRm = (rm.tasks || []).some(x => x.taskId === ref.taskId);
-    return inRm ? anchorVal : null;
-  }
-  rms.forEach(rm => {
-    const e = (rm.tasks || []).find(x => x.taskId === taskId);
-    if (!e) return;
-    const sAnchor = anchorTargetInRoadmap(task.startAnchor, rm);
-    const eAnchor = anchorTargetInRoadmap(task.endAnchor, rm);
-    if (sAnchor) {
-      e.startAnchor = sAnchor;
-      e.startDate   = '';
-    } else {
-      e.startAnchor = '';
-      e.startDate   = task.startDate || '';
-    }
-    if (eAnchor) {
-      e.endAnchor = eAnchor;
-      e.endDate   = '';
-    } else {
-      e.endAnchor = '';
-      e.endDate   = task.endDate || '';
-    }
-    touched++;
-  });
-  return touched;
-}
+// Task-level dates are now the single source of truth. The legacy "recompute from entries" /
+// "apply task → entries" helpers are kept as no-ops for backwards compatibility with call sites
+// that still invoke them. Reads everywhere go through effectiveDatesForTask / effectiveDatesForInRoadmap.
+function recomputeTaskDates(_taskId) { /* no-op: task.startDate / task.endDate are authoritative */ }
+function recomputeAllTaskDates() { /* no-op */ }
+function saveAndSyncTaskDates() { saveStore(STORE); }
+function applyTaskDatesToRoadmaps(_taskId) { return 0; /* no-op: task dates apply directly */ }
 // Task-level anchor picker — same UI as openAnchorPicker but works against ALL STORE tasks.
 // Used by the Schedule field in the task edit modal so you can anchor the task's Start/End
 // to another task's start/end regardless of which roadmap they share.
@@ -7140,39 +7009,10 @@ function renderRoadmapCalendar(roadmapId) {
   //   start anchored to end  → result = target_end + 1 day  (starts right after)
   //   end   anchored to start → result = target_start − 1 day (ends right before)
   // Cycles are protected by a visited-set; missing targets fall back to '' (no date).
+  // Task-level dates are the source of truth — entries no longer carry per-roadmap dates.
   function effectiveDatesFor(entry) {
-    function resolveSide(startEntry, sideField /* 'start' | 'end' */) {
-      const visited = new Set();
-      let curEntry = startEntry;
-      let curSide = sideField;
-      let dayOffset = 0;
-      while (curEntry && !visited.has(curEntry.taskId + '|' + curSide)) {
-        visited.add(curEntry.taskId + '|' + curSide);
-        const anchorVal = curSide === 'start' ? curEntry.startAnchor : curEntry.endAnchor;
-        const ref = parseAnchorRef(curEntry, anchorVal);
-        if (!ref) {
-          // No anchor — return the literal date with cumulative offset applied
-          const baseStr = (curSide === 'start' ? curEntry.startDate : curEntry.endDate) || '';
-          if (!baseStr) return '';
-          if (dayOffset === 0) return baseStr;
-          const d = parseDate(baseStr);
-          if (!d) return baseStr;
-          return dateKey(addDays(d, dayOffset));
-        }
-        // Crossing types accumulate an offset
-        if (curSide === 'start' && ref.side === 'end') dayOffset += 1;
-        else if (curSide === 'end' && ref.side === 'start') dayOffset -= 1;
-        const next = (r.tasks || []).find(e => e.taskId === ref.taskId);
-        if (!next) return '';   // target not on roadmap → no effective date
-        curEntry = next;
-        curSide = ref.side;
-      }
-      return '';   // cycle detected
-    }
-    return {
-      startStr: resolveSide(entry, 'start'),
-      endStr:   resolveSide(entry, 'end'),
-    };
+    const t = entry && (STORE.tasks || []).find(x => x.id === entry.taskId);
+    return effectiveDatesForTask(t);
   }
   // Build the list of anchor menu items for `entry` (excludes self). Returns [{value, label}, …].
   function buildAnchorItems(entry) {
@@ -7967,10 +7807,11 @@ function renderRoadmapCalendar(roadmapId) {
       const ready = !!parseDate(eff.startStr);
       const isThisAGroup = !!task.isGroup;
       const canAnchor = (r.tasks || []).filter(en => en.taskId !== task.id).length > 0;
-      const sA = entry.startAnchor || '';
-      const eA = entry.endAnchor   || '';
+      // Anchors are task-level now — read them from the task.
+      const sA = task.startAnchor || '';
+      const eA = task.endAnchor   || '';
       function anchorLabel(anchorVal) {
-        const ref = parseAnchorRef(entry, anchorVal);
+        const ref = parseAnchorRefGlobal({ taskId: task.id }, anchorVal);
         if (!ref) return '';
         const tt = STORE.tasks.find(x => x.id === ref.taskId);
         if (!tt) return '';
@@ -7989,10 +7830,9 @@ function renderRoadmapCalendar(roadmapId) {
           allGroups.map(g => '<option value="' + escapeHtml(g.id) + '"' + (task.groupId === g.id ? ' selected' : '') + '>📁 ' + escapeHtml(g.subject||'(unnamed)') + '</option>').join('') +
         '</select>'
       );
-      // Current duration in days (inclusive) when both ends are set; otherwise empty
-      // Prefer the stored duration if present (preserves it across start-date changes); fall back to computed.
-      const _storedDur = (typeof entry.durationDays === 'number' && entry.durationDays >= 1) ? entry.durationDays : null;
-      const _dur = _storedDur || ((entry.startDate && entry.endDate) ? bnDaysInclusive(entry.startDate, entry.endDate) : '');
+      // Sidebar reads dates from the TASK (task-level dates apply to every roadmap the task is in).
+      const _storedDur = (typeof task.durationDays === 'number' && task.durationDays >= 1) ? task.durationDays : null;
+      const _dur = _storedDur || ((task.startDate && task.endDate) ? bnDaysInclusive(task.startDate, task.endDate) : '');
       return '<div class="rm-task-row ' + (ready ? "ready" : "") + '" data-tid="' + task.id + '" data-pstatus="' + escapeHtml(task.slackStatus || '') + '">' +
         '<div class="rmt-head">' +
           '<button type="button" class="rmt-title-btn" data-tid="' + task.id + '" title="' + escapeHtml(task.subject) + ' — click to edit">' + (isThisAGroup ? '📁 ' : '') + escapeHtml(task.subject.slice(0,80)) + (task.subject.length>80?'…':'') + '</button>' +
@@ -8004,13 +7844,13 @@ function renderRoadmapCalendar(roadmapId) {
             '<span class="rmt-label">Start</span>' +
             '<div class="rmt-input-wrap">' +
               (canAnchor ? pinBtnHtml('rmt-pin-start', !!sA, 'start', sA) : '') +
-              '<input type="date" class="rmt-start" value="' + escapeHtml(entry.startDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (sA ? ' disabled' : '') + ' title="Start">' +
+              '<input type="date" class="rmt-start" value="' + escapeHtml(task.startDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (sA ? ' disabled' : '') + ' title="Start (task-level — applies to all roadmaps)">' +
             '</div>' +
           '</div>' +
           '<div class="rmt-pair">' +
             '<span class="rmt-label">End</span>' +
             '<div class="rmt-input-wrap">' +
-              '<input type="date" class="rmt-end" value="' + escapeHtml(entry.endDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (eA ? ' disabled' : '') + ' title="End">' +
+              '<input type="date" class="rmt-end" value="' + escapeHtml(task.endDate||'') + '"' + (minDate ? ' min="' + escapeHtml(minDate) + '"' : '') + ' data-default-month="' + escapeHtml(minDate) + '"' + (eA ? ' disabled' : '') + ' title="End (task-level — applies to all roadmaps)">' +
               (canAnchor ? pinBtnHtml('rmt-pin-end', !!eA, 'end', eA) : '') +
             '</div>' +
           '</div>' +
@@ -8234,9 +8074,13 @@ function renderRoadmapCalendar(roadmapId) {
       const pop = document.createElement('div');
       pop.className = 'cal-event-edit-popover';
       const isG = !!task.isGroup;
-      const sAnchor = entry.startAnchor || '';
-      const eAnchor = entry.endAnchor || '';
-      const canAnchor = (r.tasks || []).filter(en => en.taskId !== tid).length > 0;
+      // Read from the TASK (dates are task-level now and shared across all roadmaps).
+      const _taskHere = (STORE.tasks || []).find(x => x.id === entry.taskId);
+      const sAnchor = (_taskHere && _taskHere.startAnchor) || '';
+      const eAnchor = (_taskHere && _taskHere.endAnchor) || '';
+      const _tStart = (_taskHere && _taskHere.startDate) || '';
+      const _tEnd   = (_taskHere && _taskHere.endDate) || '';
+      const canAnchor = (STORE.tasks || []).filter(t => t.id !== entry.taskId).length > 0;
       function cepPinHtml(id, isActive, kind, anchorVal) {
         const ref = parseAnchorRef(entry, anchorVal);
         let labelHint = '';
@@ -8261,12 +8105,12 @@ function renderRoadmapCalendar(roadmapId) {
         '<h4>' + (isG ? '📁 ' : '') + escapeHtml(task.subject) + '</h4>' +
         '<div class="cep-row"><label>Start</label>' +
           (canAnchor ? cepPinHtml('cepStartPin', !!sAnchor, 'start', sAnchor) : '') +
-          '<input type="date" id="cepStart" value="' + escapeHtml(entry.startDate || '') + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + (sAnchor ? ' disabled' : '') + '>' +
+          '<input type="date" id="cepStart" value="' + escapeHtml(_tStart) + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + (sAnchor ? ' disabled' : '') + '>' +
         '</div>' +
         '<div id="cepStartHint">' + cepAnchorHint(sAnchor, 'start') + '</div>' +
         '<div class="cep-row"><label>End</label>' +
           (canAnchor ? cepPinHtml('cepEndPin', !!eAnchor, 'end', eAnchor) : '') +
-          '<input type="date" id="cepEnd" value="' + escapeHtml(entry.endDate || '') + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + (eAnchor ? ' disabled' : '') + '>' +
+          '<input type="date" id="cepEnd" value="' + escapeHtml(_tEnd) + '"' + (r.startDate ? ' min="' + escapeHtml(r.startDate) + '"' : '') + (eAnchor ? ' disabled' : '') + '>' +
         '</div>' +
         '<div id="cepEndHint">' + cepAnchorHint(eAnchor, 'end') + '</div>' +
         '<div class="cep-actions">' +
@@ -8289,9 +8133,13 @@ function renderRoadmapCalendar(roadmapId) {
           pop.style.top = (Math.max(8, above) + window.scrollY) + 'px';
         }
       }, 0);
+      // The calendar popover edits the TASK's schedule directly (since dates are now task-level
+      // and shared across all roadmaps the task is in).
+      const _taskRef = (STORE.tasks || []).find(x => x.id === entry.taskId);
       pop.querySelector('#cepStart').addEventListener('change', ev => {
-        entry.startDate = ev.target.value;
-        entry.startAnchor = '';   // setting a custom date clears the anchor
+        if (!_taskRef) return;
+        _taskRef.startDate = ev.target.value;
+        _taskRef.startAnchor = '';   // setting a custom date clears the anchor
         const pin = pop.querySelector('#cepStartPin');
         if (pin) pin.classList.remove('active');
         const hintEl = pop.querySelector('#cepStartHint');
@@ -8300,8 +8148,9 @@ function renderRoadmapCalendar(roadmapId) {
         renderRoadmapCalendar(roadmapId);
       });
       pop.querySelector('#cepEnd').addEventListener('change', ev => {
-        entry.endDate = ev.target.value;
-        entry.endAnchor = '';
+        if (!_taskRef) return;
+        _taskRef.endDate = ev.target.value;
+        _taskRef.endAnchor = '';
         const pin = pop.querySelector('#cepEndPin');
         if (pin) pin.classList.remove('active');
         const hintEl = pop.querySelector('#cepEndHint');
@@ -8315,11 +8164,12 @@ function renderRoadmapCalendar(roadmapId) {
         pin.addEventListener('click', ev => {
           ev.preventDefault();
           ev.stopPropagation();
-          const currentRaw = (kind === 'start' ? entry.startAnchor : entry.endAnchor) || '';
-          const current = normalizeAnchorForSelect(entry, currentRaw);
+          if (!_taskRef) return;
+          const currentRaw = (kind === 'start' ? _taskRef.startAnchor : _taskRef.endAnchor) || '';
+          const current = normalizeAnchorForSelect({ taskId: _taskRef.id }, currentRaw);
           openAnchorPicker(pin, entry, kind, current, (newVal) => {
-            if (kind === 'start') entry.startAnchor = newVal || '';
-            else                  entry.endAnchor   = newVal || '';
+            if (kind === 'start') _taskRef.startAnchor = newVal || '';
+            else                  _taskRef.endAnchor   = newVal || '';
             // Update pin appearance
             pin.classList.toggle('active', !!newVal);
             // Update date input disabled state
@@ -8450,79 +8300,74 @@ function renderRoadmapCalendar(roadmapId) {
         applyBtn.textContent = pendingReady > 0 ? ('Apply (' + pendingReady + ')') : 'Apply';
       }
     }
-    // Helper: refresh duration input from stored entry.durationDays or computed from Start/End
+    // Sidebar row writers now target the TASK directly. Dates are task-level: any change in this
+    // row applies to ALL roadmaps the task is in (not just this roadmap entry).
+    const _sideTask = STORE.tasks.find(x => x.id === tid);
+    // Helper: refresh duration input from task.durationDays or computed from Start/End
     function refreshDurInput() {
       const di = node.querySelector('.rmt-duration');
-      if (!di || idx < 0) return;
-      const ent = r.tasks[idx];
-      if (typeof ent.durationDays === 'number' && ent.durationDays >= 1) {
-        di.value = ent.durationDays;
-      } else if (ent.startDate && ent.endDate) {
-        di.value = bnDaysInclusive(ent.startDate, ent.endDate) || '';
+      if (!di || !_sideTask) return;
+      if (typeof _sideTask.durationDays === 'number' && _sideTask.durationDays >= 1) {
+        di.value = _sideTask.durationDays;
+      } else if (_sideTask.startDate && _sideTask.endDate) {
+        di.value = bnDaysInclusive(_sideTask.startDate, _sideTask.endDate) || '';
       } else {
         di.value = '';
       }
     }
     node.querySelector('.rmt-start').addEventListener('change', e => {
-      if (idx >= 0) {
-        r.tasks[idx].startDate = e.target.value;
-        r.tasks[idx].startAnchor = '';
-        // If a stored duration exists, ALWAYS recompute end = start + (N − 1) days.
-        const storedN = r.tasks[idx].durationDays;
-        if (typeof storedN === 'number' && storedN >= 1 && r.tasks[idx].startDate) {
-          const newEnd = bnEndFromStartAndDuration(r.tasks[idx].startDate, storedN);
-          if (newEnd) {
-            r.tasks[idx].endDate = newEnd;
-            r.tasks[idx].endAnchor = '';
-            const eInp = node.querySelector('.rmt-end');
-            if (eInp) eInp.value = newEnd;
-          }
+      if (!_sideTask) return;
+      _sideTask.startDate = e.target.value;
+      _sideTask.startAnchor = '';
+      // If a stored duration exists, ALWAYS recompute end = start + (N − 1) days.
+      const storedN = _sideTask.durationDays;
+      if (typeof storedN === 'number' && storedN >= 1 && _sideTask.startDate) {
+        const newEnd = bnEndFromStartAndDuration(_sideTask.startDate, storedN);
+        if (newEnd) {
+          _sideTask.endDate = newEnd;
+          _sideTask.endAnchor = '';
+          const eInp = node.querySelector('.rmt-end');
+          if (eInp) eInp.value = newEnd;
         }
-        if (parseDate(r.tasks[idx].startDate)) window.__rmPendingApply.add(tid);
-        refreshDurInput();
-        saveAndSyncTaskDates();
-        refreshRowReadyState();
       }
+      if (parseDate(_sideTask.startDate)) window.__rmPendingApply.add(tid);
+      refreshDurInput();
+      saveAndSyncTaskDates();
+      refreshRowReadyState();
     });
     node.querySelector('.rmt-end').addEventListener('change', e => {
-      if (idx >= 0) {
-        r.tasks[idx].endDate = e.target.value;
-        r.tasks[idx].endAnchor = '';
-        // Manually editing the End clears any stored duration (override).
-        delete r.tasks[idx].durationDays;
-        if (parseDate(r.tasks[idx].endDate)) window.__rmPendingApply.add(tid);
-        refreshDurInput();
-        saveAndSyncTaskDates();
-        refreshRowReadyState();
-      }
+      if (!_sideTask) return;
+      _sideTask.endDate = e.target.value;
+      _sideTask.endAnchor = '';
+      delete _sideTask.durationDays;
+      if (parseDate(_sideTask.endDate)) window.__rmPendingApply.add(tid);
+      refreshDurInput();
+      saveAndSyncTaskDates();
+      refreshRowReadyState();
     });
-    // Duration input (persistent — stored on entry.durationDays) — sets End = Start + (N − 1) days.
-    // Works whether Start is a literal date OR anchored to another task — we use the resolved Start.
+    // Duration input — stored on task.durationDays. Sets End = Start + (N − 1) days.
     const durInput = node.querySelector('.rmt-duration');
     if (durInput) {
       durInput.addEventListener('change', e => {
-        if (idx < 0) return;
+        if (!_sideTask) return;
         const n = parseInt(durInput.value, 10);
-        // Resolve the effective Start date — follows anchors if startAnchor is set.
-        const eff = effectiveDatesFor(r.tasks[idx]);
-        const startStr = eff.startStr || r.tasks[idx].startDate || node.querySelector('.rmt-start')?.value || '';
+        const eff = effectiveDatesForTask(_sideTask);
+        const startStr = eff.startStr || _sideTask.startDate || node.querySelector('.rmt-start')?.value || '';
         if (!Number.isFinite(n) || n < 1) {
-          // Empty/invalid → clear stored duration AND end
-          delete r.tasks[idx].durationDays;
-          r.tasks[idx].endDate = '';
-          r.tasks[idx].endAnchor = '';
+          delete _sideTask.durationDays;
+          _sideTask.endDate = '';
+          _sideTask.endAnchor = '';
           const eInp = node.querySelector('.rmt-end');
           if (eInp) { eInp.value = ''; eInp.disabled = false; }
           const ePin = node.querySelector('.rmt-pin[data-kind="end"]');
           if (ePin) ePin.classList.remove('active');
         } else {
-          // Persist the duration so it survives start-date changes (including anchor changes)
-          r.tasks[idx].durationDays = n;
+          _sideTask.durationDays = n;
           if (startStr) {
             const newEnd = bnEndFromStartAndDuration(startStr, n);
             if (newEnd) {
-              r.tasks[idx].endDate = newEnd;
-              r.tasks[idx].endAnchor = '';   // duration drives the end — clear any existing end anchor
+              _sideTask.endDate = newEnd;
+              _sideTask.endAnchor = '';
               const eInp = node.querySelector('.rmt-end');
               if (eInp) { eInp.value = newEnd; eInp.disabled = false; }
               const ePin = node.querySelector('.rmt-pin[data-kind="end"]');
@@ -8535,38 +8380,31 @@ function renderRoadmapCalendar(roadmapId) {
         refreshRowReadyState();
       });
     }
-    // Anchor pin buttons → open a picker so user can pick any task's start/end (or clear).
-    // In-place updates avoid a full re-render so scroll position is preserved.
+    // Anchor pin buttons → write to TASK anchors (task-level). Any change reflects in every roadmap.
     node.querySelectorAll('.rmt-pin').forEach(btn => {
       btn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
-        if (idx < 0) return;
-        const kind = btn.dataset.kind;   // 'start' | 'end'
-        const entryRef = r.tasks[idx];
-        const currentRaw = (kind === 'start' ? entryRef.startAnchor : entryRef.endAnchor) || '';
-        const current = normalizeAnchorForSelect(entryRef, currentRaw);
-        openAnchorPicker(btn, entryRef, kind, current, (newVal) => {
-          if (kind === 'start') entryRef.startAnchor = newVal || '';
-          else                  entryRef.endAnchor   = newVal || '';
-          // Update pin appearance + date input enable state
+        if (!_sideTask) return;
+        const kind = btn.dataset.kind;
+        const currentRaw = (kind === 'start' ? _sideTask.startAnchor : _sideTask.endAnchor) || '';
+        const current = normalizeAnchorForSelect({ taskId: _sideTask.id }, currentRaw);
+        openAnchorPicker(btn, r.tasks[idx], kind, current, (newVal) => {
+          if (kind === 'start') _sideTask.startAnchor = newVal || '';
+          else                  _sideTask.endAnchor   = newVal || '';
           btn.classList.toggle('active', !!newVal);
-          btn.title = newVal
-            ? 'Anchored — click to change/unlock'
-            : 'Click to anchor ' + kind + ' to another task on this roadmap';
+          btn.title = newVal ? 'Anchored — click to change/unlock' : 'Click to anchor ' + kind + ' to another task';
           const inp = node.querySelector(kind === 'start' ? '.rmt-start' : '.rmt-end');
           if (inp) inp.disabled = !!newVal;
-          // When START is (re-)anchored AND a stored duration exists, recompute End from resolved start.
-          // This keeps "Start anchored + N days" working: end = resolved-start + (N − 1) days.
           if (kind === 'start') {
-            const storedN = entryRef.durationDays;
+            const storedN = _sideTask.durationDays;
             if (typeof storedN === 'number' && storedN >= 1) {
-              const eff = effectiveDatesFor(entryRef);
+              const eff = effectiveDatesForTask(_sideTask);
               if (eff.startStr) {
                 const newEnd = bnEndFromStartAndDuration(eff.startStr, storedN);
                 if (newEnd) {
-                  entryRef.endDate = newEnd;
-                  entryRef.endAnchor = '';
+                  _sideTask.endDate = newEnd;
+                  _sideTask.endAnchor = '';
                   const eInp = node.querySelector('.rmt-end');
                   if (eInp) { eInp.value = newEnd; eInp.disabled = false; }
                   const ePin = node.querySelector('.rmt-pin[data-kind="end"]');
@@ -8575,14 +8413,12 @@ function renderRoadmapCalendar(roadmapId) {
               }
             }
           }
-          // Manually anchoring END clears any stored duration (anchor wins).
           if (kind === 'end' && newVal) {
-            delete entryRef.durationDays;
+            delete _sideTask.durationDays;
             const di = node.querySelector('.rmt-duration');
             if (di) di.value = '';
           }
-          // If we now have a resolvable date, mark this row pending-apply
-          const eff2 = effectiveDatesFor(entryRef);
+          const eff2 = effectiveDatesForTask(_sideTask);
           if (parseDate(eff2.startStr)) window.__rmPendingApply.add(tid);
           saveAndSyncTaskDates();
           refreshRowReadyState();
