@@ -54,6 +54,21 @@
 
   /* Page header / segment toggle */
   .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  /* Tasks page header: sticky so the action buttons + view toggle stay visible while scrolling. */
+  .tasks-page-header {
+    position: sticky; top: 0; z-index: 30;
+    background: #fff;
+    padding: 12px 0 10px;
+    margin: 0 -24px 14px;
+    padding-left: 24px; padding-right: 24px;
+    border-bottom: 1px solid #ececea;
+    align-items: flex-start;
+  }
+  .tasks-page-header-title { flex: 1 1 auto; min-width: 0; }
+  .tasks-page-header-actions {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    flex-shrink: 0;
+  }
   .page-title { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
   .page-subtitle { font-size: 13px; color: #6b6b6b; margin-top: 2px; }
   .seg-toggle { display: inline-flex; background: #f0efeb; border-radius: 8px; padding: 2px; }
@@ -1525,7 +1540,23 @@
   .profile-pr-gantt .cal-year-row { grid-template-columns: 200px 1fr; }
   .profile-pr-gantt .cal-year-label { font-size: 12px; padding: 3px 8px; }
   .profile-pr-gantt .cal-year-track { height: 24px; }
-  .profile-pr-gantt .cal-year-bar { top: 3px; height: 18px; line-height: 18px; font-size: 10.5px; }
+  .profile-pr-gantt .cal-year-bar { top: 3px; height: 18px; line-height: 18px; font-size: 10.5px; padding: 0 4px; }
+  /* Force the bar text to a single line with ellipsis (was breaking into two lines on narrow bars). */
+  .profile-pr-bar-text {
+    display: block;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 100%;
+    line-height: inherit;
+  }
+  /* Clickable label name button — looks like the surrounding text but acts as a link. */
+  .profile-pr-label-btn {
+    appearance: none; border: none; background: transparent;
+    color: inherit; font: inherit;
+    padding: 0; margin: 0; cursor: pointer;
+    text-align: left; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .profile-pr-label-btn:hover { text-decoration: underline; color: #d97706; }
   .profile-pr-expand-btn {
     appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a;
     font-family: inherit; font-size: 12px; font-weight: 600;
@@ -2876,15 +2907,17 @@
   <header class="top">
     <div></div>
     <div class="actions">
-      <button class="btn" id="resetFiltersBtn" title="Clear all active filters">Reset filters</button>
-      <button class="btn" id="tasksCollapseAllBtn" title="Collapse / expand every group across all views (shared global state)">⊟ Collapse all</button>
-      <button class="btn" id="exportCsvBtn" title="Download currently-filtered tasks as Excel-compatible CSV (or all if filters are off)">Export CSV</button>
+      <!-- These IDs are kept (hidden) so existing JS that wires by ID keeps working.
+           The visible Tasks-page buttons now live inside the sticky page-header below. -->
+      <button class="btn" id="resetFiltersBtn" title="Clear all active filters" style="display:none">Reset filters</button>
+      <button class="btn" id="tasksCollapseAllBtn" title="Collapse / expand every group across all views (shared global state)" style="display:none">⊟ Collapse all</button>
+      <button class="btn" id="exportCsvBtn" title="Download currently-filtered tasks as Excel-compatible CSV (or all if filters are off)" style="display:none">Export CSV</button>
       <button class="btn" id="manageTagsBtn" title="Create, edit, recolor and reorder member tags" style="display:none">Member Tags</button>
-      <button class="btn" id="manageTaskTagsBtn" title="Create, edit, recolor and reorder task tags">Task Tags</button>
+      <button class="btn" id="manageTaskTagsBtn" title="Create, edit, recolor and reorder task tags" style="display:none">Task Tags</button>
       <button class="btn" id="roadmapsBtn" title="Create and manage roadmaps" style="display:none">Roadmaps</button>
       <button class="btn" id="addMemberBtn" title="Add someone from Slack who isn't in the team yet" style="display:none">+ Member</button>
       <button class="btn" id="restoreHiddenBtn" title="Re-show team members you previously removed" style="display:none">Restore hidden (<span id="restoreHiddenCount">0</span>)</button>
-      <button class="btn primary" id="addBtn">+ New task</button>
+      <button class="btn primary" id="addBtn" style="display:none">+ New task</button>
     </div>
   </header>
 
@@ -2968,32 +3001,45 @@
     </section>
 
     <section id="view-tasks" class="view-section">
-      <div class="page-header">
-        <div>
+      <!-- Sticky toolbar: title + view toggle + collapse-filters + the action buttons that used to live in the global header.
+           Stays visible at the top while scrolling the tasks list. -->
+      <div class="page-header tasks-page-header">
+        <div class="tasks-page-header-title">
           <h2 class="page-title">Tasks</h2>
           <div class="page-subtitle">Filter, sort and edit all <span id="tasks-page-total">157</span> tasks. Switch view to see them grouped by person or as a flat list.</div>
         </div>
-        <div class="seg-toggle" id="tasksViewToggle">
-          <button data-mode="byperson" class="active">By person</button>
-          <button data-mode="list">List</button>
+        <div class="tasks-page-header-actions">
+          <div class="seg-toggle" id="tasksViewToggle">
+            <button data-mode="byperson" class="active">By person</button>
+            <button data-mode="list">List</button>
+          </div>
+          <button class="btn" id="tasksFiltersToggleBtn" title="Hide or show the people strip and the filters below">⊟ Hide filters</button>
+          <button class="btn" id="tasksResetFiltersBtn" title="Clear all active filters">Reset filters</button>
+          <button class="btn" id="tasksCollapseAllBtnInline" title="Collapse / expand every group across all views (shared global state)">⊟ Collapse all</button>
+          <button class="btn" id="tasksExportCsvBtn" title="Download currently-filtered tasks as Excel-compatible CSV (or all if filters are off)">Export CSV</button>
+          <button class="btn" id="tasksManageTaskTagsBtn" title="Create, edit, recolor and reorder task tags">Task Tags</button>
+          <button class="btn primary" id="tasksAddBtn">+ New task</button>
         </div>
       </div>
-      <!-- Shared: visible in both byperson and list modes -->
-      <div class="team-strip" id="teamStrip"></div>
+      <!-- Filter section (team strip + all filter bars). Toggled by #tasksFiltersToggleBtn. -->
+      <div id="tasksFiltersSection">
+        <!-- Shared: visible in both byperson and list modes -->
+        <div class="team-strip" id="teamStrip"></div>
 
-      <div class="filters">
-        <label class="show-counts-toggle" title="Show task/member counts on each filter button"><input type="checkbox" id="showCountsChk"> <span>Counts</span></label>
-        <label class="show-counts-toggle" title="Show only tasks assigned to people on your active Team"><input type="checkbox" id="teamOnlyChk"> <span>Team only</span></label>
-        <label class="show-counts-toggle" title="Show the Unassigned card (tasks without a responsible person) at the top of the people grid"><input type="checkbox" id="showUnassignedChk"> <span>Show Unassigned</span></label>
-        <input class="search-input" id="searchInput" placeholder="Search titles and comments...">
-        <div id="statusFilterContainer" class="filter-group"></div>
-        <div id="prioFilterContainer" class="filter-group"></div>
+        <div class="filters">
+          <label class="show-counts-toggle" title="Show task/member counts on each filter button"><input type="checkbox" id="showCountsChk"> <span>Counts</span></label>
+          <label class="show-counts-toggle" title="Show only tasks assigned to people on your active Team"><input type="checkbox" id="teamOnlyChk"> <span>Team only</span></label>
+          <label class="show-counts-toggle" title="Show the Unassigned card (tasks without a responsible person) at the top of the people grid"><input type="checkbox" id="showUnassignedChk"> <span>Show Unassigned</span></label>
+          <input class="search-input" id="searchInput" placeholder="Search titles and comments...">
+          <div id="statusFilterContainer" class="filter-group"></div>
+          <div id="prioFilterContainer" class="filter-group"></div>
+        </div>
+
+        <div class="filters" id="tagFilterBar" style="margin-bottom:8px"></div>
+        <div class="filters" id="taskTagFilterBar" style="margin-bottom:8px"></div>
+        <div class="filters" id="roadmapFilterBar" style="margin-bottom:14px"></div>
+        <div class="filters" id="dateStatusFilterBar" style="margin-bottom:14px"></div>
       </div>
-
-      <div class="filters" id="tagFilterBar" style="margin-bottom:8px"></div>
-      <div class="filters" id="taskTagFilterBar" style="margin-bottom:8px"></div>
-      <div class="filters" id="roadmapFilterBar" style="margin-bottom:14px"></div>
-      <div class="filters" id="dateStatusFilterBar" style="margin-bottom:14px"></div>
 
       <!-- Mode-specific bodies -->
       <div id="view-tasks-byperson">
@@ -10804,11 +10850,11 @@ function renderProfilePersonalRoadmap(personTasks) {
         '<div class="cal-year-label" title="' + escapeHtml(subj) + '" style="padding-left:' + (8 + row.depth * 14) + 'px">' +
           labelChev +
           (row.depth ? '· ' : (isG ? '<span class="folder-emoji">📁</span> ' : '')) +
-          '<span class="cal-year-label-text">' + escapeHtml(subj.slice(0,42)) + (subj.length > 42 ? '…' : '') + '</span>' +
+          '<button type="button" class="cal-year-label-text profile-pr-label-btn" data-tid="' + escapeHtml(ev.task.id) + '" title="' + escapeHtml(subj) + ' — click to edit">' + escapeHtml(subj) + '</button>' +
         '</div>' +
         '<div class="cal-year-track">' +
           '<div class="cal-event cal-year-bar profile-pr-bar' + (isG ? ' cal-event-group' : '') + '" data-tid="' + escapeHtml(ev.task.id) + '" title="' + escapeHtml(tooltip) + '" style="left:' + leftPct + '%; width:' + widthPct + '%; ' + barStyle + '">' +
-            (continuesLeft ? '◂ ' : '') + escapeHtml(subj) + (continuesRight ? ' ▸' : '') +
+            '<span class="profile-pr-bar-text">' + (continuesLeft ? '◂ ' : '') + escapeHtml(subj) + (continuesRight ? ' ▸' : '') + '</span>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -10855,11 +10901,11 @@ function wireProfilePersonalRoadmap(personTasks) {
       renderProfilePage();
     });
   });
-  // Click on a bar → open the task modal
-  document.querySelectorAll('#profilePageContent .profile-pr-bar').forEach(bar => {
-    bar.addEventListener('click', e => {
+  // Click on a bar OR on the label name → open the task modal
+  document.querySelectorAll('#profilePageContent .profile-pr-bar, #profilePageContent .profile-pr-label-btn').forEach(el => {
+    el.addEventListener('click', e => {
       e.stopPropagation();
-      const tid = bar.dataset.tid;
+      const tid = el.dataset.tid;
       if (tid && typeof openModal === 'function') openModal(tid);
     });
   });
@@ -11631,7 +11677,7 @@ function switchView(view) {
   document.getElementById("view-files").style.display    = view === "files"    ? "" : "none";
   // Hide global action buttons on pages that have their own controls
   const headerTop = document.querySelector("header.top");
-  if (headerTop) headerTop.style.display = (view === "roadmaps" || view === "profile" || view === "members" || view === "requests" || view === "files") ? "none" : "";
+  if (headerTop) headerTop.style.display = (view === "tasks" || view === "roadmaps" || view === "profile" || view === "members" || view === "requests" || view === "files") ? "none" : "";
   render();
 }
 
@@ -11652,6 +11698,43 @@ function setTasksViewMode(m) {
 document.querySelectorAll("#tasksViewToggle button").forEach(b => {
   b.addEventListener("click", () => setTasksViewMode(b.dataset.mode));
 });
+
+// Inline action buttons inside the Tasks sticky page-header delegate to the originals (which
+// kept their IDs and are now hidden in the global header.top). This avoids duplicating logic.
+(function wireTasksInlineActions(){
+  const delegateMap = [
+    { from: 'tasksAddBtn',              to: 'addBtn' },
+    { from: 'tasksResetFiltersBtn',     to: 'resetFiltersBtn' },
+    { from: 'tasksCollapseAllBtnInline', to: 'tasksCollapseAllBtn' },
+    { from: 'tasksExportCsvBtn',        to: 'exportCsvBtn' },
+    { from: 'tasksManageTaskTagsBtn',   to: 'manageTaskTagsBtn' },
+  ];
+  delegateMap.forEach(({ from, to }) => {
+    const src = document.getElementById(from);
+    const dst = document.getElementById(to);
+    if (src && dst) src.addEventListener('click', () => dst.click());
+  });
+})();
+
+// Filters section toggle (team strip + every filter bar collapse together).
+let tasksFiltersHidden = localStorage.getItem('bookline-tasksFiltersHidden') === '1';
+function applyTasksFiltersHidden() {
+  const sect = document.getElementById('tasksFiltersSection');
+  const btn  = document.getElementById('tasksFiltersToggleBtn');
+  if (!sect || !btn) return;
+  sect.style.display = tasksFiltersHidden ? 'none' : '';
+  btn.textContent = tasksFiltersHidden ? '⊞ Show filters' : '⊟ Hide filters';
+}
+applyTasksFiltersHidden();
+(function wireTasksFiltersToggle(){
+  const btn = document.getElementById('tasksFiltersToggleBtn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    tasksFiltersHidden = !tasksFiltersHidden;
+    localStorage.setItem('bookline-tasksFiltersHidden', tasksFiltersHidden ? '1' : '0');
+    applyTasksFiltersHidden();
+  });
+})();
 
 // ---- Flat tasks view ----
 // =============== Group helpers ===============
