@@ -4859,8 +4859,15 @@ function render() {
     if (!person) return;
     const personTasks = allTasks.filter(t => t.responsibleId === pid);
     const visibleTasks = personTasks.filter(taskMatchesFilters);
-    // When task-level filters are active, hide people whose tasks all got filtered out.
-    if (_hideEmptyByPerson && visibleTasks.length === 0) return;
+    // Also count visible GROUPS owned by this person — a person can own only groups
+    // (e.g. "Calidad de Datos") and we don't want to hide them in that case.
+    const visibleGroupsForVisibility = personTasks.filter(t =>
+      t.isGroup && taskMatchesFilters(t, { allowGroups: true })
+    );
+    // Plus: groups not owned by this person whose CHILDREN (owned by this person) survive filters
+    // — the card still renders them as orphan tasks, so we shouldn't hide the card.
+    // visibleTasks already covers orphan tasks (since taskMatchesFilters lets non-groups through).
+    if (_hideEmptyByPerson && visibleTasks.length === 0 && visibleGroupsForVisibility.length === 0) return;
     // Total for "X of Y": tasks for this person matching all filters EXCEPT status (so "of Y" is meaningful even with status filter)
     const personTasksMatchingNonStatus = personTasks.filter(t => {
       const pk = t.priority || "__none";
