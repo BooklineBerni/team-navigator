@@ -4280,10 +4280,10 @@ function renderTeamStrip() {
     availableTeam = [...TEAM, ...(typeof EXTERNAL_TEAM !== 'undefined' ? EXTERNAL_TEAM : [])].filter(p => isTeamMember(p.id));
   } else {
     availableTeam = [...TEAM];
-    // Add anyone who owns at least one task but isn't already in TEAM (covers Bookline responsibles)
+    // Add anyone who owns at least one task (incl. groups) but isn't already in TEAM
     const _seen = new Set(availableTeam.map(p => p.id));
     const ownerIds = new Set();
-    (STORE.tasks||[]).forEach(t => { if (!t.isGroup && t.responsibleId) ownerIds.add(t.responsibleId); });
+    (STORE.tasks||[]).forEach(t => { if (t.responsibleId) ownerIds.add(t.responsibleId); });
     ownerIds.forEach(id => {
       if (_seen.has(id)) return;
       const p = findPerson(id);
@@ -4882,16 +4882,17 @@ function render() {
       }
       return true;
     });
-    // Status dot counts: derive from visibleTasks (all filters applied — including status)
+    // Status dot counts: derive from visibleTasks + visible groups (groups ARE tasks too).
+    const visibleAllForCounts = [...visibleTasks, ...visibleGroupsForVisibility];
     const counts = {
-      proposed:     visibleTasks.filter(t=>t.slackStatus === "Proposed").length,
-      under_review: visibleTasks.filter(t=>t.slackStatus === "Under Review").length,
-      in_progress:  visibleTasks.filter(t=>t.slackStatus === "In Progress").length,
-      waiting:      visibleTasks.filter(t=>t.slackStatus === "Waiting").length,
-      later_next:   visibleTasks.filter(t=>t.slackStatus === "Later / Next").length,
-      completed:    visibleTasks.filter(t=>t.slackStatus === "Completed").length,
-      archived:     visibleTasks.filter(t=>t.slackStatus === "Archived").length,
-      discarded:    visibleTasks.filter(t=>t.slackStatus === "Discarded").length
+      proposed:     visibleAllForCounts.filter(t=>t.slackStatus === "Proposed").length,
+      under_review: visibleAllForCounts.filter(t=>t.slackStatus === "Under Review").length,
+      in_progress:  visibleAllForCounts.filter(t=>t.slackStatus === "In Progress").length,
+      waiting:      visibleAllForCounts.filter(t=>t.slackStatus === "Waiting").length,
+      later_next:   visibleAllForCounts.filter(t=>t.slackStatus === "Later / Next").length,
+      completed:    visibleAllForCounts.filter(t=>t.slackStatus === "Completed").length,
+      archived:     visibleAllForCounts.filter(t=>t.slackStatus === "Archived").length,
+      discarded:    visibleAllForCounts.filter(t=>t.slackStatus === "Discarded").length
     };
     const personTags = getTagsFor(pid);
     const tagsLine = personTags.length
@@ -4921,7 +4922,7 @@ function render() {
         ${counts.completed > 0 ? '<span class="stat" title="Completed"><span class="dot completed"></span>'+counts.completed+'</span>' : ''}
         ${counts.archived > 0 ? '<span class="stat" title="Archived"><span class="dot archived"></span>'+counts.archived+'</span>' : ''}
         ${counts.discarded > 0 ? '<span class="stat" title="Discarded"><span class="dot discarded"></span>'+counts.discarded+'</span>' : ''}
-        <span class="stat" style="margin-left:auto"><strong>${visibleTasks.length}</strong> of ${personTasksMatchingNonStatus.length}</span>
+        <span class="stat" style="margin-left:auto"><strong>${visibleTasks.length + visibleGroupsForVisibility.length}</strong> of ${personTasksMatchingNonStatus.length}</span>
       </div>
       <div class="tasks" data-uid="${pid}">${(() => {
         // Show this person's groups too so they can be collapsed
@@ -4961,9 +4962,10 @@ function render() {
   // Only shown when the "Show Unassigned" checkbox is checked. Renders at the TOP of the grid
   // (insertBefore the first child) so it sits above the team people cards.
   if (typeof getShowUnassigned === 'function' ? getShowUnassigned() : (localStorage.getItem('bookline-showUnassigned') === '1')) {
-    const unassignedAll = allTasks.filter(t => !t.isGroup && !t.responsibleId);
+    // Groups ARE tasks too — count them as Unassigned when they have no responsibleId.
+    const unassignedAll = allTasks.filter(t => !t.responsibleId);
     {
-      const unassignedVisible = unassignedAll.filter(taskMatchesFilters);
+      const unassignedVisible = unassignedAll.filter(t => taskMatchesFilters(t, { allowGroups: true }));
       // Skip the Unassigned card when task-level filters are active and nothing matches.
       if (_hideEmptyByPerson && unassignedVisible.length === 0) {
         // Don't render the card at all
