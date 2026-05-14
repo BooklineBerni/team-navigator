@@ -5301,16 +5301,17 @@ window.__renderTaskAggregatedSchedule = function(t) {
     if (!first) return '';
     return arr.every(x => x === first) ? first : '';
   }
-  const startLabels = entries.map(({ entry }) => entry.startSrcLabel || '');
-  const startTids = entries.map(({ entry }) => entry.startSrcTaskId || '');
+  const startLabels = entries.map(({ entry }) => bnDeriveSrcLabel(entry, 'start'));
+  const startTids = entries.map(({ entry }) => bnDeriveSrcTaskId(entry, 'start'));
   const endLabels = entries.map(({ entry }) => {
-    if (entry.endSrcLabel) return entry.endSrcLabel;
+    const derived = bnDeriveSrcLabel(entry, 'end');
+    if (derived) return derived;
     if (typeof entry.durationDays === 'number' && entry.durationDays >= 1) {
       return entry.durationDays + ' day' + (entry.durationDays === 1 ? '' : 's');
     }
     return '';
   });
-  const endTids = entries.map(({ entry }) => entry.endSrcTaskId || '');
+  const endTids = entries.map(({ entry }) => bnDeriveSrcTaskId(entry, 'end'));
   const commonStartLbl = commonLabel(startLabels);
   const commonStartTid = commonLabel(startTids);
   const commonEndLbl = commonLabel(endLabels);
@@ -5799,6 +5800,9 @@ function renderRoadmapsInModal(t) {
     if (e) {
       const k = side === 'start' ? 'startSrcLabel' : 'endSrcLabel';
       if (e[k]) return e[k];
+      // Fallback: derive from per-roadmap anchor if it was set via the calendar's pin picker.
+      const derived = bnDeriveSrcLabel(e, side);
+      if (derived) return derived;
     }
     return window.__rmRowSrc[srcKey(rmId, side)] || '';
   }
@@ -5840,7 +5844,7 @@ function renderRoadmapsInModal(t) {
         let pillStyle = '';
         if (srcLbl) {
           const entry2 = entryFor(r.id).entry;
-          const srcTid = entry2 && (side === 'start' ? entry2.startSrcTaskId : entry2.endSrcTaskId);
+          const srcTid = entry2 ? bnDeriveSrcTaskId(entry2, side) : '';
           const stl = bnPillStyleForLabel(srcLbl, srcTid);
           if (stl) pillStyle = bnPillInlineStyle(stl);
         }
@@ -6808,6 +6812,36 @@ function bnFormatDateDMY(s) {
   if (parts.length !== 3) return s;
   return parts[2] + '/' + parts[1] + '/' + parts[0];
 }
+// Source-label for an entry's side. Priority:
+//   1) the explicit label stored when picked from the modal's "Apply to all" or per-row pin
+//   2) derived from entry.startAnchor / entry.endAnchor (set by the roadmap calendar's per-row pin
+//      picker which stores anchor refs like 'task:abc:start')
+function bnDeriveSrcLabel(entry, side) {
+  if (!entry) return '';
+  const labelKey = side === 'start' ? 'startSrcLabel' : 'endSrcLabel';
+  const anchorKey = side === 'start' ? 'startAnchor' : 'endAnchor';
+  if (entry[labelKey]) return entry[labelKey];
+  if (entry[anchorKey] && typeof parseAnchorRefGlobal === 'function') {
+    const ref = parseAnchorRefGlobal(entry, entry[anchorKey]);
+    if (ref) {
+      const tt = (STORE.tasks || []).find(t => t.id === ref.taskId);
+      if (tt) return ref.side + ' of ' + (tt.subject || '');
+    }
+  }
+  return '';
+}
+// Source-task-id for an entry's side — used to color the pill by referenced task's status.
+function bnDeriveSrcTaskId(entry, side) {
+  if (!entry) return '';
+  const tidKey = side === 'start' ? 'startSrcTaskId' : 'endSrcTaskId';
+  const anchorKey = side === 'start' ? 'startAnchor' : 'endAnchor';
+  if (entry[tidKey]) return entry[tidKey];
+  if (entry[anchorKey] && typeof parseAnchorRefGlobal === 'function') {
+    const ref = parseAnchorRefGlobal(entry, entry[anchorKey]);
+    if (ref) return ref.taskId;
+  }
+  return '';
+}
 // Compact "agg" badge rendered inline with other badges on a task card. Computes min start /
 // max end across all roadmap entries; uses status-colored pills when every entry shares the
 // same source label; renders gray "N days" pill when every entry shares the same durationDays.
@@ -6827,16 +6861,17 @@ function bnRenderTaskAggBadge(t) {
     if (arr.length === 0) return ''; const first = arr[0]; if (!first) return '';
     return arr.every(x => x === first) ? first : '';
   }
-  const sLbl = commonLbl(tEntries.map(x => x.entry.startSrcLabel || ''));
-  const sTid = commonLbl(tEntries.map(x => x.entry.startSrcTaskId || ''));
+  const sLbl = commonLbl(tEntries.map(x => bnDeriveSrcLabel(x.entry, 'start')));
+  const sTid = commonLbl(tEntries.map(x => bnDeriveSrcTaskId(x.entry, 'start')));
   const eLbl = commonLbl(tEntries.map(x => {
-    if (x.entry.endSrcLabel) return x.entry.endSrcLabel;
+    const derived = bnDeriveSrcLabel(x.entry, 'end');
+    if (derived) return derived;
     if (typeof x.entry.durationDays === 'number' && x.entry.durationDays >= 1) {
       return x.entry.durationDays + ' day' + (x.entry.durationDays === 1 ? '' : 's');
     }
     return '';
   }));
-  const eTid = commonLbl(tEntries.map(x => x.entry.endSrcTaskId || ''));
+  const eTid = commonLbl(tEntries.map(x => bnDeriveSrcTaskId(x.entry, 'end')));
   const spanN = (aggStart && aggEnd) ? bnDaysInclusive(aggStart, aggEnd) : 0;
   if (!aggStart && !aggEnd && !sLbl && !eLbl) return '';
   function pillStyleFor(lbl, tid) {
