@@ -6975,37 +6975,52 @@ function bnDeriveSrcTaskId(entry, side) {
   }
   return '';
 }
-// Compact "agg" badge rendered inline with other badges on a task card. Computes min start /
-// max end across all roadmap entries; uses status-colored pills when every entry shares the
-// same source label; renders gray "N days" pill when every entry shares the same durationDays.
+// Compact "task dates" badge rendered inline with other badges on a task card. Reads the same
+// fields the modal's "Task dates" row uses (task.startDate / endDate / anchors / source labels /
+// durationDays) so the badge and the modal always agree.
 function bnRenderTaskAggBadge(t) {
   if (!t) return '';
-  const tEntries = [];
-  (STORE.roadmaps || []).forEach(rm => {
-    const en = (rm.tasks || []).find(x => x.taskId === t.id);
-    if (en) tEntries.push({ entry: en, rm });
-  });
-  if (tEntries.length === 0) return '';
-  const starts = tEntries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).startStr);
-  const ends   = tEntries.map(({ entry, rm }) => effectiveDatesForInRoadmap(entry, rm).endStr);
-  const aggStart = starts.every(s => !!s) ? starts.reduce((m, s) => (!m || s < m) ? s : m, '') : '';
-  const aggEnd   = ends.every(s => !!s)   ? ends.reduce((m, s) => (!m || s > m) ? s : m, '')   : '';
-  function commonLbl(arr) {
-    if (arr.length === 0) return ''; const first = arr[0]; if (!first) return '';
-    return arr.every(x => x === first) ? first : '';
-  }
-  const sLbl = commonLbl(tEntries.map(x => bnDeriveSrcLabel(x.entry, 'start')));
-  const sTid = commonLbl(tEntries.map(x => bnDeriveSrcTaskId(x.entry, 'start')));
-  const eLbl = commonLbl(tEntries.map(x => {
-    const derived = bnDeriveSrcLabel(x.entry, 'end');
-    if (derived) return derived;
-    if (typeof x.entry.durationDays === 'number' && x.entry.durationDays >= 1) {
-      return x.entry.durationDays + ' day' + (x.entry.durationDays === 1 ? '' : 's');
-    }
-    return '';
-  }));
-  const eTid = commonLbl(tEntries.map(x => bnDeriveSrcTaskId(x.entry, 'end')));
+  // Only render when the task is in at least one roadmap (keeps the card clean otherwise).
+  const inAnyRm = (STORE.roadmaps || []).some(rm => (rm.tasks || []).some(e => e.taskId === t.id));
+  if (!inAnyRm) return '';
+  const r = effectiveDatesForTask(t);
+  const aggStart = r.startStr;
+  const aggEnd   = r.endStr;
   const spanN = (aggStart && aggEnd) ? bnDaysInclusive(aggStart, aggEnd) : 0;
+  // Pills from task fields, with anchor fallback so anchors set elsewhere still surface.
+  let sLbl = t.startSrcLabel || '';
+  let sTid = t.startSrcTaskId || '';
+  if (!sLbl && t.startAnchor) {
+    const ref = parseAnchorRefGlobal({ taskId: t.id }, t.startAnchor);
+    if (ref) {
+      const tt = (STORE.tasks || []).find(x => x.id === ref.taskId);
+      if (tt) { sLbl = ref.side + ' of ' + (tt.subject || ''); sTid = ref.taskId; }
+    }
+  }
+  let eLbl = t.endSrcLabel || '';
+  let eTid = t.endSrcTaskId || '';
+  if (!eLbl && t.endAnchor) {
+    const ref = parseAnchorRefGlobal({ taskId: t.id }, t.endAnchor);
+    if (ref) {
+      const tt = (STORE.tasks || []).find(x => x.id === ref.taskId);
+      if (tt) { eLbl = ref.side + ' of ' + (tt.subject || ''); eTid = ref.taskId; }
+    }
+  }
+  function _staleNDays(lbl) {
+    if (!lbl) return false;
+    const m = lbl.match(/^(\d+)\s+day/);
+    if (!m) return false;
+    return parseInt(m[1], 10) !== spanN;
+  }
+  if (_staleNDays(sLbl)) { sLbl = ''; sTid = ''; }
+  if (_staleNDays(eLbl)) { eLbl = ''; eTid = ''; }
+  // If end still has no source but task.durationDays matches the actual span, show "N days".
+  if (!eLbl) {
+    const sDays = (typeof t.durationDays === 'number' && t.durationDays >= 1) ? t.durationDays : 0;
+    if (sDays > 0 && sDays === spanN) {
+      eLbl = spanN + ' day' + (spanN === 1 ? '' : 's');
+    }
+  }
   if (!aggStart && !aggEnd && !sLbl && !eLbl) return '';
   function pillStyleFor(lbl, tid) {
     const stl = bnPillStyleForLabel(lbl, tid);
