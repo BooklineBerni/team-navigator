@@ -499,7 +499,7 @@
   .cal-nav-btn:hover { background: #f0efeb; }
   .cal-nav-btn:disabled { opacity: .35; cursor: not-allowed; }
   .cal-nav-btn:disabled:hover { background: transparent; }
-  .cal-month-label { font-size: 18px; font-weight: 700; min-width: 180px; text-transform: capitalize; }
+  .cal-month-label { font-size: 18px; font-weight: 700; text-transform: capitalize; white-space: nowrap; }
   .cal-today-btn {
     appearance: none; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a;
     padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit;
@@ -2321,21 +2321,30 @@
   .proposed-chips { display: flex; flex-wrap: wrap; gap: 4px; }
   .proposed-chip { display: inline-flex; align-items: center; gap: 6px; background: #f1f3f4; border: 1px solid #e2e4e7; padding: 2px 4px 2px 2px; border-radius: 16px; font-size: 12px; color: #1a1a1a; }
   .proposed-chip.proposed-chip-external { background: #fff7ed; border-color: #fed7aa; }
-  /* Section-based coloring of Proposed By chips/picker rows */
-  .proposed-chip.psec-disabled .proposed-chip-name { color: #6b6b6b; }
-  .proposed-chip.psec-bookline .proposed-chip-name { color: #1a1a1a; }
-  .proposed-chip.psec-team .proposed-chip-name { color: #3b82f6; }
-  .proposed-chip.psec-supplementary .proposed-chip-name { color: #16a34a; }
-  .proposed-dd-item.psec-disabled .proposed-dd-name { color: #6b6b6b; }
-  .proposed-dd-item.psec-bookline .proposed-dd-name { color: #1a1a1a; }
-  .proposed-dd-item.psec-team .proposed-dd-name { color: #3b82f6; }
-  .proposed-dd-item.psec-supplementary .proposed-dd-name { color: #16a34a; }
-  /* Section dots in cards (next to Proposed By names) */
-  .proposed-card-name { color: #1a1a1a; }
-  .proposed-card-name.psec-disabled { color: #6b6b6b; }
-  .proposed-card-name.psec-bookline { color: #1a1a1a; }
-  .proposed-card-name.psec-team { color: #3b82f6; }
-  .proposed-card-name.psec-supplementary { color: #16a34a; }
+  /* Section-based coloring of Proposed By chips/picker rows.
+     Background is the primary signal; text stays readable in dark/light tones. */
+  .proposed-chip.psec-disabled { background: #e5e7eb; border-color: #cbd5e1; }
+  .proposed-chip.psec-disabled .proposed-chip-name { color: #4b5563; }
+  .proposed-chip.psec-bookline { background: #1a1a1a; border-color: #1a1a1a; }
+  .proposed-chip.psec-bookline .proposed-chip-name { color: #ffffff; }
+  .proposed-chip.psec-bookline .proposed-chip-x { color: #d8d6d1; }
+  .proposed-chip.psec-bookline .proposed-chip-x:hover { color: #fca5a5; }
+  .proposed-chip.psec-team { background: #dbeafe; border-color: #93c5fd; }
+  .proposed-chip.psec-team .proposed-chip-name { color: #1d4ed8; }
+  .proposed-chip.psec-supplementary { background: #dcfce7; border-color: #86efac; }
+  .proposed-chip.psec-supplementary .proposed-chip-name { color: #15803d; }
+  .proposed-dd-item.psec-disabled { background: #f3f4f6; }
+  .proposed-dd-item.psec-disabled .proposed-dd-name { color: #4b5563; }
+  .proposed-dd-item.psec-bookline { background: #f5f5f4; }
+  .proposed-dd-item.psec-bookline .proposed-dd-name { color: #1a1a1a; font-weight: 600; }
+  .proposed-dd-item.psec-team { background: #eff6ff; }
+  .proposed-dd-item.psec-team .proposed-dd-name { color: #1d4ed8; }
+  .proposed-dd-item.psec-supplementary { background: #f0fdf4; }
+  .proposed-dd-item.psec-supplementary .proposed-dd-name { color: #15803d; }
+  .proposed-dd-item.psec-disabled:hover { background: #e5e7eb; }
+  .proposed-dd-item.psec-bookline:hover { background: #e7e5e4; }
+  .proposed-dd-item.psec-team:hover { background: #dbeafe; }
+  .proposed-dd-item.psec-supplementary:hover { background: #dcfce7; }
   .proposed-chip .av-mini { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; overflow: hidden; position: relative; }
   .proposed-chip .av-mini img,
   .proposed-dd-item .av-mini img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; position: absolute; top: 0; left: 0; }
@@ -3610,9 +3619,14 @@ function taskMatchesFilters(t, opts) {
     // else: unassigned task → keep visible so the Unassigned card can render it
   }
   // When teamOnly is OFF, disabled people's tasks ARE included.
-  // Person tristate: include & exclude
-  if (personInclude.size > 0 && !personInclude.has(t.responsibleId)) return false;
-  if (personExclude.has(t.responsibleId)) return false;
+  // Person tristate: include & exclude.
+  // Normalize empty/missing responsibleId to '__unassigned' so the Unassigned pill
+  // can be used as a regular include/exclude filter.
+  {
+    const pid = t.responsibleId ? t.responsibleId : '__unassigned';
+    if (personInclude.size > 0 && !personInclude.has(pid)) return false;
+    if (personExclude.has(pid)) return false;
+  }
   // Status include/exclude
   if (statusInclude.size > 0 && !statusInclude.has(t.slackStatus)) return false;
   if (statusExclude.has(t.slackStatus)) return false;
@@ -3804,13 +3818,15 @@ function renderTeamStrip() {
   el.querySelectorAll(".team-pill").forEach(node => {
     node.addEventListener("click", () => {
       const id = node.dataset.uid;
-      // Unassigned pill → open the Unassigned profile (special case).
-      if (id === '__unassigned') {
-        if (typeof setProfilePerson === 'function') setProfilePerson('__unassigned');
-        if (typeof switchView === 'function') switchView('profile');
+      // "All" pill → clear person filter
+      if (id === 'all') {
+        personInclude.clear();
+        personExclude.clear();
+        render();
         return;
       }
-      // Always-additive: behaves like tag pills (click to toggle, multi-select free)
+      // Every other pill (including Unassigned) toggles the person filter
+      // (cycle include → exclude → off) just like tag/status pills.
       togglePersonSelection(id, true);
       render();
     });
@@ -3874,8 +3890,9 @@ function countTasksMatchingExcept(dim, optKey) {
       if (isDeactivated(t.responsibleId)) return false;
     }
     if (dim !== "person") {
-      if (personInclude.size > 0 && !personInclude.has(t.responsibleId)) return false;
-      if (personExclude.has(t.responsibleId)) return false;
+      const pid = t.responsibleId ? t.responsibleId : '__unassigned';
+      if (personInclude.size > 0 && !personInclude.has(pid)) return false;
+      if (personExclude.has(pid)) return false;
     }
     if (dim !== "tag") {
       if (!personMatchesTagFilter(t.responsibleId)) return false;
