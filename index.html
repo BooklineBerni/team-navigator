@@ -4929,11 +4929,11 @@ function render() {
         </div>
       </div>
       <div class="stats">
-        ${counts.proposed > 0 ? '<span class="stat" title="Proposed"><span class="dot proposed"></span>'+counts.proposed+'</span>' : ''}
-        ${counts.under_review > 0 ? '<span class="stat" title="Under Review"><span class="dot under-review"></span>'+counts.under_review+'</span>' : ''}
-        ${counts.in_progress > 0 ? '<span class="stat" title="In Progress"><span class="dot in-progress"></span>'+counts.in_progress+'</span>' : ''}
         ${counts.waiting > 0 ? '<span class="stat" title="Waiting"><span class="dot waiting"></span>'+counts.waiting+'</span>' : ''}
+        ${counts.proposed > 0 ? '<span class="stat" title="Proposed"><span class="dot proposed"></span>'+counts.proposed+'</span>' : ''}
         ${counts.later_next > 0 ? '<span class="stat" title="Later / Next"><span class="dot later-next"></span>'+counts.later_next+'</span>' : ''}
+        ${counts.in_progress > 0 ? '<span class="stat" title="In Progress"><span class="dot in-progress"></span>'+counts.in_progress+'</span>' : ''}
+        ${counts.under_review > 0 ? '<span class="stat" title="Under Review"><span class="dot under-review"></span>'+counts.under_review+'</span>' : ''}
         ${counts.completed > 0 ? '<span class="stat" title="Completed"><span class="dot completed"></span>'+counts.completed+'</span>' : ''}
         ${counts.archived > 0 ? '<span class="stat" title="Archived"><span class="dot archived"></span>'+counts.archived+'</span>' : ''}
         ${counts.discarded > 0 ? '<span class="stat" title="Discarded"><span class="dot discarded"></span>'+counts.discarded+'</span>' : ''}
@@ -4955,15 +4955,20 @@ function render() {
           }
         });
         let out = '';
-        sortTaskList(personGroups).forEach(g => {
-          out += taskHtml(g);
-          const expanded = isGroupExpanded(g.id);
-          const kids = sortTaskList(childrenByParent[g.id] || []);
-          out += '<div class="card-group-children' + (expanded ? '' : ' collapsed') + '" data-gid="' + escapeHtml(g.id) + '">' +
-            (kids.length === 0 ? '<div class="card-group-empty">No subtasks of this person.</div>' : kids.map(t => taskHtml(t)).join('')) +
-          '</div>';
+        // Merge top-level items (groups + orphans) and sort them together so the active sort
+        // (e.g. "Status") applies across both — otherwise all groups would render before any
+        // orphan regardless of their status.
+        const combined = sortTaskList([...personGroups, ...orphanTasks]);
+        combined.forEach(t => {
+          out += taskHtml(t);
+          if (t.isGroup && ownedGroupIds.has(t.id)) {
+            const expanded = isGroupExpanded(t.id);
+            const kids = sortTaskList(childrenByParent[t.id] || []);
+            out += '<div class="card-group-children' + (expanded ? '' : ' collapsed') + '" data-gid="' + escapeHtml(t.id) + '">' +
+              (kids.length === 0 ? '<div class="card-group-empty">No subtasks of this person.</div>' : kids.map(c => taskHtml(c)).join('')) +
+            '</div>';
+          }
         });
-        out += sortTaskList(orphanTasks).map(t => taskHtml(t)).join("");
         return out;
       })()}</div>
       <form class="add-row" data-uid="${pid}">
@@ -5006,11 +5011,11 @@ function render() {
           </div>
         </div>
         <div class="stats">
-          ${u_counts.proposed > 0 ? '<span class="stat" title="Proposed"><span class="dot proposed"></span>'+u_counts.proposed+'</span>' : ''}
-          ${u_counts.under_review > 0 ? '<span class="stat" title="Under Review"><span class="dot under-review"></span>'+u_counts.under_review+'</span>' : ''}
-          ${u_counts.in_progress > 0 ? '<span class="stat" title="In Progress"><span class="dot in-progress"></span>'+u_counts.in_progress+'</span>' : ''}
           ${u_counts.waiting > 0 ? '<span class="stat" title="Waiting"><span class="dot waiting"></span>'+u_counts.waiting+'</span>' : ''}
+          ${u_counts.proposed > 0 ? '<span class="stat" title="Proposed"><span class="dot proposed"></span>'+u_counts.proposed+'</span>' : ''}
           ${u_counts.later_next > 0 ? '<span class="stat" title="Later / Next"><span class="dot later-next"></span>'+u_counts.later_next+'</span>' : ''}
+          ${u_counts.in_progress > 0 ? '<span class="stat" title="In Progress"><span class="dot in-progress"></span>'+u_counts.in_progress+'</span>' : ''}
+          ${u_counts.under_review > 0 ? '<span class="stat" title="Under Review"><span class="dot under-review"></span>'+u_counts.under_review+'</span>' : ''}
           ${u_counts.completed > 0 ? '<span class="stat" title="Completed"><span class="dot completed"></span>'+u_counts.completed+'</span>' : ''}
           ${u_counts.archived > 0 ? '<span class="stat" title="Archived"><span class="dot archived"></span>'+u_counts.archived+'</span>' : ''}
           ${u_counts.discarded > 0 ? '<span class="stat" title="Discarded"><span class="dot discarded"></span>'+u_counts.discarded+'</span>' : ''}
