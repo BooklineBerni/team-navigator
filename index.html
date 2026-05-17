@@ -2582,10 +2582,20 @@
   /* Proposed-by multi-select box */
   .bn-bulk-task-card .bn-bulk-proposed-box { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 28px; min-width: 200px; }
   .bn-bulk-task-card .bn-bulk-proposed-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-  .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 4px 2px 2px; border-radius: 14px; font-size: 11px; line-height: 1; border: 1px solid #e2e4e7; background: #f1f3f4; }
+  .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 4px 2px 2px; border-radius: 14px; font-size: 11px; line-height: 1; border: 1px solid #e2e4e7; background: #f1f3f4; color: #1a1a1a; }
   .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip .av-mini { width: 20px; height: 20px; border-radius: 50%; overflow: hidden; position: relative; flex-shrink: 0; color: #fff; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
   .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip .av-mini img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; position: absolute; inset: 0; }
-  .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip-name { font-size: 11px; font-weight: 500; }
+  .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip-name { font-size: 11px; font-weight: 500; color: #1a1a1a; }
+  /* In the bulk view, chips are always light-grey background — override any section-specific
+     text colors (Bookline's white-on-dark) that would otherwise render unreadably on grey. */
+  .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip.psec-bookline,
+  .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip.psec-team,
+  .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip.psec-supplementary,
+  .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip.psec-disabled { background: #f1f3f4; border-color: #e2e4e7; }
+  .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip.psec-bookline .proposed-chip-name,
+  .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip.psec-team .proposed-chip-name,
+  .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip.psec-supplementary .proposed-chip-name,
+  .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip.psec-disabled .proposed-chip-name { color: #1a1a1a; }
   .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip-x { appearance: none; border: none; background: transparent; cursor: pointer; color: #6b6b6b; font-size: 13px; padding: 0 3px 0 1px; line-height: 1; }
   .bn-bulk-task-card .bn-bulk-proposed-chips .proposed-chip-x:hover { color: #dc2626; }
   .bn-bulk-task-card .bn-bulk-proposed-add { display: inline-flex; align-items: center; padding: 2px 8px; border: 1px dashed #d8d6d1; border-radius: 12px; background: #fff; font-size: 11px; color: #6b6b6b; cursor: pointer; height: 22px; }
@@ -7120,33 +7130,12 @@ function allPeopleForPicker() {
   const ext = (typeof EXTERNAL_TEAM !== 'undefined') ? EXTERNAL_TEAM : [];
   return [...active, ...ext];
 }
-// When a SLACK_DIRECTORY-only person is selected as proposed_by, we silently promote
-// them into STORE.customMembers so that downstream code (findPerson, chip render, etc.)
-// works as if they had always been on the team. No UI prompt — it just happens.
-function bnEnsurePersonExists(pid) {
-  if (!pid) return;
-  if (typeof TEAM !== 'undefined' && TEAM.some(p => p.id === pid)) return;
-  if (typeof EXTERNAL_TEAM !== 'undefined' && EXTERNAL_TEAM.some(p => p.id === pid)) return;
-  if (typeof SLACK_DIRECTORY === 'undefined') return;
-  const u = SLACK_DIRECTORY.find(x => x.id === pid);
-  if (!u) return;
-  STORE.customMembers = STORE.customMembers || [];
-  if (STORE.customMembers.some(m => m.id === pid)) return; // already pending
-  const dn = (u.name || '').split(/\s+/)[0] || u.name || pid;
-  STORE.customMembers.push({
-    id: pid,
-    name: u.name || '',
-    displayName: dn,
-    email: u.email || '',
-    role: 'Bookline',
-    photo: u.photo || '',
-    color: (typeof pickColorForNewMember === 'function') ? pickColorForNewMember() : '#9a9a9a',
-    defaultTags: []
-  });
-  if (typeof rebuildTeam === 'function') rebuildTeam();
-  if (typeof populateUserSelects === 'function') populateUserSelects();
-  try { saveStore(STORE); } catch(_) {}
-}
+// No-op: SLACK_DIRECTORY users are already first-class everywhere via findPerson's fallback,
+// so picking them as proposed_by no longer needs to promote them into TEAM/customMembers.
+// They simply move from "Bookline · Without tasks" to "Bookline · With tasks" once they
+// have at least one proposal. Keeping the function defined so existing call-sites are
+// harmless no-ops without needing to edit them.
+function bnEnsurePersonExists(_pid) { /* intentionally empty */ }
 // For the Proposed By picker we ALSO want every Bookline Slack user that exists in
 // SLACK_DIRECTORY, even if they aren't in TEAM / EXTERNAL_TEAM yet. The synthesized
 // people are marked `_slackOnly: true` so the renderer can show them in a "Sin tasks
@@ -13673,7 +13662,12 @@ if (_suChk) _suChk.checked = getShowUnassigned();
   function refreshLabel() {
     const allGids = (STORE.tasks || []).filter(t => t.isGroup).map(g => g.id);
     const anyExpanded = allGids.some(g => isGroupExpanded(g));
-    btn.textContent = anyExpanded ? '⊟ Collapse all' : '⊞ Expand all';
+    const label = anyExpanded ? '⊟ Collapse all' : '⊞ Expand all';
+    btn.textContent = label;
+    // Mirror on the visible inline button (the hidden one is a relay; the user only ever
+    // sees the inline copy in the Tasks toolbar).
+    const inline = document.getElementById('tasksCollapseAllBtnInline');
+    if (inline) inline.textContent = label;
   }
   refreshLabel();
   btn.addEventListener("click", () => {
