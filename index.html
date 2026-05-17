@@ -4435,10 +4435,29 @@ async function bnAuthBoot() {
     if (BN_AUTH_REQUIRED) bnAuthShowGate(true, { errorMsg: 'No se pudo cargar el SDK de Supabase. Revisa tu conexión.' });
     return;
   }
+  // Defensive: if URL hash carries an implicit-flow access_token, hydrate the session
+  // ourselves. detectSessionInUrl should do this, but in some browser/CDN conditions
+  // it silently skips and the user is left staring at the sign-in screen with the
+  // token visible in the URL bar (the symptom Berni reported).
+  try {
+    if (location.hash && location.hash.indexOf('access_token=') !== -1) {
+      const params = new URLSearchParams(location.hash.slice(1));
+      const access_token = params.get('access_token');
+      const refresh_token = params.get('refresh_token');
+      if (access_token && refresh_token) {
+        console.info('[BN] Found tokens in URL hash → calling setSession()');
+        const { error } = await bnSupabase.auth.setSession({ access_token, refresh_token });
+        if (error) console.warn('[BN] setSession failed:', error.message);
+        // Wipe the tokens out of the URL bar so they don't sit in browser history.
+        try { history.replaceState(null, '', location.pathname + location.search); } catch(_) {}
+      }
+    }
+  } catch (e) { console.warn('[BN] hash hydrate exception:', e && e.message); }
   try {
     const { data: { session } } = await bnSupabase.auth.getSession();
     bnSupabaseSession = session || null;
     bnSupabaseUser = (session && session.user) || null;
+    console.info('[BN] boot getSession → user:', bnSupabaseUser && bnSupabaseUser.email);
     await bnAuthResolveGate();
   } catch (e) {
     if (BN_AUTH_REQUIRED) bnAuthShowGate(true, { errorMsg: 'Auth boot error: ' + (e && e.message || e) });
