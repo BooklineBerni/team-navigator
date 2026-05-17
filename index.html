@@ -4430,36 +4430,105 @@ async function bnAuthResolveGate() {
     bnAuthShowGate(true, { mode: 'waiting', email: email, showSignOut: true });
   }
 }
+// Decode a JWT payload (no signature verification — we trust the URL came from Supabase OAuth).
+function bnDecodeJwtPayload(token) {
+  try {
+    const parts = String(token || '').split('.');
+    if (parts.length !== 3) return null;
+    // base64url → base64
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/').padEnd(parts[1].length + (4 - parts[1].length % 4) % 4, '=');
+    return JSON.parse(decodeURIComponent(escape(atob(b64))));
+  } catch (e) { return null; }
+}
 async function bnAuthBoot() {
   if (!bnSupabase) {
     if (BN_AUTH_REQUIRED) bnAuthShowGate(true, { errorMsg: 'No se pudo cargar el SDK de Supabase. Revisa tu conexión.' });
     return;
   }
-  // Defensive: if URL hash carries an implicit-flow access_token, hydrate the session
-  // ourselves. detectSessionInUrl should do this, but in some browser/CDN conditions
-  // it silently skips and the user is left staring at the sign-in screen with the
-  // token visible in the URL bar (the symptom Berni reported).
+  // Defensive: if URL hash carries an implicit-flow access_token, we hydrate the session
+  // ourselves by writing directly to localStorage in the Supabase v2 format. We bypass
+  // `setSession()` because it makes a /user network call that has been observed to hang
+  // indefinitely on this project, leaving the user stranded on the sign-in screen.
+  let hydratedFromHash = false;
   try {
     if (location.hash && location.hash.indexOf('access_token=') !== -1) {
       const params = new URLSearchParams(location.hash.slice(1));
       const access_token = params.get('access_token');
-      const refresh_token = params.get('refresh_token');
-      if (access_token && refresh_token) {
-        console.info('[BN] Found tokens in URL hash → calling setSession()');
-        const { error } = await bnSupabase.auth.setSession({ access_token, refresh_token });
-        if (error) console.warn('[BN] setSession failed:', error.message);
-        // Wipe the tokens out of the URL bar so they don't sit in browser history.
-        try { history.replaceState(null, '', location.pathname + location.search); } catch(_) {}
+      const refresh_token = params.get('refresh_token') || '';
+      const expires_in = parseInt(params.get('expires_in') || '3600', 10);
+      const token_type = params.get('token_type') || 'bearer';
+      const provider_token = params.get('provider_token') || null;
+      if (access_token) {
+        const payload = bnDecodeJwtPayload(access_token);
+        console.info('[BN] Found tokens in URL hash · email:', payload && payload.email, '· exp:', payload && payload.exp);
+        if (payload && payload.sub) {
+          const user = {
+            id: payload.sub,
+            aud: payload.aud || 'authenticated',
+            role: payload.role || 'authenticated',
+            email: payload.email || '',
+            phone: payload.phone || '',
+            app_metadata: payload.app_metadata || { provider: 'google', providers: ['google'] },
+            user_metadata: payload.user_metadata || {},
+            identities: payload.identities || [],
+            created_at: payload.created_at || new Date().toISOString(),
+            updated_at: payload.updated_at || new Date().toISOString()
+          };
+          const session = {
+            access_token,
+            refresh_token,
+            expires_in,
+            expires_at: payload.exp || (Math.floor(Date.now() / 1000) + expires_in),
+            token_type,
+            provider_token,
+            user
+          };
+          // Project ref is the first hostname segment of SUPABASE_URL.
+          const m = BN_SUPABASE_URL.match(/^https?:\/\/([^.]+)\./);
+          const ref = m ? m[1] : '';
+          const key = 'sb-' + ref + '-auth-token';
+          try {
+            localStorage.setItem(key, JSON.stringify(session));
+            console.info('[BN] Wrote session to localStorage key:', key);
+            hydratedFromHash = true;
+          } catch (e) { console.warn('[BN] could not persist session:', e && e.message); }
+          // Tell the SDK in-memory state about it too (best-effort, non-blocking).
+          // We DON'T await this — if it hangs the way setSession does, we don't care because
+          // localStorage already has the session and getSession() will pick it up on reload.
+          try {
+            bnSupabase.auth.setSession({ access_token, refresh_token }).catch(() => {});
+          } catch (_) {}
+          // Wipe tokens from URL bar so they don't sit in browser history.
+          try { history.replaceState(null, '', location.pathname + location.search); } catch(_) {}
+        }
       }
     }
   } catch (e) { console.warn('[BN] hash hydrate exception:', e && e.message); }
+  // getSession() reads the SDK's in-memory session, which is populated at construction.
+  // If we just wrote to localStorage, the SDK doesn't know about it yet — so we race
+  // getSession against a short timeout. If it doesn't return a session quickly, we fall
+  // back to reading the JWT we already parsed and persisted ourselves.
   try {
-    const { data: { session } } = await bnSupabase.auth.getSession();
+    const racePromise = Promise.race([
+      bnSupabase.auth.getSession().then(({ data }) => data && data.session || null),
+      new Promise(resolve => setTimeout(() => resolve(null), 1500))
+    ]);
+    let session = await racePromise;
+    if (!session && hydratedFromHash) {
+      // SDK didn't pick up our localStorage write — read it back manually.
+      try {
+        const m = BN_SUPABASE_URL.match(/^https?:\/\/([^.]+)\./);
+        const ref = m ? m[1] : '';
+        const raw = localStorage.getItem('sb-' + ref + '-auth-token');
+        if (raw) session = JSON.parse(raw);
+      } catch (_) {}
+    }
     bnSupabaseSession = session || null;
     bnSupabaseUser = (session && session.user) || null;
-    console.info('[BN] boot getSession → user:', bnSupabaseUser && bnSupabaseUser.email);
+    console.info('[BN] boot session resolved · user:', bnSupabaseUser && bnSupabaseUser.email);
     await bnAuthResolveGate();
   } catch (e) {
+    console.warn('[BN] auth boot error:', e && e.message);
     if (BN_AUTH_REQUIRED) bnAuthShowGate(true, { errorMsg: 'Auth boot error: ' + (e && e.message || e) });
   }
   // Re-evaluate on session changes. We deduplicate by user-id so spurious
