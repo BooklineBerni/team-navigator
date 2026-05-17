@@ -4846,7 +4846,7 @@ async function bnRenderAdminPage() {
             <div style="flex:1;">
               <div style="font-weight:600;">${escapeHtml(row.email)} ${isSelf ? '<span style="font-size:11px; color:#888;">(tú)</span>' : ''}</div>
               ${pending
-                ? '<div style="font-size:11px; color:#d97706;">Pendiente sign in${row.notes ? ' · ' + escapeHtml(row.notes) : ''}</div>'
+                ? `<div style="font-size:11px; color:#d97706;">Pendiente sign in${row.notes ? ' · ' + escapeHtml(row.notes) : ''}</div>`
                 : `<div style="font-size:11px; color:#aaa; font-family:monospace;">${escapeHtml(row.user_id || '')}</div>`}
             </div>
             ${pending
