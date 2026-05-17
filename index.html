@@ -3783,7 +3783,12 @@ Weekly metrics by country" spellcheck="false"></textarea>
     <span class="sep"></span>
     <select id="bulkSetStatus" title="Set status on selected"><option value="">Set status…</option><option value="Proposed">Proposed</option><option value="Under Review">Under Review</option><option value="In Progress">In Progress</option><option value="Waiting">Waiting</option><option value="Later / Next">Later / Next</option><option value="Completed">Completed</option><option value="Archived">Archived</option><option value="Discarded">Discarded</option></select>
     <select id="bulkSetType" title="Set task type on selected"><option value="">Set type…</option><option value="__empty">(clear)</option><option value="Project">Project</option><option value="Responsability">Responsability</option><option value="Request">Request</option><option value="ERROR">ERROR</option><option value="Infinite">Infinite</option></select>
+    <select id="bulkSetPriority" title="Set priority on selected"><option value="">Set priority…</option><option value="__empty">(clear)</option><option value="Critical">Critical</option><option value="Alta">Alta</option><option value="Media">Media</option><option value="Baja">Baja</option><option value="Muy Baja">Muy Baja</option></select>
     <select id="bulkSetResponsible" title="Set responsible on selected"><option value="">Set responsible…</option></select>
+    <div class="bulk-rm-wrap" style="position:relative; display:inline-block">
+      <button class="bulk-rm-btn" id="bulkProposedByBtn" type="button" title="Add or remove people in the proposed-by list of all selected tasks">💡 Proposed by…</button>
+      <div id="bulkProposedByPopover" class="bulk-rm-popover" style="display:none"></div>
+    </div>
     <div class="bulk-rm-wrap" style="position:relative; display:inline-block">
       <button class="bulk-rm-btn" id="bulkSetParentBtn" type="button" title="Nest selected tasks under a parent (a task with subtasks enabled)">📁 Nest under…</button>
       <div id="bulkSetParentPopover" class="bulk-rm-popover" style="display:none"></div>
@@ -6680,9 +6685,12 @@ function bnBulkSave(){
       completed: false,
       responsibleId: d.responsibleId || '',
       responsibleRaw: respPerson ? (respPerson.email||'') : '',
-      proposedById: d.proposedById || '',
+      proposedById: d.proposedById || (Array.isArray(d.proposedByIds) && d.proposedByIds[0]) || '',
       proposedByRaw: propPerson ? (propPerson.email||'') : '',
-      proposedByIds: d.proposedById ? [d.proposedById] : [],
+      // Preserve ALL selected proposers, not just the first one.
+      proposedByIds: Array.isArray(d.proposedByIds) && d.proposedByIds.length > 0
+        ? d.proposedByIds.slice()
+        : (d.proposedById ? [d.proposedById] : []),
       priority: d.priority || '',
       type: d.type || '',
       dueDate: '',
@@ -16452,6 +16460,150 @@ document.getElementById("bulkSetResponsible").addEventListener("change", e => {
   saveStore(STORE);
   e.target.value = "";
   render();
+});
+
+// Bulk: set priority on selected (sentinel "__empty" clears the priority).
+const _bulkPrioEl = document.getElementById("bulkSetPriority");
+if (_bulkPrioEl) _bulkPrioEl.addEventListener("change", e => {
+  const raw = e.target.value;
+  if (!raw || selectedTaskIds.size === 0) { e.target.value = ""; return; }
+  const newPrio = (raw === "__empty") ? "" : raw;
+  const lbl = (raw === "__empty") ? "(empty)" : newPrio;
+  if (!confirm("Set priority to '" + lbl + "' on " + selectedTaskIds.size + " task(s)?")) { e.target.value = ""; return; }
+  selectedTaskIds.forEach(tid => {
+    const t = STORE.tasks.find(x => x.id === tid);
+    if (!t) return;
+    t.priority = newPrio;
+    t._pendingSync = true;
+  });
+  saveStore(STORE);
+  e.target.value = "";
+  render();
+});
+
+// Bulk: manage proposed-by on selected. Popover with checkbox-like tristate (none / some / all).
+// Clicking a name toggles them in/out of every selected task's proposedByIds list.
+function bnRenderBulkProposedByPopover() {
+  const pop = document.getElementById("bulkProposedByPopover");
+  if (!pop) return;
+  const N = selectedTaskIds.size;
+  if (N === 0) { pop.style.display = "none"; return; }
+  const candidates = (typeof bnAllPeopleForProposedBy === 'function') ? bnAllPeopleForProposedBy() : [];
+  if (candidates.length === 0) {
+    pop.innerHTML = '<div class="bulk-rm-empty">No Bookline directory loaded.</div>';
+    return;
+  }
+  // Bucket counts: how many of the selected tasks have each candidate in their proposedByIds
+  const tasksSel = (STORE.tasks || []).filter(t => selectedTaskIds.has(t.id));
+  function countTasksWith(pid) {
+    return tasksSel.filter(t => Array.isArray(t.proposedByIds) && t.proposedByIds.includes(pid)).length;
+  }
+  // Group by section so the UI mirrors the picker
+  const buckets = { team: [], supp: [], book: [], slack: [] };
+  const seen = new Set();
+  candidates.forEach(p => {
+    if (!p || seen.has(p.id)) return;
+    seen.add(p.id);
+    if (p._slackOnly) { buckets.slack.push(p); return; }
+    let sec = '';
+    try { sec = (typeof getPersonSection === 'function') ? getPersonSection(p.id) : ''; } catch(_) {}
+    if (sec === 'team') buckets.team.push(p);
+    else if (sec === 'supplementary') buckets.supp.push(p);
+    else if (sec === 'disabled') return;
+    else buckets.book.push(p);
+  });
+  const byName = (a,b) => (a.displayName||a.name||'').localeCompare(b.displayName||b.name||'');
+  Object.keys(buckets).forEach(k => buckets[k].sort(byName));
+
+  let html = '<div class="bulk-rm-header">Click to add or remove all <strong>' + N + '</strong> selected task(s) from each proposer. <span style="color:#dc2626">−</span> = some, <span style="color:#1a1a1a">✓</span> = all, empty = none.</div>';
+  html += '<input type="text" id="bulkProposedBySearch" placeholder="Search…" autocomplete="off" style="width:100%; padding:6px 8px; border:1px solid #d8d6d1; border-radius:6px; margin-bottom:8px; font-size:13px;">';
+  html += '<div id="bulkProposedByList">';
+  function section(label, arr) {
+    if (arr.length === 0) return '';
+    let h = '<div class="bulk-rm-section">' + escapeHtml(label) + '</div>';
+    arr.forEach(p => {
+      const cnt = countTasksWith(p.id);
+      const state = cnt === 0 ? 'none' : (cnt === N ? 'all' : 'some');
+      const mark = state === 'all' ? '✓' : (state === 'some' ? '−' : '');
+      const cls = state === 'all' ? 'all' : (state === 'some' ? 'some' : 'none');
+      const name = escapeHtml(p.displayName || p.name || p.id);
+      const email = p.email ? '<span style="color:#9a9a9a;font-size:11px">' + escapeHtml(p.email) + '</span>' : '';
+      h += '<div class="bulk-rm-row ' + cls + '" data-pid="' + escapeHtml(p.id) + '" data-name="' + name + '">' +
+        '<span class="bulk-rm-mark">' + mark + '</span>' +
+        '<span style="flex:1; display:flex; flex-direction:column; min-width:0">' +
+          '<span class="bulk-rm-name">' + name + '</span>' +
+          email +
+        '</span>' +
+      '</div>';
+    });
+    return h;
+  }
+  html += section('Team',                    buckets.team);
+  html += section('Supplementary',           buckets.supp);
+  html += section('Bookline',                buckets.book);
+  html += section('Bookline · No tasks yet', buckets.slack);
+  html += '</div>';
+  pop.innerHTML = html;
+
+  function applyFilter(q) {
+    q = (q||'').trim().toLowerCase();
+    pop.querySelectorAll('.bulk-rm-row').forEach(r => {
+      const n = (r.getAttribute('data-name') || '').toLowerCase();
+      r.style.display = (!q || n.includes(q)) ? '' : 'none';
+    });
+    // hide section headers whose all rows are hidden
+    pop.querySelectorAll('.bulk-rm-section').forEach(h => {
+      let next = h.nextElementSibling;
+      let visible = false;
+      while (next && !next.classList.contains('bulk-rm-section')) {
+        if (next.classList.contains('bulk-rm-row') && next.style.display !== 'none') { visible = true; break; }
+        next = next.nextElementSibling;
+      }
+      h.style.display = visible ? '' : 'none';
+    });
+  }
+  const sb = pop.querySelector('#bulkProposedBySearch');
+  if (sb) sb.addEventListener('input', () => applyFilter(sb.value));
+
+  pop.querySelectorAll('.bulk-rm-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const pid = row.getAttribute('data-pid');
+      const wasState = row.classList.contains('all') ? 'all' : (row.classList.contains('some') ? 'some' : 'none');
+      // Toggle: none/some → add to all; all → remove from all
+      const addToAll = wasState !== 'all';
+      tasksSel.forEach(t => {
+        if (!Array.isArray(t.proposedByIds)) t.proposedByIds = t.proposedById ? [t.proposedById] : [];
+        const has = t.proposedByIds.includes(pid);
+        if (addToAll && !has) t.proposedByIds.push(pid);
+        if (!addToAll && has) t.proposedByIds = t.proposedByIds.filter(x => x !== pid);
+        t.proposedById = t.proposedByIds[0] || '';
+        // Sync the *raw email (legacy field) with the first proposer for compatibility.
+        const firstP = t.proposedById ? findPerson(t.proposedById) : null;
+        t.proposedByRaw = firstP ? (firstP.email || firstP.name || '') : '';
+        t._pendingSync = true;
+      });
+      saveStore(STORE);
+      bnRenderBulkProposedByPopover();
+      // Re-render the task list in the background so chips refresh.
+      if (typeof render === 'function') try { render(); } catch(_) {}
+    });
+  });
+}
+document.getElementById("bulkProposedByBtn").addEventListener("click", e => {
+  e.stopPropagation();
+  const pop = document.getElementById("bulkProposedByPopover");
+  const btn = document.getElementById("bulkProposedByBtn");
+  if (pop.style.display === "block") { pop.style.display = "none"; return; }
+  // Close other popovers
+  document.querySelectorAll(".bulk-rm-popover").forEach(p => p.style.display = "none");
+  bnRenderBulkProposedByPopover();
+  pop.style.display = "block";
+});
+document.addEventListener("click", e => {
+  const pop = document.getElementById("bulkProposedByPopover");
+  const btn = document.getElementById("bulkProposedByBtn");
+  if (!pop || !btn) return;
+  if (pop.style.display === "block" && !pop.contains(e.target) && !btn.contains(e.target)) pop.style.display = "none";
 });
 
 // Bulk: manage roadmap membership of selected tasks (multi-select popover with add/remove)
