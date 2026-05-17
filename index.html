@@ -3286,15 +3286,37 @@
     font: 600 16px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     letter-spacing: -0.01em;
   }
+  /* CACHED SESSION: a previous login is still valid. Force-hide the gate so the user
+     sees the app shell from the very first frame (no "Continue with Google" flash). */
+  html[data-bn-cached-session="1"] .bn-auth-gate { display: none !important; }
 </style>
-<!-- Pre-paint: detect OAuth callback hash and lock the body in "loading" mode BEFORE the
-     gate / body paints. This eliminates the brief flash of the sign-in form that the
-     redirect-based OAuth flow would otherwise produce. -->
+<!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
+     Three possible states:
+       1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
+       2. data-bn-cached-session="1" → reload with a valid Supabase session in localStorage.
+          We skip the sign-in form entirely so the app appears with zero flash.
+       3. Neither flag → first visit / signed out → normal sign-in gate shown by JS later.
+-->
 <script>
   (function() {
     try {
+      // Case 1: OAuth callback.
       if (location.hash && location.hash.indexOf('access_token=') !== -1) {
         document.documentElement.setAttribute('data-bn-oauth-callback', '1');
+        return;
+      }
+      // Case 2: cached session — read it synchronously so we don't flash the gate.
+      // Supabase v2 stores the session as JSON under `sb-{project_ref}-auth-token`.
+      // We hard-code the project ref here (matches BN_SUPABASE_URL below) to keep this
+      // script independent of the rest of the inline JS.
+      var BN_PROJECT_REF = 'xnbptxxumzigizgwegut';
+      var raw = localStorage.getItem('sb-' + BN_PROJECT_REF + '-auth-token');
+      if (!raw) return;
+      var session = JSON.parse(raw);
+      // expires_at is unix seconds. Allow 30s of clock skew.
+      var now = Math.floor(Date.now() / 1000);
+      if (session && session.access_token && session.expires_at && (session.expires_at - 30) > now) {
+        document.documentElement.setAttribute('data-bn-cached-session', '1');
       }
     } catch (_) {}
   })();
@@ -4589,19 +4611,43 @@ if (bnHashHasOAuth && bnSupabase) {
   // Note: bnSupabaseUser and bnSupabaseSession will be set as a side effect.
   try { bnHydrateSessionFromHashSync(); } catch (_) {}
 }
+// Also hydrate user from a non-expired cached session in localStorage. The pre-paint head
+// script already set `data-bn-cached-session` so the CSS hides the gate. We just need to
+// populate bnSupabaseUser now so bnAuthResolveGate doesn't fall through to "show sign-in".
+const bnHasCachedSession = document.documentElement.getAttribute('data-bn-cached-session') === '1';
+if (bnHasCachedSession && !bnSupabaseUser) {
+  try {
+    const m = BN_SUPABASE_URL.match(/^https?:\/\/([^.]+)\./);
+    const ref = m ? m[1] : '';
+    const raw = localStorage.getItem('sb-' + ref + '-auth-token');
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (cached && cached.user) {
+        bnSupabaseSession = cached;
+        bnSupabaseUser = cached.user;
+      }
+    }
+  } catch (_) {}
+}
 // Wire the gate buttons once the DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   const inBtn = document.getElementById('bnAuthSignInBtn');
   if (inBtn) inBtn.addEventListener('click', bnAuthSignInWithGoogle);
   const outBtn = document.getElementById('bnAuthSignOutBtn');
   if (outBtn) outBtn.addEventListener('click', bnAuthSignOut);
-  // Initial gate state. Choose based on what we already know:
-  //   • Just came back from Google consent → show 'Loading…' (not the signin button)
-  //   • Otherwise auth-required → show signin gate
-  //   • Localhost → no gate at all
+  // Initial gate state. Three paths:
+  //   • Cached valid session → don't show the gate at all; the app shell paints directly.
+  //   • Just came back from OAuth → loading overlay (handled pre-paint by the head script).
+  //   • Neither → sign-in form.
   if (BN_AUTH_REQUIRED) {
-    if (bnHashHasOAuth || bnSupabaseUser) bnAuthShowGate(true, { mode: 'loading' });
-    else bnAuthShowGate(true, {});
+    if (bnHasCachedSession) {
+      // CSS already hides the gate; just make sure the body isn't locked.
+      document.body.classList.remove('bn-locked');
+    } else if (bnHashHasOAuth || bnSupabaseUser) {
+      bnAuthShowGate(true, { mode: 'loading' });
+    } else {
+      bnAuthShowGate(true, {});
+    }
   }
   bnAuthBoot();
 });
