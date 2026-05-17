@@ -3515,7 +3515,7 @@
         <div style="display:flex; gap:8px; align-items:center">
           <input class="search-input" id="memberPageSearch" placeholder="Search people..." style="max-width:240px">
           <button class="btn" id="teamManageTagsBtn" title="Create, edit, recolor and reorder member tags">Member Tags</button>
-          <button class="btn primary" id="teamAddMemberBtn" title="Add someone from Slack who isn't in the team yet">+ Member</button>
+          <button class="btn primary" id="teamAddMemberBtn" title="Add someone from Slack who isn't in the team yet" style="display:none">+ Member</button>
         </div>
       </div>
       <div id="membersGrid"></div>
@@ -7061,6 +7061,23 @@ const UNASSIGNED_PERSON = {
   color: '#9aa0a6',
   isUnassigned: true,
 };
+// Builds a person-shape object from a SLACK_DIRECTORY entry. Used when a Slack user
+// hasn't been explicitly added to TEAM/EXTERNAL_TEAM/customMembers — they're still
+// first-class citizens in the picker, People page, profile, etc.
+function _bnPersonFromSlack(u) {
+  if (!u || !u.id) return null;
+  const dn = (u.name || '').split(/\s+/)[0] || u.name || u.id;
+  return {
+    id: u.id,
+    name: u.name || '',
+    displayName: dn,
+    email: u.email || '',
+    photo: u.photo || '',
+    color: '#9a9a9a',
+    role: 'Bookline',
+    _slackOnly: true
+  };
+}
 function findPerson(id) {
   if (!id) return null;
   if (id === '__unassigned') return UNASSIGNED_PERSON;
@@ -7069,6 +7086,13 @@ function findPerson(id) {
     _bnPersonByIdCache = new Map();
     if (Array.isArray(TEAM)) for (let i = 0; i < TEAM.length; i++) { const p = TEAM[i]; if (p && p.id) _bnPersonByIdCache.set(p.id, p); }
     if (typeof EXTERNAL_TEAM !== 'undefined' && Array.isArray(EXTERNAL_TEAM)) for (let i = 0; i < EXTERNAL_TEAM.length; i++) { const p = EXTERNAL_TEAM[i]; if (p && p.id && !_bnPersonByIdCache.has(p.id)) _bnPersonByIdCache.set(p.id, p); }
+    // Fall back to SLACK_DIRECTORY so every Bookline Slack user is reachable by id.
+    if (typeof SLACK_DIRECTORY !== 'undefined' && Array.isArray(SLACK_DIRECTORY)) {
+      for (let i = 0; i < SLACK_DIRECTORY.length; i++) {
+        const u = SLACK_DIRECTORY[i];
+        if (u && u.id && !_bnPersonByIdCache.has(u.id)) _bnPersonByIdCache.set(u.id, _bnPersonFromSlack(u));
+      }
+    }
   }
   return _bnPersonByIdCache.get(id) || null;
 }
@@ -7077,6 +7101,10 @@ function findPersonByEmail(email) {
   const e = email.trim().toLowerCase();
   return TEAM.find(p => (p.email||'').toLowerCase() === e) ||
          (typeof EXTERNAL_TEAM !== 'undefined' && EXTERNAL_TEAM.find(p => (p.email||'').toLowerCase() === e)) ||
+         (typeof SLACK_DIRECTORY !== 'undefined' && (function(){
+           const slack = SLACK_DIRECTORY.find(u => (u.email||'').toLowerCase() === e);
+           return slack ? _bnPersonFromSlack(slack) : null;
+         })()) ||
          null;
 }
 function allPeopleForPicker() {
@@ -13901,14 +13929,22 @@ function renderMembersPage() {
     if (!q) return true;
     return (p.name + " " + (p.email||"") + " " + (p.displayName||"") + " " + getTagsFor(p.id).join(" ")).toLowerCase().includes(q);
   }
-  // Build a unified pool of all known people
+  // Build a unified pool of all known people. Sources:
+  //   TEAM (active team + customMembers)
+  //   EXTERNAL_TEAM (extended Bookline)
+  //   Every proposer id referenced in tasks
+  //   The ENTIRE SLACK_DIRECTORY — so the People page surfaces all Bookline Slack users
+  //   even before they have any activity. New people land in "Bookline · Sin tasks" by
+  //   default; admin can edit their profile to move them to Team / Supplementary / Disabled.
   const pool = [];
   const seen = new Set();
   function addToPool(p){ if (!p || seen.has(p.id)) return; seen.add(p.id); pool.push(p); }
   TEAM.forEach(addToPool);
   if (typeof EXTERNAL_TEAM !== 'undefined') EXTERNAL_TEAM.forEach(addToPool);
-  // Also include anyone appearing as proposer but not in either constant
   getAllProposerIds().forEach(id => { const p = findPerson(id); if (p) addToPool(p); });
+  if (typeof SLACK_DIRECTORY !== 'undefined' && Array.isArray(SLACK_DIRECTORY)) {
+    SLACK_DIRECTORY.forEach(u => { const p = findPerson(u.id); if (p) addToPool(p); });
+  }
 
   // Section-based grouping (single-choice picklist):
   //   team / supplementary / disabled / "" (Bookline = empty + has tasks OR proposals)
