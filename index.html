@@ -3253,7 +3253,7 @@
   kbd { background:#f0efeb; border:1px solid #d8d6d1; border-radius:4px; padding:0 5px; font-size:11px; font-family:inherit; }
   footer.bot { margin-top: 28px; font-size: 11.5px; color: #9a9a9a; text-align: center; }
   /* === Auth gate overlay (Supabase) === */
-  .bn-auth-gate { position: fixed; inset: 0; background: #111; color: #fff; z-index: 999999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 18px; padding: 24px; text-align: center; font-family: inherit; }
+  .bn-auth-gate { position: fixed; inset: 0; background: #0a0a0a; color: #fff; z-index: 999999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 18px; padding: 24px; text-align: center; font-family: inherit; }
   .bn-auth-gate.hidden { display: none; }
   .bn-auth-gate h1 { font-size: 22px; margin: 0; font-weight: 700; letter-spacing: -0.02em; }
   .bn-auth-gate p { color: #9a9a9a; max-width: 380px; margin: 0; line-height: 1.5; font-size: 14px; }
@@ -3263,9 +3263,42 @@
   .bn-auth-gate .bn-auth-error { color: #fca5a5; font-size: 13px; max-width: 480px; }
   .bn-auth-gate .bn-auth-secondary { color: #d8d6d1; font-size: 12px; text-decoration: underline; background: none; border: none; cursor: pointer; padding: 4px 8px; }
   .bn-auth-gate .bn-auth-secondary:hover { color: #fff; }
+  /* Spinner used during OAuth callback so the user knows the app is finishing the login */
+  .bn-auth-spinner { width: 32px; height: 32px; border: 3px solid #2a2a2a; border-top-color: #fff; border-radius: 50%; animation: bn-auth-spin 0.9s linear infinite; }
+  @keyframes bn-auth-spin { to { transform: rotate(360deg); } }
   body.bn-locked { overflow: hidden; }
   body.bn-locked > .wrap, body.bn-locked > footer { display: none !important; }
+  /* ANTI-FLASH: when the URL hash carries an OAuth callback, we set
+     <html data-bn-oauth-callback="1"> from the head script below. These rules then hide
+     the body content and pre-render a clean loading state immediately, so the user never
+     sees the sign-in form between "Google consent OK" and "app loaded". */
+  html[data-bn-oauth-callback="1"] body > .wrap,
+  html[data-bn-oauth-callback="1"] body > footer { display: none !important; }
+  html[data-bn-oauth-callback="1"] body { background: #0a0a0a; overflow: hidden; }
+  html[data-bn-oauth-callback="1"] body::before {
+    content: "";
+    position: fixed; inset: 0; z-index: 999998; background: #0a0a0a;
+  }
+  html[data-bn-oauth-callback="1"] body::after {
+    content: "Entrando…";
+    position: fixed; inset: 0; z-index: 999999; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font: 600 16px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    letter-spacing: -0.01em;
+  }
 </style>
+<!-- Pre-paint: detect OAuth callback hash and lock the body in "loading" mode BEFORE the
+     gate / body paints. This eliminates the brief flash of the sign-in form that the
+     redirect-based OAuth flow would otherwise produce. -->
+<script>
+  (function() {
+    try {
+      if (location.hash && location.hash.indexOf('access_token=') !== -1) {
+        document.documentElement.setAttribute('data-bn-oauth-callback', '1');
+      }
+    } catch (_) {}
+  })();
+</script>
 <!-- Supabase JS SDK (only loaded if available; the app falls back to local-only when offline) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 </head>
@@ -4223,6 +4256,9 @@ function bnAuthShowGate(show, options) {
   options = options || {};
   const gate = document.getElementById('bnAuthGate');
   if (!gate) return;
+  // Any call to bnAuthShowGate happens AFTER we've finished evaluating OAuth state,
+  // so the pre-paint anti-flash overlay should always come down at this point.
+  try { document.documentElement.removeAttribute('data-bn-oauth-callback'); } catch (_) {}
   if (show) {
     gate.classList.remove('hidden');
     gate.setAttribute('aria-hidden', 'false');
@@ -4258,6 +4294,9 @@ function bnAuthShowGate(show, options) {
     gate.classList.add('hidden');
     gate.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('bn-locked');
+    // Lift the anti-flash overlay (was set pre-paint by the head script when a hash
+    // carried an OAuth callback). Now that the app is ready, let the body paint.
+    try { document.documentElement.removeAttribute('data-bn-oauth-callback'); } catch (_) {}
   }
 }
 async function bnAuthSignInWithGoogle() {
