@@ -869,6 +869,8 @@ Weekly metrics by country" spellcheck="false"></textarea>
 <script src="lib/supabase-auth.js"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
 <script src="lib/permissions.js"></script>
+<!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
+<script src="lib/filters.js"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — code map (find-anchor strings → approximate line)
@@ -3434,61 +3436,30 @@ function tagMiniHtml(tag) {
 }
 function mapPanelStatus(s) { const v = (s||'').toLowerCase(); if (v.includes('complete')) return 'completed'; if (v.includes('progress') || v.includes('review')) return 'in_progress'; if (v.includes('discard')) return 'discarded'; if (v.includes('archived')) return 'archived'; return 'pending'; }
 
+// Snapshot of current filter state. Built fresh per call so it always reflects
+// the latest `let`-declared filter Sets. Aliased Set refs are fine (read-only).
+// Consumed by BNFilters.* (lib/filters.js) and any other helpers that need to
+// reason about filter state without poking at every individual `let`.
+function bnGetFilterState() {
+  return {
+    teamOnly, searchQuery,
+    personInclude, personExclude,
+    statusInclude, statusExclude,
+    prioInclude, prioExclude,
+    typeInclude, typeExclude,
+    taskTagInclude, taskTagExclude,
+    roadmapInclude, roadmapExclude,
+    dateStatusInclude, dateStatusExclude
+  };
+}
+
 function taskMatchesFilters(t, opts) {
   // By default groups are filtered out (they used to be rendered separately).
   // Pass { allowGroups: true } from places that render groups inline as flat-tasks.
   if (t.isGroup && !(opts && opts.allowGroups)) return false;
-  // Team-only mode: only show tasks owned by an active Team member, OR unassigned tasks (so the Unassigned card still appears).
-  if (teamOnly) {
-    if (t.responsibleId) {
-      if (!isTeamMember(t.responsibleId)) return false;
-      if (isDeactivated(t.responsibleId)) return false;
-    }
-    // else: unassigned task → keep visible so the Unassigned card can render it
-  }
-  // When teamOnly is OFF, disabled people's tasks ARE included.
-  // Person tristate: include & exclude.
-  // Normalize empty/missing responsibleId to '__unassigned' so the Unassigned pill
-  // can be used as a regular include/exclude filter.
-  {
-    const pid = t.responsibleId ? t.responsibleId : '__unassigned';
-    if (personInclude.size > 0 && !personInclude.has(pid)) return false;
-    if (personExclude.has(pid)) return false;
-  }
-  // Status include/exclude
-  if (statusInclude.size > 0 && !statusInclude.has(t.slackStatus)) return false;
-  if (statusExclude.has(t.slackStatus)) return false;
-  // Priority include/exclude (treat empty string as "(none)")
-  const prioKey = t.priority || "__none";
-  if (prioInclude.size > 0 && !prioInclude.has(prioKey)) return false;
-  if (prioExclude.has(prioKey)) return false;
-  // Type include/exclude (treat empty string as "(none)")
-  const typeKey = t.type || "__none";
-  if (typeInclude.size > 0 && !typeInclude.has(typeKey)) return false;
-  if (typeExclude.has(typeKey)) return false;
-  // (Person filter is applied at top with HIDDEN-set semantics)
-  // Search
-  if (searchQuery) {
-    const q = searchQuery.toLowerCase();
-    const hay = (t.subject + " " + (t.extraComments||"") + " " + (t.slackStatus||"")).toLowerCase();
-    if (!hay.includes(q)) return false;
-  }
-  // Task tag include/exclude (multi-valued tags; OR for include, NOT for exclude)
-  const tt = Array.isArray(t.taskTags) ? t.taskTags : [];
-  if (taskTagInclude.has("__none")) {
-    if (tt.length !== 0) return false;
-  } else if (taskTagInclude.size > 0) {
-    let hasAny = false;
-    for (const tag of taskTagInclude) if (tt.includes(tag)) { hasAny = true; break; }
-    if (!hasAny) return false;
-  }
-  if (taskTagExclude.has("__none") && tt.length === 0) return false;
-  for (const tag of taskTagExclude) if (tag !== "__none" && tt.includes(tag)) return false;
-  // Roadmap include/exclude
-  if (!taskMatchesRoadmapFilter(t)) return false;
-  // Date-status include/exclude
-  if (!taskMatchesDateStatusFilter(t)) return false;
-  return true;
+  // All filter predicates live in lib/filters.js — single source of truth.
+  // Default teamOnly variant keeps unassigned tasks visible so the Unassigned card still renders.
+  return BNFilters.allFiltersOK(t, bnGetFilterState());
 }
 
 // Date status of a task: "scheduled" (both dates set), "partial" (one missing), "unscheduled" (none).
@@ -3590,32 +3561,13 @@ function renderTeamStrip() {
   const el = document.getElementById("teamStrip");
   const all = STORE.tasks;
   const html = [];
-  const totalContextual = STORE.tasks.filter(t => {
-    if (!personMatchesTagFilter(t.responsibleId)) return false;
-    if (statusInclude.size > 0 && !statusInclude.has(t.slackStatus)) return false;
-    if (statusExclude.has(t.slackStatus)) return false;
-    const pk = t.priority || "__none";
-    if (prioInclude.size > 0 && !prioInclude.has(pk)) return false;
-    if (prioExclude.has(pk)) return false;
-    const tk = t.type || "__none";
-    if (typeInclude.size > 0 && !typeInclude.has(tk)) return false;
-    if (typeExclude.has(tk)) return false;
-    const tt = Array.isArray(t.taskTags) ? t.taskTags : [];
-    if (taskTagInclude.has("__none")) { if (tt.length !== 0) return false; }
-    else if (taskTagInclude.size > 0) {
-      let hasAny = false;
-      for (const tag of taskTagInclude) if (tt.includes(tag)) { hasAny = true; break; }
-      if (!hasAny) return false;
-    }
-    if (taskTagExclude.has("__none") && tt.length === 0) return false;
-    for (const tag of taskTagExclude) if (tag !== "__none" && tt.includes(tag)) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const hay = (t.subject + " " + (t.extraComments||"") + " " + (t.slackStatus||"")).toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  }).length;
+  // "Contextual" total: respects every dim that scopes the per-person counts,
+  // i.e. skip teamOnly / person inc-exc / roadmap / dateStatus (those don't
+  // shrink the per-person breakdown the strip is summing).
+  const _bnFs = bnGetFilterState();
+  const totalContextual = STORE.tasks.filter(t =>
+    BNFilters.allFiltersOK(t, _bnFs, { skip: ['teamOnly', 'person', 'roadmap', 'dateStatus'] })
+  ).length;
   // Team strip pool:
   //  - teamOnly ON  → only people with section === "team"
   //  - teamOnly OFF → all TEAM members (including disabled) + any other person who owns tasks
@@ -3704,102 +3656,42 @@ const PRIORITIES = [
 ];
 
 function countTasksForPersonContextual(personId) {
-  return STORE.tasks.filter(t => {
-    if (t.responsibleId !== personId) return false;
-    if (!personMatchesTagFilter(t.responsibleId)) return false;
-    if (statusInclude.size > 0 && !statusInclude.has(t.slackStatus)) return false;
-    if (statusExclude.has(t.slackStatus)) return false;
-    const pk = t.priority || "__none";
-    if (prioInclude.size > 0 && !prioInclude.has(pk)) return false;
-    if (prioExclude.has(pk)) return false;
-    const tk = t.type || "__none";
-    if (typeInclude.size > 0 && !typeInclude.has(tk)) return false;
-    if (typeExclude.has(tk)) return false;
-    const tt = Array.isArray(t.taskTags) ? t.taskTags : [];
-    if (taskTagInclude.has("__none")) { if (tt.length !== 0) return false; }
-    else if (taskTagInclude.size > 0) {
-      let hasAny = false;
-      for (const tag of taskTagInclude) if (tt.includes(tag)) { hasAny = true; break; }
-      if (!hasAny) return false;
-    }
-    if (taskTagExclude.has("__none") && tt.length === 0) return false;
-    for (const tag of taskTagExclude) if (tag !== "__none" && tt.includes(tag)) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const hay = (t.subject + " " + (t.extraComments||"") + " " + (t.slackStatus||"")).toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  }).length;
+  // Same scope as the team-strip totalContextual but pinned to one person.
+  const _bnFs = bnGetFilterState();
+  return STORE.tasks.filter(t =>
+    t.responsibleId === personId &&
+    BNFilters.allFiltersOK(t, _bnFs, { skip: ['teamOnly', 'person', 'roadmap', 'dateStatus'] })
+  ).length;
 }
 
+// Map from this file's `dim` argument to BNFilters' skip-dim names.
+// (The names diverge for historical reasons: "tag" is the *person* tag filter,
+// "priority" became "prio" in lib/filters.js, etc.)
+const BN_DIM_TO_SKIP = {
+  person:     'person',
+  tag:        'personTag',
+  status:     'status',
+  priority:   'prio',
+  type:       'type',
+  taskTag:    'taskTag',
+  roadmap:    'roadmap',
+  dateStatus: 'dateStatus',
+};
+
 function countTasksMatchingExcept(dim, optKey) {
+  // Groups ARE tasks (the "Subtasks" checkbox just marks a parent). Count them
+  // too so the pill totals match what the user actually sees on screen.
+  // strictTeamOnly: true → mirror the original behaviour where teamOnly mode
+  // also hides UNASSIGNED tasks (not just non-team / disabled).
+  const _bnFs = bnGetFilterState();
+  const skipDim = BN_DIM_TO_SKIP[dim] || null;
+  const opts = { skip: skipDim, strictTeamOnly: true };
   return STORE.tasks.filter(t => {
-    // Groups ARE tasks (the "Subtasks" checkbox just marks a parent). Count them too
-    // so the pill totals match the number of items the user actually sees on screen.
-    // Team-only mode: hide non-team / disabled / unassigned
-    if (teamOnly) {
-      if (!t.responsibleId) return false;
-      if (!isTeamMember(t.responsibleId)) return false;
-      if (isDeactivated(t.responsibleId)) return false;
-    }
-    if (dim !== "person") {
-      const pid = t.responsibleId ? t.responsibleId : '__unassigned';
-      if (personInclude.size > 0 && !personInclude.has(pid)) return false;
-      if (personExclude.has(pid)) return false;
-    }
-    if (dim !== "tag") {
-      if (!personMatchesTagFilter(t.responsibleId)) return false;
-    }
-    if (dim !== "status") {
-      if (statusInclude.size > 0 && !statusInclude.has(t.slackStatus)) return false;
-      if (statusExclude.has(t.slackStatus)) return false;
-    }
-    if (dim !== "priority") {
-      const pk = t.priority || "__none";
-      if (prioInclude.size > 0 && !prioInclude.has(pk)) return false;
-      if (prioExclude.has(pk)) return false;
-    }
-    if (dim !== "type") {
-      const tk = t.type || "__none";
-      if (typeInclude.size > 0 && !typeInclude.has(tk)) return false;
-      if (typeExclude.has(tk)) return false;
-    }
-    if (dim !== "taskTag") {
-      const tt = Array.isArray(t.taskTags) ? t.taskTags : [];
-      if (taskTagInclude.has("__none")) {
-        if (tt.length !== 0) return false;
-      } else if (taskTagInclude.size > 0) {
-        let hasAny = false;
-        for (const tag of taskTagInclude) if (tt.includes(tag)) { hasAny = true; break; }
-        if (!hasAny) return false;
-      }
-      if (taskTagExclude.has("__none") && tt.length === 0) return false;
-      for (const tag of taskTagExclude) if (tag !== "__none" && tt.includes(tag)) return false;
-    }
-    if (dim !== "roadmap") {
-      if (!taskMatchesRoadmapFilter(t)) return false;
-    }
-    if (dim !== "dateStatus") {
-      if (!taskMatchesDateStatusFilter(t)) return false;
-    }
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const hay = (t.subject + " " + (t.extraComments||"") + " " + (t.slackStatus||"")).toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    if (dim === "status") {
-      if (optKey === "__all") return true;
-      return t.slackStatus === optKey;
-    }
-    if (dim === "priority") {
-      if (optKey === "__all") return true;
-      return (t.priority || "__none") === optKey;
-    }
-    if (dim === "type") {
-      if (optKey === "__all") return true;
-      return (t.type || "__none") === optKey;
-    }
+    if (!BNFilters.allFiltersOK(t, _bnFs, opts)) return false;
+    // Apply the optKey check on the dim we just skipped.
+    if (dim === "status")     return optKey === "__all" || t.slackStatus === optKey;
+    if (dim === "priority")   return optKey === "__all" || (t.priority || "__none") === optKey;
+    if (dim === "type")       return optKey === "__all" || (t.type || "__none") === optKey;
     if (dim === "taskTag") {
       if (optKey === "__all") return true;
       const tt = Array.isArray(t.taskTags) ? t.taskTags : [];
@@ -3812,10 +3704,7 @@ function countTasksMatchingExcept(dim, optKey) {
       if (optKey === "__none") return rmIds.size === 0;
       return rmIds.has(optKey);
     }
-    if (dim === "dateStatus") {
-      if (optKey === "__all") return true;
-      return taskDateStatus(t) === optKey;
-    }
+    if (dim === "dateStatus") return optKey === "__all" || taskDateStatus(t) === optKey;
     return true;
   }).length;
 }
