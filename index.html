@@ -9169,7 +9169,8 @@ document.getElementById("saveBtn").addEventListener("click", () => {
     const shareWith = document.getElementById("f_shareWith").value;
     const missing = [];
     if (!subject) missing.push("Title");
-    if (!slackStatus) missing.push("Status");
+    // Status is optional for Responsability tasks (they live without a Slack-style state).
+    if (!slackStatus && type !== "Responsability") missing.push("Status");
     if (!priority) missing.push("Priority");
     if (!type) missing.push("Type");
     if (!shareWith) missing.push("Share with");
