@@ -3507,6 +3507,7 @@
           <input class="search-input" id="searchInput" placeholder="Search titles and comments...">
           <div id="statusFilterContainer" class="filter-group"></div>
           <div id="prioFilterContainer" class="filter-group"></div>
+          <div id="typeFilterContainer" class="filter-group"></div>
         </div>
 
         <div class="filters" id="tagFilterBar" style="margin-bottom:8px"></div>
@@ -6892,7 +6893,7 @@ window.bnApplyDeploySeed = function(forceOverwrite) {
     return false;
   }
 };
-let statusInclude = new Set(), statusExclude = new Set(), prioInclude = new Set(), prioExclude = new Set(), personInclude = new Set(), personExclude = new Set(), tagInclude = new Set(), tagExclude = new Set(), taskTagInclude = new Set(), taskTagExclude = new Set(), roadmapInclude = new Set(), roadmapExclude = new Set(), dateStatusInclude = new Set(), dateStatusExclude = new Set(), sortMembers = "default", sortTasks = "default", searchQuery = "", editingId = null;
+let statusInclude = new Set(), statusExclude = new Set(), prioInclude = new Set(), prioExclude = new Set(), personInclude = new Set(), personExclude = new Set(), tagInclude = new Set(), tagExclude = new Set(), taskTagInclude = new Set(), taskTagExclude = new Set(), roadmapInclude = new Set(), roadmapExclude = new Set(), dateStatusInclude = new Set(), dateStatusExclude = new Set(), typeInclude = new Set(), typeExclude = new Set(), sortMembers = "default", sortTasks = "default", searchQuery = "", editingId = null;
 // Backwards-compat shim — older code still references currentPersonIds.
 // Treat it as the include set so existing reads "just work".
 const currentPersonIds = personInclude;
@@ -6914,6 +6915,8 @@ function saveFilterState() {
     roadmapExclude: [...roadmapExclude],
     dateStatusInclude: [...dateStatusInclude],
     dateStatusExclude: [...dateStatusExclude],
+    typeInclude: [...typeInclude],
+    typeExclude: [...typeExclude],
     currentPersonIds: [...currentPersonIds],
     sortMembers, sortTasks, searchQuery
   };
@@ -6936,6 +6939,8 @@ function loadFilterState() {
     roadmapExclude = new Set(s.roadmapExclude || []);
     dateStatusInclude = new Set(s.dateStatusInclude || []);
     dateStatusExclude = new Set(s.dateStatusExclude || []);
+    typeInclude = new Set(s.typeInclude || []);
+    typeExclude = new Set(s.typeExclude || []);
     currentPersonIds = new Set(s.currentPersonIds || []);
     sortMembers = s.sortMembers || "default";
     sortTasks = s.sortTasks || "default";
@@ -7489,6 +7494,10 @@ function taskMatchesFilters(t, opts) {
   const prioKey = t.priority || "__none";
   if (prioInclude.size > 0 && !prioInclude.has(prioKey)) return false;
   if (prioExclude.has(prioKey)) return false;
+  // Type include/exclude (treat empty string as "(none)")
+  const typeKey = t.type || "__none";
+  if (typeInclude.size > 0 && !typeInclude.has(typeKey)) return false;
+  if (typeExclude.has(typeKey)) return false;
   // (Person filter is applied at top with HIDDEN-set semantics)
   // Search
   if (searchQuery) {
@@ -7593,6 +7602,21 @@ function cyclePrioFilter(name) {
   else prioExclude.delete(name);
 }
 function clearPrioFilter() { prioInclude.clear(); prioExclude.clear(); }
+function cycleTypeFilter(name) {
+  if (!typeInclude.has(name) && !typeExclude.has(name)) typeInclude.add(name);
+  else if (typeInclude.has(name)) { typeInclude.delete(name); typeExclude.add(name); }
+  else typeExclude.delete(name);
+}
+function clearTypeFilter() { typeInclude.clear(); typeExclude.clear(); }
+// Same shape as PRIORITIES — used by tristatePillHtml for color-coded pills.
+const TYPE_FILTER_ITEMS = [
+  { key: "Project",        label: "Project",        bg: "#ede9fe", color: "#5b21b6" },
+  { key: "Responsability", label: "Responsability", bg: "#e0eaff", color: "#3538cd" },
+  { key: "Request",        label: "Request",        bg: "#d1fae5", color: "#047857" },
+  { key: "ERROR",          label: "ERROR",          bg: "#fee2e2", color: "#991b1b" },
+  { key: "Infinite",       label: "Infinite",       bg: "#fef3c7", color: "#92400e" },
+  { key: "__none",         label: "(none)",         bg: "#f3f4f6", color: "#6b7280" }
+];
 
 function renderTeamStrip() {
   const el = document.getElementById("teamStrip");
@@ -7605,6 +7629,9 @@ function renderTeamStrip() {
     const pk = t.priority || "__none";
     if (prioInclude.size > 0 && !prioInclude.has(pk)) return false;
     if (prioExclude.has(pk)) return false;
+    const tk = t.type || "__none";
+    if (typeInclude.size > 0 && !typeInclude.has(tk)) return false;
+    if (typeExclude.has(tk)) return false;
     const tt = Array.isArray(t.taskTags) ? t.taskTags : [];
     if (taskTagInclude.has("__none")) { if (tt.length !== 0) return false; }
     else if (taskTagInclude.size > 0) {
@@ -7717,6 +7744,9 @@ function countTasksForPersonContextual(personId) {
     const pk = t.priority || "__none";
     if (prioInclude.size > 0 && !prioInclude.has(pk)) return false;
     if (prioExclude.has(pk)) return false;
+    const tk = t.type || "__none";
+    if (typeInclude.size > 0 && !typeInclude.has(tk)) return false;
+    if (typeExclude.has(tk)) return false;
     const tt = Array.isArray(t.taskTags) ? t.taskTags : [];
     if (taskTagInclude.has("__none")) { if (tt.length !== 0) return false; }
     else if (taskTagInclude.size > 0) {
@@ -7762,6 +7792,11 @@ function countTasksMatchingExcept(dim, optKey) {
       if (prioInclude.size > 0 && !prioInclude.has(pk)) return false;
       if (prioExclude.has(pk)) return false;
     }
+    if (dim !== "type") {
+      const tk = t.type || "__none";
+      if (typeInclude.size > 0 && !typeInclude.has(tk)) return false;
+      if (typeExclude.has(tk)) return false;
+    }
     if (dim !== "taskTag") {
       const tt = Array.isArray(t.taskTags) ? t.taskTags : [];
       if (taskTagInclude.has("__none")) {
@@ -7792,6 +7827,10 @@ function countTasksMatchingExcept(dim, optKey) {
     if (dim === "priority") {
       if (optKey === "__all") return true;
       return (t.priority || "__none") === optKey;
+    }
+    if (dim === "type") {
+      if (optKey === "__all") return true;
+      return (t.type || "__none") === optKey;
     }
     if (dim === "taskTag") {
       if (optKey === "__all") return true;
@@ -7876,6 +7915,23 @@ function renderPrioFilter() {
     b.addEventListener("click", () => {
       if (b.dataset.key === "__all") clearPrioFilter();
       else cyclePrioFilter(b.dataset.key);
+      render();
+    });
+  });
+}
+
+function renderTypeFilter() {
+  const cont = document.getElementById("typeFilterContainer");
+  if (!cont) return;
+  const anyActive = typeInclude.size > 0 || typeExclude.size > 0;
+  let h = '<span class="label" style="margin-left:8px">Type:</span>';
+  h += '<button class="pill ' + (!anyActive ? 'active' : '') + '" data-key="__all">All' + countBadgePair(visibleTasksCount(), STORE.tasks.length) + '</button>';
+  TYPE_FILTER_ITEMS.forEach(item => { h += tristatePillHtml(item, typeInclude, typeExclude, countTasksMatchingExcept("type", item.key)); });
+  cont.innerHTML = h;
+  cont.querySelectorAll("button[data-key]").forEach(b => {
+    b.addEventListener("click", () => {
+      if (b.dataset.key === "__all") clearTypeFilter();
+      else cycleTypeFilter(b.dataset.key);
       render();
     });
   });
@@ -8198,6 +8254,7 @@ function render() {
   // currentView === "tasks"
   renderStatusFilter();
   renderPrioFilter();
+  renderTypeFilter();
   renderTeamStrip();
   renderTagFilter();
   renderTaskTagFilter();
@@ -13696,6 +13753,7 @@ if (_suChk) _suChk.checked = getShowUnassigned();
 document.getElementById("resetFiltersBtn").addEventListener("click", () => {
   statusInclude.clear(); statusExclude.clear();
   prioInclude.clear(); prioExclude.clear();
+  typeInclude.clear(); typeExclude.clear();
   tagInclude.clear(); tagExclude.clear();
   taskTagInclude.clear(); taskTagExclude.clear();
   roadmapInclude.clear(); roadmapExclude.clear();
