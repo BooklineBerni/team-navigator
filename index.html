@@ -8320,35 +8320,35 @@ function render() {
         <span class="stat" style="margin-left:auto"><strong>${visibleTasks.length + visibleGroupsForVisibility.length}</strong> of ${personTasksMatchingNonStatus.length}</span>
       </div>
       <div class="tasks" data-uid="${pid}">${(() => {
-        // Show this person's groups too so they can be collapsed
-        const personGroups = (STORE.tasks || []).filter(t =>
-          t.isGroup && t.responsibleId === pid && taskMatchesFilters(t, { allowGroups: true })
+        // All visible items (groups + non-groups) owned by this person
+        const personItems = (STORE.tasks || []).filter(t =>
+          t.responsibleId === pid && taskMatchesFilters(t, { allowGroups: true })
         );
-        const ownedGroupIds = new Set(personGroups.map(g => g.id));
-        const childrenByParent = {};
-        const orphanTasks = [];
-        visibleTasks.forEach(t => {
-          if (t.groupId && ownedGroupIds.has(t.groupId)) {
-            (childrenByParent[t.groupId] = childrenByParent[t.groupId] || []).push(t);
-          } else {
-            orphanTasks.push(t);
-          }
-        });
-        let out = '';
-        // Merge top-level items (groups + orphans) and sort them together so the active sort
-        // (e.g. "Status") applies across both — otherwise all groups would render before any
-        // orphan regardless of their status.
-        const combined = sortTaskList([...personGroups, ...orphanTasks]);
-        combined.forEach(t => {
-          out += taskHtml(t);
-          if (t.isGroup && ownedGroupIds.has(t.id)) {
+        const personItemIds = new Set(personItems.map(t => t.id));
+        // Top-level = items the person owns whose parent group is NOT also owned by them
+        // (so we surface deeply-nested orphans correctly).
+        const topLevel = personItems.filter(t => !t.groupId || !personItemIds.has(t.groupId));
+        // Recursive renderer so nested groups expand to show their own subtasks.
+        function renderPersonNode(t) {
+          let h = taskHtml(t);
+          if (t.isGroup) {
             const expanded = isGroupExpanded(t.id);
-            const kids = sortTaskList(childrenByParent[t.id] || []);
-            out += '<div class="card-group-children' + (expanded ? '' : ' collapsed') + '" data-gid="' + escapeHtml(t.id) + '">' +
-              (kids.length === 0 ? '<div class="card-group-empty">No subtasks of this person.</div>' : kids.map(c => taskHtml(c)).join('')) +
-            '</div>';
+            // Children rendered here can be ANY task (group or not) whose groupId is this group.
+            // We include all of them — even ones not owned by this person — so the nested
+            // structure stays intact when the parent group belongs to this person.
+            const kids = sortTaskList((STORE.tasks || []).filter(c => c.groupId === t.id && taskMatchesFilters(c, { allowGroups: true })));
+            h += '<div class="card-group-children' + (expanded ? '' : ' collapsed') + '" data-gid="' + escapeHtml(t.id) + '">';
+            if (kids.length === 0) {
+              h += '<div class="card-group-empty">No subtasks match the current filters.</div>';
+            } else {
+              kids.forEach(k => { h += renderPersonNode(k); });
+            }
+            h += '</div>';
           }
-        });
+          return h;
+        }
+        let out = '';
+        sortTaskList(topLevel).forEach(t => { out += renderPersonNode(t); });
         return out;
       })()}</div>
       <form class="add-row" data-uid="${pid}">
@@ -14087,8 +14087,7 @@ function renderMembersPage() {
   if (bookline.length > 0 || booklineNoTasks.length > 0) {
     const total = bookline.length + booklineNoTasks.length;
     const heading = '<img class="bookline-logo-img" src="https://framerusercontent.com/images/uTJVj3ufTlg1OOblrAuZMyDSHOA.png" alt="Bookline">' +
-      ' <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + total + ')</span> ' +
-      '<span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— every Bookline Slack member, grouped by whether they have tasks</span>';
+      ' <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + total + ')</span>';
     function renderSub(subKey, label, items) {
       const collapsed = localStorage.getItem('bn-people-subsection-collapsed-' + subKey) === '1';
       const caret = '<span class="members-subsection-caret">' + (collapsed ? '▸' : '▾') + '</span>';
@@ -15584,22 +15583,24 @@ function renderFlatTasks() {
     cont.innerHTML = '<div class="rm-empty">No tasks match the current filters.</div>';
     return;
   }
-  let html = '';
-  topLevel.forEach(t => {
-    html += flatTaskHtml(t);
+  // Recursive renderer so that a subtask that is ITSELF a group expands its own children too.
+  function renderNode(t, depth) {
+    let h = flatTaskHtml(t);
     if (t.isGroup) {
       const expanded = isGroupExpanded(t.id);
-      const kids = (STORE.tasks || []).filter(c => c.groupId === t.id);
-      const visibleKids = sortTaskList(kids.filter(c => taskMatchesFilters(c, { allowGroups: true })));
-      html += '<div class="group-children' + (expanded ? '' : ' collapsed') + '" data-gid="' + escapeHtml(t.id) + '">';
-      if (visibleKids.length === 0) {
-        html += '<div class="group-empty" style="padding:6px 8px">No subtasks match the current filters.</div>';
+      const kids = sortTaskList((STORE.tasks || []).filter(c => c.groupId === t.id && taskMatchesFilters(c, { allowGroups: true })));
+      h += '<div class="group-children' + (expanded ? '' : ' collapsed') + '" data-gid="' + escapeHtml(t.id) + '">';
+      if (kids.length === 0) {
+        h += '<div class="group-empty" style="padding:6px 8px">No subtasks match the current filters.</div>';
       } else {
-        html += visibleKids.map(c => flatTaskHtml(c)).join("");
+        kids.forEach(k => { h += renderNode(k, depth + 1); });
       }
-      html += '</div>';
+      h += '</div>';
     }
-  });
+    return h;
+  }
+  let html = '';
+  topLevel.forEach(t => { html += renderNode(t, 0); });
   cont.innerHTML = html;
 
   cont.querySelectorAll(".flat-task").forEach(node => {
