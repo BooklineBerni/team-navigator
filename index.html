@@ -2479,7 +2479,7 @@
   .bn-paste-gutter { background: #fafaf8; color: #9a9a9a; padding: 10px 6px 10px 8px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; line-height: 1.55; text-align: right; min-width: 32px; user-select: none; overflow: hidden; border-right: 1px solid #ececea; white-space: pre; }
   .bn-paste-gutter .num { display: block; }
   .bn-paste-gutter .num.empty { color: #d8d6d1; }
-  .bn-bulk-paste-cols textarea { flex: 1; min-height: 280px; max-height: 50vh; padding: 10px 12px; border: none; outline: none; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; resize: vertical; line-height: 1.55; white-space: pre; overflow: auto; background: #fff; }
+  .bn-bulk-paste-cols textarea { flex: 1; min-height: 280px; max-height: 75vh; padding: 10px 12px; border: none; outline: none; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; resize: vertical; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; overflow-x: hidden; background: #fff; }
   .bn-bulk-paste-hint { font-size: 12px; color: #9a9a9a; margin-top: 6px; }
 
   /* Stage 2 — per-task edit card (replica del task modal, layout horizontal) */
@@ -3684,7 +3684,7 @@ Weekly metrics by country" spellcheck="false"></textarea>
                 </div>
               </div>
             </div>
-            <div class="bn-bulk-paste-hint">Numbers on the left are line indices. Line N of subjects ↔ line N of comments. <code>·</code> in gray = empty line (no content). Text doesn't wrap — scroll horizontally if a line is long.</div>
+            <div class="bn-bulk-paste-hint">Numbers on the left count logical lines (one per <kbd>Enter</kbd>). Line N of subjects ↔ line N of comments. <code>·</code> in gray = empty line. Long lines wrap automatically.</div>
           </div>
 
           <div class="bn-bulk-actions">
@@ -16568,10 +16568,17 @@ function bnRenderBulkProposedByPopover() {
   pop.querySelectorAll('.bulk-rm-row').forEach(row => {
     row.addEventListener('click', () => {
       const pid = row.getAttribute('data-pid');
-      const wasState = row.classList.contains('all') ? 'all' : (row.classList.contains('some') ? 'some' : 'none');
+      // CRITICAL: re-read the live selection at click time. The user may have
+      // (de)selected tasks AFTER the popover was rendered, and we must not apply
+      // changes to tasks that are no longer selected.
+      const liveSel = (STORE.tasks || []).filter(t => selectedTaskIds.has(t.id));
+      const liveN = liveSel.length;
+      if (liveN === 0) { bnRenderBulkProposedByPopover(); return; }
+      const cnt = liveSel.filter(t => Array.isArray(t.proposedByIds) && t.proposedByIds.includes(pid)).length;
+      const wasState = cnt === 0 ? 'none' : (cnt === liveN ? 'all' : 'some');
       // Toggle: none/some → add to all; all → remove from all
       const addToAll = wasState !== 'all';
-      tasksSel.forEach(t => {
+      liveSel.forEach(t => {
         if (!Array.isArray(t.proposedByIds)) t.proposedByIds = t.proposedById ? [t.proposedById] : [];
         const has = t.proposedByIds.includes(pid);
         if (addToAll && !has) t.proposedByIds.push(pid);
@@ -16584,7 +16591,6 @@ function bnRenderBulkProposedByPopover() {
       });
       saveStore(STORE);
       bnRenderBulkProposedByPopover();
-      // Re-render the task list in the background so chips refresh.
       if (typeof render === 'function') try { render(); } catch(_) {}
     });
   });
