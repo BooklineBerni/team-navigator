@@ -3272,8 +3272,8 @@
 <body>
 <!-- Auth gate (Supabase). Initially hidden; the boot script reveals it on the web deploy when no valid session exists. -->
 <div class="bn-auth-gate hidden" id="bnAuthGate" aria-hidden="true">
-  <h1>Berni Navigator</h1>
-  <p>Esta app requiere autenticación. Solo <strong>bernat@bookline.ai</strong> tiene acceso.</p>
+  <h1 id="bnAuthTitle">Berni Navigator</h1>
+  <p id="bnAuthSubtitle">Esta app requiere autenticación con tu cuenta de Google.</p>
   <div id="bnAuthBody">
     <button class="bn-auth-btn" id="bnAuthSignInBtn" type="button">
       <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.5 29.3 4.5 24 4.5 12.7 4.5 3.5 13.7 3.5 25S12.7 45.5 24 45.5 44.5 36.3 44.5 25c0-1.5-.2-3-.5-4.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.5 29.3 4.5 24 4.5 16.3 4.5 9.6 8.8 6.3 14.7z"/><path fill="#4CAF50" d="M24 45.5c5.2 0 10-2 13.6-5.2l-6.3-5.3c-2 1.4-4.6 2.3-7.4 2.3-5.2 0-9.7-3.3-11.3-8l-6.5 5C9.5 41.1 16.2 45.5 24 45.5z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.3 5.3c-.4.3 6.9-5 6.9-14 0-1.5-.2-3-.5-4.5z"/></svg>
@@ -3284,6 +3284,11 @@
   <button class="bn-auth-secondary" id="bnAuthSignOutBtn" type="button" style="display:none">Sign out</button>
 </div>
 
+<!-- Read-only banner: shown when in admin preview mode OR when caller is restricted_view.
+     Disappears the moment edits would be syncable again. -->
+<div id="bnReadOnlyBanner" style="display:none; position:sticky; top:0; z-index:50; background:#fff3cd; color:#664d03; padding:8px 16px; text-align:center; font-size:13px; border-bottom:1px solid #ffe082;">
+  <span id="bnReadOnlyMsg">Vista de solo lectura — los cambios no se guardarán.</span>
+</div>
 <div class="wrap">
   <header class="top">
     <div></div>
@@ -3316,6 +3321,7 @@
       <button class="nav-item" data-view="profile"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="nav-label">Profile</span></button>
       <button class="nav-item" data-view="members"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">People</span> <span class="nav-count" id="nav-members-count"></span></button>
       <button class="nav-item" data-view="trash"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg><span class="nav-label">Trash</span> <span class="nav-count" id="nav-trash-count"></span></button>
+      <button class="nav-item" data-view="admin" id="navAdminBtn" style="display:none"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1l3 6 6 .9-4.5 4.3 1 6.3L12 16l-5.5 2.5 1-6.3L3 7.9 9 7z"/></svg><span class="nav-label">Admin</span></button>
       <div class="sidebar-foot">
         <div class="sidebar-foot-label">Backup</div>
         <button class="nav-item secondary" id="bnExportBackupBtn" title="Download current data as a JSON backup">
@@ -3649,6 +3655,44 @@ Métricas semanales por país" spellcheck="false"></textarea>
         <div style="font-size:13px; color:#6b6b6b;">Soft-deleted tasks. Restorable until permanently deleted.</div>
       </div>
       <div id="bnTrashContent"></div>
+    </section>
+
+    <!-- Admin view: only rendered when bnUserPermission === 'admin'. Manages signup allowlist + per-user permissions. -->
+    <section id="view-admin" class="view-section" style="display:none">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin: 8px 0 16px;">
+        <h2 style="margin:0; font-size:20px;">⭐ Admin · Permisos</h2>
+        <div style="font-size:13px; color:#6b6b6b;">Solo tú ves esta pestaña.</div>
+      </div>
+
+      <div id="bnAdminPreviewBanner" style="display:none; background:#fff5d6; border:1px solid #f1c40f; padding:10px 14px; border-radius:8px; margin-bottom:16px; display:flex; align-items:center; gap:10px; justify-content:space-between;">
+        <div>👁️ Estás viendo la app como <strong id="bnAdminPreviewWho"></strong>. Los cambios están desactivados.</div>
+        <button class="btn" id="bnAdminPreviewExit" type="button">Volver a mi vista</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
+        <!-- Allowlist column -->
+        <div>
+          <h3 style="margin:0 0 8px; font-size:15px;">Signup allowlist</h3>
+          <div style="font-size:12.5px; color:#6b6b6b; margin-bottom:12px;">
+            Emails que pueden registrarse (sign up con Google). Hacer sign up no concede permisos para ver tareas — eso se otorga abajo.
+          </div>
+          <div style="display:flex; gap:6px; margin-bottom:12px;">
+            <input type="email" id="bnAdminAllowEmail" placeholder="persona@bookline.ai" style="flex:1; padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
+            <input type="text" id="bnAdminAllowNotes" placeholder="Notas (opcional)" style="flex:1; padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
+            <button class="btn primary" id="bnAdminAllowAddBtn" type="button">+ Añadir</button>
+          </div>
+          <div id="bnAdminAllowlist" style="border:1px solid #ececec; border-radius:8px; overflow:hidden;"></div>
+        </div>
+
+        <!-- Permissions column -->
+        <div>
+          <h3 style="margin:0 0 8px; font-size:15px;">Permisos por usuario</h3>
+          <div style="font-size:12.5px; color:#6b6b6b; margin-bottom:12px;">
+            <strong>none</strong>: sin acceso · <strong>restricted_view</strong>: ve solo tareas suyas + redactadas · <strong>admin</strong>: acceso total.
+          </div>
+          <div id="bnAdminPermsList" style="border:1px solid #ececec; border-radius:8px; overflow:hidden;"></div>
+        </div>
+      </div>
     </section>
 
   <div class="bulk-bar" id="bulkBar" style="display:none">
@@ -4153,7 +4197,7 @@ const BN_AUTO_SNAP_KEEP = 5;
 // ===========================================================================
 const BN_SUPABASE_URL = "https://xnbptxxumzigizgwegut.supabase.co";
 const BN_SUPABASE_KEY = "sb_publishable_cBBoQ0is8uzF2cDIWOKiIg_-YyHb1Yh";
-const BN_AUTH_ALLOWED_EMAIL = "bernat@bookline.ai";
+const BN_ADMIN_EMAIL = "bernat@bookline.ai"; // hard-coded fallback admin (seeded in user_permissions)
 const BN_IS_LOCALHOST = /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(location.hostname || '');
 const BN_AUTH_REQUIRED = !BN_IS_LOCALHOST;  // require auth only on the deployed site
 let bnSupabase = null;
@@ -4168,6 +4212,13 @@ try {
 let bnSupabaseSession = null;
 let bnSupabaseUser = null;
 let bnSyncPushTimer = null;
+// Permission state — populated from user_permissions via get_filtered_store RPC.
+//   'admin'           → full access, can manage permissions
+//   'restricted_view' → read-only; sees own + redacted-shared tasks; cannot push
+//   'none' / null     → no access; shown "waiting for permission" screen
+let bnUserPermission = null;
+let bnPreviewAsEmail = null; // admin-only: when set, fetches store as if viewed by this user
+window.__bnReadOnly = false; // true when current filtered store should NOT be pushed back
 function bnAuthShowGate(show, options) {
   options = options || {};
   const gate = document.getElementById('bnAuthGate');
@@ -4176,6 +4227,23 @@ function bnAuthShowGate(show, options) {
     gate.classList.remove('hidden');
     gate.setAttribute('aria-hidden', 'false');
     document.body.classList.add('bn-locked');
+    // Mode: 'signin' (default) or 'waiting' (signed-in but no permission yet)
+    const mode = options.mode || 'signin';
+    const title = document.getElementById('bnAuthTitle');
+    const subtitle = document.getElementById('bnAuthSubtitle');
+    const body = document.getElementById('bnAuthBody');
+    if (mode === 'waiting') {
+      if (title) title.textContent = 'Esperando permisos';
+      if (subtitle) {
+        const who = options.email ? (' (' + options.email + ')') : '';
+        subtitle.innerHTML = 'Tu cuenta' + who + ' ha iniciado sesión, pero el admin todavía no te ha concedido permisos para ver tareas.<br><br>Pídele a <strong>bernat@bookline.ai</strong> que te otorgue acceso desde la sección <em>Admin</em>.';
+      }
+      if (body) body.style.display = 'none';
+    } else {
+      if (title) title.textContent = 'Berni Navigator';
+      if (subtitle) subtitle.textContent = 'Esta app requiere autenticación con tu cuenta de Google.';
+      if (body) body.style.display = '';
+    }
     const err = document.getElementById('bnAuthError');
     if (err) {
       if (options.errorMsg) { err.textContent = options.errorMsg; err.style.display = ''; } else err.style.display = 'none';
@@ -4207,29 +4275,101 @@ async function bnAuthSignOut() {
   if (!bnSupabase) return;
   try { await bnSupabase.auth.signOut(); } catch(_) {}
   bnSupabaseSession = null; bnSupabaseUser = null;
+  bnUserPermission = null;
+  bnPreviewAsEmail = null;
+  window.__bnReadOnly = false;
+  // Clear locally cached store so the next user doesn't see the previous one's data
+  // even momentarily before pull completes.
+  try { localStorage.removeItem(STORE_KEY); } catch(_) {}
   if (BN_AUTH_REQUIRED) bnAuthShowGate(true, {});
+}
+// Pull store from cloud via the RPC `get_filtered_store(p_preview_email)`.
+// Returns server-filtered JSONB based on the caller's permission row:
+//   admin           → full store (or, if previewEmail set, filtered as that user)
+//   restricted_view → own tasks + redacted shared tasks
+//   none / no row   → {} (nothing visible)
+function bnRedactStoreInPlace(store) {
+  if (!store || !Array.isArray(store.tasks)) return store;
+  // Tasks the server marked `_redacted: true` should appear as opaque cards: title and
+  // body content blanked, but status/dates preserved so they still appear on calendars.
+  for (const t of store.tasks) {
+    if (t && t._redacted === true) {
+      t.subject = '🔒 (oculto)';
+      t.comments = '';
+      t.details = '';
+      t.description = '';
+      // Strip free-text URLs/links and personal fields that could leak info.
+      t.url = '';
+      t.slackUrl = '';
+      t.slackLink = '';
+      // Keep status, startDate, endDate, roadmapIds, durationDays untouched.
+      // We DO blank ownership so other names don't appear:
+      t.responsible = '';
+      t.responsibleRaw = '';
+      t.proposedBy = '';
+      t.proposedByRaw = '';
+      t.tags = [];
+      t.taskTags = [];
+    }
+  }
+  return store;
 }
 async function bnSyncPullFromCloud() {
   if (!bnSupabase || !bnSupabaseUser) return;
   try {
-    const { data, error } = await bnSupabase.from('user_stores').select('store_data, updated_at').eq('user_id', bnSupabaseUser.id).maybeSingle();
-    if (error) { console.warn('[BN] pull failed:', error.message); return; }
-    if (!data || !data.store_data || Object.keys(data.store_data).length === 0) {
-      // First time — push the local STORE up as the seed
-      console.info('[BN] No cloud store yet; uploading local STORE as initial seed.');
-      await bnSyncPushToCloud({ immediate: true });
+    const args = bnPreviewAsEmail ? { p_preview_email: bnPreviewAsEmail } : {};
+    const { data, error } = await bnSupabase.rpc('get_filtered_store', args);
+    if (error) { console.warn('[BN] pull (rpc) failed:', error.message); return; }
+    const filtered = !!(data && data._filtered);
+    // A filtered payload should NEVER be pushed back — it's a view, not the source of truth.
+    window.__bnReadOnly = filtered || !!bnPreviewAsEmail;
+    if (!data || Object.keys(data).length === 0) {
+      // No row yet for this admin → seed it with the local STORE.
+      if (bnUserPermission === 'admin' && !bnPreviewAsEmail) {
+        console.info('[BN] No cloud store yet; uploading local STORE as initial seed.');
+        await bnSyncPushToCloud({ immediate: true });
+      } else {
+        console.info('[BN] Cloud returned no data and caller is not admin; nothing to load.');
+      }
     } else {
-      // Replace local STORE with cloud copy
-      STORE = data.store_data;
+      // Apply client-side redaction (defense in depth — the server already redacted, but
+      // we rewrite to placeholder strings so the existing render code works untouched).
+      bnRedactStoreInPlace(data);
+      STORE = data;
       try { saveStore(STORE); } catch(_) {}
       if (typeof render === 'function') { try { render(); } catch(_) {} }
-      console.info('[BN] Pulled cloud store · tasks:', (STORE.tasks||[]).length);
+      console.info('[BN] Pulled cloud store · tasks:', (STORE.tasks||[]).length, '· filtered:', filtered, '· readOnly:', window.__bnReadOnly);
+    }
+    // Update read-only banner.
+    const banner = document.getElementById('bnReadOnlyBanner');
+    const msg = document.getElementById('bnReadOnlyMsg');
+    if (banner) {
+      if (window.__bnReadOnly) {
+        banner.style.display = '';
+        if (msg) {
+          msg.textContent = bnPreviewAsEmail
+            ? ('👁️ Vista previa como ' + bnPreviewAsEmail + ' — los cambios no se guardarán. (Sal desde Admin para volver a tu vista.)')
+            : 'Vista de solo lectura — tu rol es restricted_view. Los cambios no se sincronizan.';
+        }
+      } else {
+        banner.style.display = 'none';
+      }
     }
   } catch (e) { console.warn('[BN] pull exception:', e && e.message); }
 }
 async function bnSyncPushToCloud(options) {
   options = options || {};
   if (!bnSupabase || !bnSupabaseUser || !STORE) return;
+  // Block pushes when the local copy is a filtered view (would corrupt the master).
+  if (window.__bnReadOnly) {
+    console.info('[BN] push skipped — STORE is a filtered/preview copy.');
+    return;
+  }
+  // Only admins write to user_stores.<admin_id>. Restricted users have no writable row.
+  if (bnUserPermission && bnUserPermission !== 'admin') {
+    console.info('[BN] push skipped — caller is not admin (permission:', bnUserPermission, ')');
+    return;
+  }
   const doPush = async () => {
     try {
       const { error } = await bnSupabase.from('user_stores').upsert({ user_id: bnSupabaseUser.id, store_data: STORE }, { onConflict: 'user_id' });
@@ -4241,6 +4381,53 @@ async function bnSyncPushToCloud(options) {
   if (bnSyncPushTimer) clearTimeout(bnSyncPushTimer);
   bnSyncPushTimer = setTimeout(doPush, 1200);
 }
+// Reads the caller's permission row. Returns 'admin' | 'restricted_view' | 'none' | null.
+// The hardcoded admin email is a defensive fallback (the DB seed should already grant admin).
+async function bnFetchPermission() {
+  if (!bnSupabase || !bnSupabaseUser) { bnUserPermission = null; return null; }
+  try {
+    const { data, error } = await bnSupabase
+      .from('user_permissions')
+      .select('permission')
+      .eq('user_id', bnSupabaseUser.id)
+      .maybeSingle();
+    if (error) { console.warn('[BN] permission lookup failed:', error.message); }
+    let perm = (data && data.permission) || null;
+    // Hardcoded fallback: the seeded admin always gets admin even if the row is missing.
+    const email = (bnSupabaseUser.email || '').toLowerCase();
+    if (!perm && email === BN_ADMIN_EMAIL) perm = 'admin';
+    bnUserPermission = perm;
+    return perm;
+  } catch (e) {
+    console.warn('[BN] permission lookup exception:', e && e.message);
+    return null;
+  }
+}
+// Gate logic in one place: decide what to show based on session + permission.
+//   no session       → sign-in gate
+//   session, perm=none/null → "waiting for permission" gate (no app data)
+//   session, perm=restricted_view/admin → unlock app + pull filtered store
+async function bnAuthResolveGate() {
+  const email = bnSupabaseUser && (bnSupabaseUser.email || '');
+  if (BN_AUTH_REQUIRED && !bnSupabaseUser) {
+    bnAuthShowGate(true, {});
+    return;
+  }
+  if (!bnSupabaseUser) {
+    // Localhost path with no session: leave the app unlocked, no cloud activity.
+    bnAuthShowGate(false);
+    return;
+  }
+  const perm = await bnFetchPermission();
+  if (perm === 'admin' || perm === 'restricted_view') {
+    bnAuthShowGate(false);
+    await bnSyncPullFromCloud();
+    if (typeof bnUpdateAdminNavVisibility === 'function') bnUpdateAdminNavVisibility();
+  } else {
+    // Signed-in but not yet granted access.
+    bnAuthShowGate(true, { mode: 'waiting', email: email, showSignOut: true });
+  }
+}
 async function bnAuthBoot() {
   if (!bnSupabase) {
     if (BN_AUTH_REQUIRED) bnAuthShowGate(true, { errorMsg: 'No se pudo cargar el SDK de Supabase. Revisa tu conexión.' });
@@ -4250,19 +4437,7 @@ async function bnAuthBoot() {
     const { data: { session } } = await bnSupabase.auth.getSession();
     bnSupabaseSession = session || null;
     bnSupabaseUser = (session && session.user) || null;
-    const email = bnSupabaseUser && (bnSupabaseUser.email || '');
-    if (BN_AUTH_REQUIRED) {
-      if (!bnSupabaseUser) {
-        bnAuthShowGate(true, {});
-        return;
-      }
-      if ((email || '').toLowerCase() !== BN_AUTH_ALLOWED_EMAIL) {
-        bnAuthShowGate(true, { errorMsg: 'La cuenta "' + email + '" no tiene acceso. Sign in con bernat@bookline.ai.', showSignOut: true });
-        return;
-      }
-    }
-    bnAuthShowGate(false);
-    if (bnSupabaseUser) await bnSyncPullFromCloud();
+    await bnAuthResolveGate();
   } catch (e) {
     if (BN_AUTH_REQUIRED) bnAuthShowGate(true, { errorMsg: 'Auth boot error: ' + (e && e.message || e) });
   }
@@ -4271,13 +4446,7 @@ async function bnAuthBoot() {
     bnSupabase.auth.onAuthStateChange(async (_event, session) => {
       bnSupabaseSession = session || null;
       bnSupabaseUser = (session && session.user) || null;
-      const email = bnSupabaseUser && (bnSupabaseUser.email || '');
-      if (bnSupabaseUser && (email||'').toLowerCase() === BN_AUTH_ALLOWED_EMAIL) {
-        bnAuthShowGate(false);
-        await bnSyncPullFromCloud();
-      } else if (BN_AUTH_REQUIRED) {
-        bnAuthShowGate(true, bnSupabaseUser ? { errorMsg: 'La cuenta "' + email + '" no tiene acceso.', showSignOut: true } : {});
-      }
+      await bnAuthResolveGate();
     });
   } catch (_) {}
 }
@@ -4290,6 +4459,159 @@ document.addEventListener('DOMContentLoaded', () => {
   // If deploy requires auth and user is not yet known, lock the UI immediately to prevent flash of data
   if (BN_AUTH_REQUIRED) bnAuthShowGate(true, {});
   bnAuthBoot();
+});
+
+// ===========================================================================
+// Admin section · permission management UI
+// ---------------------------------------------------------------------------
+//   • Sidebar nav item is only revealed when bnUserPermission === 'admin'.
+//   • All mutations go through SECURITY DEFINER RPCs (admin_grant_permission,
+//     admin_add_allowlist, admin_remove_allowlist) — the SQL functions verify
+//     is_admin() before doing anything, so a non-admin who patches the JS
+//     still can't escalate.
+// ===========================================================================
+function bnUpdateAdminNavVisibility() {
+  const btn = document.getElementById('navAdminBtn');
+  if (!btn) return;
+  btn.style.display = (bnUserPermission === 'admin') ? '' : 'none';
+}
+async function bnAdminLoadAllowlist() {
+  if (!bnSupabase) return [];
+  try {
+    const { data, error } = await bnSupabase.from('signup_allowlist').select('email, notes, added_at').order('added_at', { ascending: true });
+    if (error) { console.warn('[BN] allowlist load failed:', error.message); return []; }
+    return data || [];
+  } catch (e) { return []; }
+}
+async function bnAdminLoadPermissions() {
+  if (!bnSupabase) return [];
+  try {
+    const { data, error } = await bnSupabase.from('user_permissions').select('user_id, email, permission, updated_at').order('updated_at', { ascending: false });
+    if (error) { console.warn('[BN] permissions load failed:', error.message); return []; }
+    return data || [];
+  } catch (e) { return []; }
+}
+async function bnAdminAddAllowlist(email, notes) {
+  const e = (email || '').trim().toLowerCase();
+  if (!e) return;
+  try {
+    const { error } = await bnSupabase.rpc('admin_add_allowlist', { target_email: e, target_notes: notes || null });
+    if (error) { alert('Error añadiendo a la allowlist: ' + error.message); return; }
+    if (typeof bnRenderAdminPage === 'function') bnRenderAdminPage();
+  } catch (ex) { alert('Error: ' + (ex && ex.message || ex)); }
+}
+async function bnAdminRemoveAllowlist(email) {
+  if (!confirm('Quitar ' + email + ' de la allowlist? No podrá hacer sign up de nuevo hasta que lo re-añadas.')) return;
+  try {
+    const { error } = await bnSupabase.rpc('admin_remove_allowlist', { target_email: email });
+    if (error) { alert('Error: ' + error.message); return; }
+    if (typeof bnRenderAdminPage === 'function') bnRenderAdminPage();
+  } catch (ex) { alert('Error: ' + (ex && ex.message || ex)); }
+}
+async function bnAdminGrantPermission(userId, permission) {
+  try {
+    const { error } = await bnSupabase.rpc('admin_grant_permission', { target_user_id: userId, new_permission: permission });
+    if (error) { alert('Error: ' + error.message); return; }
+    if (typeof bnRenderAdminPage === 'function') bnRenderAdminPage();
+  } catch (ex) { alert('Error: ' + (ex && ex.message || ex)); }
+}
+async function bnAdminPreviewAs(email) {
+  bnPreviewAsEmail = email || null;
+  // Re-pull the store as the preview user (or back to admin view if null).
+  await bnSyncPullFromCloud();
+  if (typeof bnRenderAdminPage === 'function') bnRenderAdminPage();
+}
+async function bnRenderAdminPage() {
+  if (bnUserPermission !== 'admin') return;
+  // Preview banner
+  const banner = document.getElementById('bnAdminPreviewBanner');
+  const who = document.getElementById('bnAdminPreviewWho');
+  if (banner && who) {
+    if (bnPreviewAsEmail) {
+      banner.style.display = '';
+      who.textContent = bnPreviewAsEmail;
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+  // Allowlist + permissions load in parallel.
+  const [allowlist, perms] = await Promise.all([bnAdminLoadAllowlist(), bnAdminLoadPermissions()]);
+  const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  // ---- Allowlist render ----
+  const allowEl = document.getElementById('bnAdminAllowlist');
+  if (allowEl) {
+    if (!allowlist.length) {
+      allowEl.innerHTML = '<div style="padding:14px; color:#888; text-align:center;">No hay nadie en la allowlist todavía.</div>';
+    } else {
+      allowEl.innerHTML = allowlist.map(row => `
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid #f0f0f0;">
+          <div>
+            <div style="font-weight:600;">${escapeHtml(row.email)}</div>
+            ${row.notes ? `<div style="font-size:12px; color:#8a8a8a; margin-top:2px;">${escapeHtml(row.notes)}</div>` : ''}
+          </div>
+          <button class="btn" data-bn-allow-remove="${escapeHtml(row.email)}" type="button" style="color:#9b1c1c;">Quitar</button>
+        </div>
+      `).join('');
+      allowEl.querySelectorAll('[data-bn-allow-remove]').forEach(b => {
+        b.addEventListener('click', () => bnAdminRemoveAllowlist(b.getAttribute('data-bn-allow-remove')));
+      });
+    }
+  }
+  // ---- Permissions render ----
+  const permsEl = document.getElementById('bnAdminPermsList');
+  if (permsEl) {
+    if (!perms.length) {
+      permsEl.innerHTML = '<div style="padding:14px; color:#888; text-align:center;">Nadie ha hecho sign in todavía.</div>';
+    } else {
+      permsEl.innerHTML = perms.map(row => {
+        const isSelf = row.email && (row.email.toLowerCase() === (bnSupabaseUser && bnSupabaseUser.email || '').toLowerCase());
+        const opts = ['none','restricted_view','admin'].map(p => `<option value="${p}" ${row.permission === p ? 'selected' : ''}>${p}</option>`).join('');
+        return `
+          <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #f0f0f0;">
+            <div style="flex:1;">
+              <div style="font-weight:600;">${escapeHtml(row.email || '(sin email)')} ${isSelf ? '<span style="font-size:11px; color:#888;">(tú)</span>' : ''}</div>
+              <div style="font-size:11px; color:#aaa; font-family:monospace;">${escapeHtml(row.user_id)}</div>
+            </div>
+            <select data-bn-perm-user="${escapeHtml(row.user_id)}" ${isSelf ? 'disabled title="No puedes cambiar tu propio nivel"' : ''} style="padding:6px 8px; border:1px solid #d0d0d0; border-radius:6px;">${opts}</select>
+            <button class="btn" data-bn-perm-preview="${escapeHtml(row.email || '')}" ${(!row.email || isSelf) ? 'disabled' : ''} type="button" title="Ver la app como este usuario (read-only)">👁️ Preview</button>
+          </div>
+        `;
+      }).join('');
+      permsEl.querySelectorAll('[data-bn-perm-user]').forEach(sel => {
+        sel.addEventListener('change', () => {
+          const uid = sel.getAttribute('data-bn-perm-user');
+          if (confirm('Cambiar permiso de este usuario a "' + sel.value + '"?')) {
+            bnAdminGrantPermission(uid, sel.value);
+          } else {
+            // Revert visually (we'll re-render on success anyway)
+            bnRenderAdminPage();
+          }
+        });
+      });
+      permsEl.querySelectorAll('[data-bn-perm-preview]').forEach(b => {
+        b.addEventListener('click', () => bnAdminPreviewAs(b.getAttribute('data-bn-perm-preview')));
+      });
+    }
+  }
+}
+// Wire admin form controls once the DOM exists.
+document.addEventListener('DOMContentLoaded', () => {
+  const addBtn = document.getElementById('bnAdminAllowAddBtn');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      const emailEl = document.getElementById('bnAdminAllowEmail');
+      const notesEl = document.getElementById('bnAdminAllowNotes');
+      const email = (emailEl && emailEl.value || '').trim();
+      const notes = (notesEl && notesEl.value || '').trim();
+      if (!email) { alert('Pon un email'); return; }
+      bnAdminAddAllowlist(email, notes).then(() => {
+        if (emailEl) emailEl.value = '';
+        if (notesEl) notesEl.value = '';
+      });
+    });
+  }
+  const exitBtn = document.getElementById('bnAdminPreviewExit');
+  if (exitBtn) exitBtn.addEventListener('click', () => bnAdminPreviewAs(null));
 });
 
 function loadStore() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || null; } catch { return null; } }
@@ -6172,8 +6494,8 @@ function bnInitTrash() {
 //   • Force a reapply from console        → bnApplyDeploySeed(true)
 // The deploy step also sets IMPORT_FLAG_KEY so the CSV reseed doesn't fire.
 // ===========================================================================
-const BN_DEPLOY_SEED_TS = "2026-05-16T22:48:10Z";
-const BN_DEPLOY_SEED_JSON = "";
+const BN_DEPLOY_SEED_TS = "/* BN_DEPLOY_SEED_TS */";
+const BN_DEPLOY_SEED_JSON = "/* BN_DEPLOY_SEED_JSON */";
 let STORE = loadStore();
 if (!STORE && typeof BN_DEPLOY_SEED_JSON === 'string' && BN_DEPLOY_SEED_JSON.length > 50) {
   try {
@@ -7410,6 +7732,16 @@ function render() {
   }
   if (currentView === "trash") {
     bnRenderTrashPage();
+    return;
+  }
+  if (currentView === "admin") {
+    // Defensive: non-admins can't render this view even if they navigate by URL/state.
+    if (bnUserPermission === 'admin') {
+      if (typeof bnRenderAdminPage === 'function') bnRenderAdminPage();
+    } else {
+      const wrap = document.getElementById('view-admin');
+      if (wrap) wrap.innerHTML = '<div style="padding:24px; color:#9b1c1c;">Acceso denegado: solo el admin puede ver esta sección.</div>';
+    }
     return;
   }
   // currentView === "tasks"
@@ -14549,7 +14881,9 @@ let selectedRoadmapPageId = null;
 
 function switchView(view) {
   if (view === "team") view = "tasks";
-  if (!["home","tasks","members","profile","roadmaps","requests","files","trash"].includes(view)) view = "home";
+  if (!["home","tasks","members","profile","roadmaps","requests","files","trash","admin"].includes(view)) view = "home";
+  // Defensive: non-admins can never land on the admin view, even via localStorage.
+  if (view === "admin" && bnUserPermission !== 'admin') view = "home";
   currentView = view;
   localStorage.setItem("bookline-currentView", view);
   document.body.classList.toggle("view-roadmaps-active", view === "roadmaps");
@@ -14562,9 +14896,10 @@ function switchView(view) {
   document.getElementById("view-requests").style.display = view === "requests" ? "" : "none";
   document.getElementById("view-files").style.display    = view === "files"    ? "" : "none";
   { const ve = document.getElementById("view-trash"); if (ve) ve.style.display = view === "trash" ? "" : "none"; }
+  { const va = document.getElementById("view-admin"); if (va) va.style.display = view === "admin" ? "" : "none"; }
   // Hide global action buttons on pages that have their own controls
   const headerTop = document.querySelector("header.top");
-  if (headerTop) headerTop.style.display = (view === "tasks" || view === "roadmaps" || view === "profile" || view === "members" || view === "requests" || view === "files" || view === "trash") ? "none" : "";
+  if (headerTop) headerTop.style.display = (view === "tasks" || view === "roadmaps" || view === "profile" || view === "members" || view === "requests" || view === "files" || view === "trash" || view === "admin") ? "none" : "";
   render();
 }
 
