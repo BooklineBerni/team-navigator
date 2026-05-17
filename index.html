@@ -3288,7 +3288,7 @@
     position: fixed; inset: 0; z-index: 999998; background: #0a0a0a;
   }
   html[data-bn-oauth-callback="1"] body::after {
-    content: "Entrando…";
+    content: "Signing in…";
     position: fixed; inset: 0; z-index: 999999; color: #fff;
     display: flex; align-items: center; justify-content: center;
     font: 600 16px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -3336,7 +3336,7 @@
 <!-- Auth gate (Supabase). Initially hidden; the boot script reveals it on the web deploy when no valid session exists. -->
 <div class="bn-auth-gate hidden" id="bnAuthGate" aria-hidden="true">
   <h1 id="bnAuthTitle">Berni Navigator</h1>
-  <p id="bnAuthSubtitle">Esta app requiere autenticación con tu cuenta de Google.</p>
+  <p id="bnAuthSubtitle">This app requires sign-in with your Google account.</p>
   <div id="bnAuthBody">
     <button class="bn-auth-btn" id="bnAuthSignInBtn" type="button">
       <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.5 29.3 4.5 24 4.5 12.7 4.5 3.5 13.7 3.5 25S12.7 45.5 24 45.5 44.5 36.3 44.5 25c0-1.5-.2-3-.5-4.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.5 29.3 4.5 24 4.5 16.3 4.5 9.6 8.8 6.3 14.7z"/><path fill="#4CAF50" d="M24 45.5c5.2 0 10-2 13.6-5.2l-6.3-5.3c-2 1.4-4.6 2.3-7.4 2.3-5.2 0-9.7-3.3-11.3-8l-6.5 5C9.5 41.1 16.2 45.5 24 45.5z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.3 5.3c-.4.3 6.9-5 6.9-14 0-1.5-.2-3-.5-4.5z"/></svg>
@@ -3350,7 +3350,7 @@
 <!-- Read-only banner: shown when in admin preview mode OR when caller is restricted_view.
      Disappears the moment edits would be syncable again. -->
 <div id="bnReadOnlyBanner" style="display:none; position:sticky; top:0; z-index:50; background:#fff3cd; color:#664d03; padding:8px 16px; text-align:center; font-size:13px; border-bottom:1px solid #ffe082;">
-  <span id="bnReadOnlyMsg">Vista de solo lectura — los cambios no se guardarán.</span>
+  <span id="bnReadOnlyMsg">Read-only view — changes won't be saved.</span>
 </div>
 <div class="wrap">
   <header class="top">
@@ -3654,27 +3654,27 @@
           <div id="bnBulkPasteMode" style="display:none;">
             <div class="bn-bulk-paste-cols">
               <div>
-                <label>Subjects (uno por línea)</label>
+                <label>Subjects (one per line)</label>
                 <div class="bn-paste-area-wrap">
                   <div class="bn-paste-gutter" id="bnBulkPasteSubjectsGutter"><span class="num">1</span></div>
-                  <textarea id="bnBulkPasteSubjects" placeholder="Mejora pipeline onboarding
-Bot WhatsApp empresa
-Dashboard ventas
-KPIs Customer Care" spellcheck="false"></textarea>
+                  <textarea id="bnBulkPasteSubjects" placeholder="Improve onboarding pipeline
+Company WhatsApp bot
+Sales dashboard
+Customer Care KPIs" spellcheck="false"></textarea>
                 </div>
               </div>
               <div>
-                <label>Comments (línea N → comentario de subject N)</label>
+                <label>Comments (line N → comment for subject N)</label>
                 <div class="bn-paste-area-wrap">
                   <div class="bn-paste-gutter" id="bnBulkPasteCommentsGutter"><span class="num">1</span></div>
-                  <textarea id="bnBulkPasteComments" placeholder="Reducir steps a 4
-Implementar webhook entrante
+                  <textarea id="bnBulkPasteComments" placeholder="Reduce steps to 4
+Implement inbound webhook
 
-Métricas semanales por país" spellcheck="false"></textarea>
+Weekly metrics by country" spellcheck="false"></textarea>
                 </div>
               </div>
             </div>
-            <div class="bn-bulk-paste-hint">Los números a la izquierda son las líneas. Línea N de subjects ↔ línea N de comments. <code>·</code> en gris = línea vacía (sin contenido). El texto no se ajusta — usa scroll horizontal si una línea es larga.</div>
+            <div class="bn-bulk-paste-hint">Numbers on the left are line indices. Line N of subjects ↔ line N of comments. <code>·</code> in gray = empty line (no content). Text doesn't wrap — scroll horizontally if a line is long.</div>
           </div>
 
           <div class="bn-bulk-actions">
@@ -3723,13 +3723,13 @@ Métricas semanales por país" spellcheck="false"></textarea>
     <!-- Admin view: only rendered when bnUserPermission === 'admin'. Manages signup allowlist + per-user permissions. -->
     <section id="view-admin" class="view-section" style="display:none">
       <div style="display:flex; align-items:center; justify-content:space-between; margin: 8px 0 16px;">
-        <h2 style="margin:0; font-size:20px;">⭐ Admin · Permisos</h2>
-        <div style="font-size:13px; color:#6b6b6b;">Solo tú ves esta pestaña.</div>
+        <h2 style="margin:0; font-size:20px;">⭐ Admin · Permissions</h2>
+        <div style="font-size:13px; color:#6b6b6b;">Only you can see this tab.</div>
       </div>
 
       <div id="bnAdminPreviewBanner" style="display:none; background:#fff5d6; border:1px solid #f1c40f; padding:10px 14px; border-radius:8px; margin-bottom:16px; display:flex; align-items:center; gap:10px; justify-content:space-between;">
-        <div>👁️ Estás viendo la app como <strong id="bnAdminPreviewWho"></strong>. Los cambios están desactivados.</div>
-        <button class="btn" id="bnAdminPreviewExit" type="button">Volver a mi vista</button>
+        <div>👁️ Viewing the app as <strong id="bnAdminPreviewWho"></strong>. Editing is disabled.</div>
+        <button class="btn" id="bnAdminPreviewExit" type="button">Back to my view</button>
       </div>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
@@ -3737,12 +3737,12 @@ Métricas semanales por país" spellcheck="false"></textarea>
         <div>
           <h3 style="margin:0 0 8px; font-size:15px;">Signup allowlist</h3>
           <div style="font-size:12.5px; color:#6b6b6b; margin-bottom:12px;">
-            Emails que pueden registrarse (sign up con Google). Hacer sign up no concede permisos para ver tareas — eso se otorga abajo.
+            Emails that are allowed to sign up (with Google). Being in the allowlist doesn't grant access to view tasks — that's controlled by the permission below.
           </div>
           <div style="display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap;">
-            <input type="email" id="bnAdminAllowEmail" placeholder="persona@bookline.ai" style="flex:2; min-width:180px; padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
+            <input type="email" id="bnAdminAllowEmail" placeholder="person@bookline.ai" style="flex:2; min-width:180px; padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
             <input type="text" id="bnAdminAllowNotes" placeholder="Notes (optional)" style="flex:2; min-width:140px; padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
-            <select id="bnAdminAllowPerm" title="Permiso que se aplicará al hacer sign in" style="padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
+            <select id="bnAdminAllowPerm" title="Permission applied when the user signs in" style="padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
               <option value="none">none</option>
               <option value="restricted_view" selected>restricted_view</option>
               <option value="admin">admin</option>
@@ -3755,9 +3755,9 @@ Métricas semanales por país" spellcheck="false"></textarea>
 
         <!-- Permissions column -->
         <div>
-          <h3 style="margin:0 0 8px; font-size:15px;">Permisos por usuario</h3>
+          <h3 style="margin:0 0 8px; font-size:15px;">Per-user permissions</h3>
           <div style="font-size:12.5px; color:#6b6b6b; margin-bottom:12px;">
-            <strong>none</strong>: sin acceso · <strong>restricted_view</strong>: ve solo tareas suyas + redactadas · <strong>admin</strong>: acceso total.
+            <strong>none</strong>: no access · <strong>restricted_view</strong>: sees only own + redacted shared tasks · <strong>admin</strong>: full access.
           </div>
           <div id="bnAdminPermsList" style="border:1px solid #ececec; border-radius:8px; overflow:hidden;"></div>
         </div>
@@ -4305,19 +4305,19 @@ function bnAuthShowGate(show, options) {
     const subtitle = document.getElementById('bnAuthSubtitle');
     const body = document.getElementById('bnAuthBody');
     if (mode === 'waiting') {
-      if (title) title.textContent = 'Esperando permisos';
+      if (title) title.textContent = 'Waiting for permissions';
       if (subtitle) {
         const who = options.email ? (' (' + options.email + ')') : '';
-        subtitle.innerHTML = 'Tu cuenta' + who + ' ha iniciado sesión, pero el admin todavía no te ha concedido permisos para ver tareas.<br><br>Pídele a <strong>bernat@bookline.ai</strong> que te otorgue acceso desde la sección <em>Admin</em>.';
+        subtitle.innerHTML = 'Your account' + who + ' is signed in, but the admin has not granted you permissions to view tasks yet.<br><br>Ask <strong>bernat@bookline.ai</strong> to grant you access from the <em>Admin</em> section.';
       }
       if (body) body.style.display = 'none';
     } else if (mode === 'loading') {
       if (title) title.textContent = 'Berni Navigator';
-      if (subtitle) subtitle.textContent = 'Entrando…';
+      if (subtitle) subtitle.textContent = 'Signing in…';
       if (body) body.style.display = 'none';
     } else {
       if (title) title.textContent = 'Berni Navigator';
-      if (subtitle) subtitle.textContent = 'Esta app requiere autenticación con tu cuenta de Google.';
+      if (subtitle) subtitle.textContent = 'This app requires sign-in with your Google account.';
       if (body) body.style.display = '';
     }
     const err = document.getElementById('bnAuthError');
@@ -4336,7 +4336,7 @@ function bnAuthShowGate(show, options) {
   }
 }
 async function bnAuthSignInWithGoogle() {
-  if (!bnSupabase) { alert('Supabase SDK no cargado. Refresca la página.'); return; }
+  if (!bnSupabase) { alert('Supabase SDK not loaded. Refresh the page.'); return; }
   try {
     const { error } = await bnSupabase.auth.signInWithOAuth({
       provider: 'google',
@@ -4345,9 +4345,9 @@ async function bnAuthSignInWithGoogle() {
         queryParams: { access_type: 'offline', prompt: 'select_account' }
       }
     });
-    if (error) bnAuthShowGate(true, { errorMsg: 'Login fallido: ' + (error.message||error) });
+    if (error) bnAuthShowGate(true, { errorMsg: 'Login failed: ' + (error.message||error) });
   } catch (e) {
-    bnAuthShowGate(true, { errorMsg: 'Login fallido: ' + (e && e.message || e) });
+    bnAuthShowGate(true, { errorMsg: 'Login failed: ' + (e && e.message || e) });
   }
 }
 async function bnAuthSignOut() {
@@ -4373,7 +4373,7 @@ function bnRedactStoreInPlace(store) {
   // body content blanked, but status/dates preserved so they still appear on calendars.
   for (const t of store.tasks) {
     if (t && t._redacted === true) {
-      t.subject = '🔒 (oculto)';
+      t.subject = '🔒 (hidden)';
       t.comments = '';
       t.details = '';
       t.description = '';
@@ -4427,8 +4427,8 @@ async function bnSyncPullFromCloud() {
         banner.style.display = '';
         if (msg) {
           msg.textContent = bnPreviewAsEmail
-            ? ('👁️ Vista previa como ' + bnPreviewAsEmail + ' — los cambios no se guardarán. (Sal desde Admin para volver a tu vista.)')
-            : 'Vista de solo lectura — tu rol es restricted_view. Los cambios no se sincronizan.';
+            ? ('👁️ Previewing as ' + bnPreviewAsEmail + ' — changes will not be saved. (Exit from Admin to return to your view.)')
+            : "Read-only view — your role is restricted_view. Changes don't sync.";
         }
       } else {
         banner.style.display = 'none';
@@ -4572,7 +4572,7 @@ function bnHydrateSessionFromHashSync() {
 }
 async function bnAuthBoot() {
   if (!bnSupabase) {
-    if (BN_AUTH_REQUIRED) bnAuthShowGate(true, { errorMsg: 'No se pudo cargar el SDK de Supabase. Revisa tu conexión.' });
+    if (BN_AUTH_REQUIRED) bnAuthShowGate(true, { errorMsg: 'Could not load the Supabase SDK. Check your connection.' });
     return;
   }
   // FAST PATH: if we have OAuth tokens in the URL hash, we already hydrated them
@@ -4707,8 +4707,8 @@ async function bnAdminLoadPermissions() {
 }
 async function bnAdminAddAllowlist(email, notes, permission) {
   const e = (email || '').trim().toLowerCase();
-  if (!e) return { ok: false, msg: 'Email vacío' };
-  if (!bnIsValidEmail(e)) return { ok: false, msg: 'Email no válido: ' + e };
+  if (!e) return { ok: false, msg: 'Empty email' };
+  if (!bnIsValidEmail(e)) return { ok: false, msg: 'Invalid email: ' + e };
   const perm = ['none','restricted_view','admin'].includes(permission) ? permission : 'restricted_view';
   try {
     // The RPC accepts 3 args after the migration; before the migration it ignores
@@ -4723,12 +4723,12 @@ async function bnAdminSetAllowlistPermission(email, newPermission) {
   if (!bnSupabase) return;
   try {
     const { error } = await bnSupabase.rpc('admin_set_allowlist_permission', { target_email: email, new_permission: newPermission });
-    if (error) { alert('Error cambiando permiso: ' + error.message); return; }
+    if (error) { alert('Error changing permission: ' + error.message); return; }
     if (typeof bnRenderAdminPage === 'function') bnRenderAdminPage();
   } catch (ex) { alert('Error: ' + (ex && ex.message || ex)); }
 }
 async function bnAdminRemoveAllowlist(email) {
-  if (!confirm('Quitar ' + email + ' de la allowlist? No podrá hacer sign up de nuevo hasta que lo re-añadas.')) return;
+  if (!confirm('Remove ' + email + ' from the allowlist? They will not be able to sign up again until you re-add them.')) return;
   try {
     const { error } = await bnSupabase.rpc('admin_remove_allowlist', { target_email: email });
     if (error) { alert('Error: ' + error.message); return; }
@@ -4757,7 +4757,7 @@ async function bnPopulateProfilePermsPanel() {
   const email = (panel.getAttribute('data-person-email') || '').trim().toLowerCase();
   const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   if (!email) {
-    panel.innerHTML = '<div style="font-weight:600;font-size:13px;margin-bottom:6px">⭐ Permisos (admin)</div><div style="font-size:12.5px;color:#9b1c1c">Esta persona no tiene email. Añade un email en su perfil para gestionar permisos.</div>';
+    panel.innerHTML = '<div style="font-weight:600;font-size:13px;margin-bottom:6px">⭐ Permissions (admin)</div><div style="font-size:12.5px;color:#9b1c1c">This person has no email. Add an email in their profile to manage permissions.</div>';
     return;
   }
   // Look up allowlist + permission in parallel.
@@ -4778,19 +4778,19 @@ async function bnPopulateProfilePermsPanel() {
   const currentPerm = hasSignedUp ? permRow.permission : (allowRow && allowRow.permission) || 'none';
   const opts = ['none','restricted_view','admin'].map(p => `<option value="${p}" ${currentPerm === p ? 'selected' : ''}>${p}</option>`).join('');
   const status = inAllow
-    ? (hasSignedUp ? '<span style="color:#16a34a;font-weight:600">Activo</span> · puede entrar'
-                   : '<span style="color:#d97706;font-weight:600">Invitado</span> · todavía no ha hecho sign in')
-    : '<span style="color:#9a9a9a">No invitado</span> · no puede hacer sign up';
+    ? (hasSignedUp ? '<span style="color:#16a34a;font-weight:600">Active</span> · can sign in'
+                   : "<span style=\"color:#d97706;font-weight:600\">Invited</span> · hasn't signed in yet")
+    : "<span style=\"color:#9a9a9a\">Not invited</span> · can't sign up";
   panel.innerHTML =
-    '<div style="font-weight:600;font-size:13px;margin-bottom:8px">⭐ Permisos (admin)</div>' +
+    '<div style="font-weight:600;font-size:13px;margin-bottom:8px">⭐ Permissions (admin)</div>' +
     '<div style="font-size:12.5px;color:#6b6b6b;margin-bottom:10px">Email: <strong>' + escapeHtml(email) + '</strong> · ' + status + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
       (inAllow
-        ? '<label style="font-size:12.5px;color:#6b6b6b">Permiso:&nbsp;<select data-bn-perms-set>' + opts + '</select></label>' +
+        ? '<label style="font-size:12.5px;color:#6b6b6b">Permission:&nbsp;<select data-bn-perms-set>' + opts + '</select></label>' +
           (hasSignedUp ? '<button class="btn" data-bn-perms-preview type="button">👁️ Preview as</button>' : '') +
-          '<button class="btn" data-bn-perms-remove-allow type="button" style="color:#9b1c1c">Quitar acceso</button>'
-        : '<label style="font-size:12.5px;color:#6b6b6b">Permiso al invitar:&nbsp;<select data-bn-perms-set>' + opts + '</select></label>' +
-          '<button class="btn primary" data-bn-perms-add-allow type="button">+ Invitar</button>') +
+          '<button class="btn" data-bn-perms-remove-allow type="button" style="color:#9b1c1c">Revoke access</button>'
+        : '<label style="font-size:12.5px;color:#6b6b6b">Permission on invite:&nbsp;<select data-bn-perms-set>' + opts + '</select></label>' +
+          '<button class="btn primary" data-bn-perms-add-allow type="button">+ Invite</button>') +
     '</div>';
   // Wire actions
   const setSel = panel.querySelector('[data-bn-perms-set]');
@@ -4807,7 +4807,7 @@ async function bnPopulateProfilePermsPanel() {
     bnPopulateProfilePermsPanel();
   });
   if (setSel && inAllow) setSel.addEventListener('change', async () => {
-    if (!confirm('Cambiar permiso de ' + email + ' a "' + setSel.value + '"?')) { bnPopulateProfilePermsPanel(); return; }
+    if (!confirm('Change permission for ' + email + ' to "' + setSel.value + '"?')) { bnPopulateProfilePermsPanel(); return; }
     // If already signed up, update user_permissions (active). Otherwise update allowlist row.
     if (hasSignedUp) {
       await bnAdminGrantPermission(permRow.user_id, setSel.value);
@@ -4839,7 +4839,7 @@ async function bnRenderAdminPage() {
   const allowEl = document.getElementById('bnAdminAllowlist');
   if (allowEl) {
     if (!allowlist.length) {
-      allowEl.innerHTML = '<div style="padding:14px; color:#888; text-align:center;">No hay nadie en la allowlist todavía.</div>';
+      allowEl.innerHTML = '<div style="padding:14px; color:#888; text-align:center;">No one is in the allowlist yet.</div>';
     } else {
       allowEl.innerHTML = allowlist.map(row => {
         const perm = row.permission || 'none';
@@ -4851,7 +4851,7 @@ async function bnRenderAdminPage() {
             ${row.notes ? `<div style="font-size:12px; color:#8a8a8a; margin-top:2px;">${escapeHtml(row.notes)}</div>` : ''}
           </div>
           <select data-bn-allow-perm="${escapeHtml(row.email)}" title="Permiso que se aplica al hacer sign in" style="padding:6px 8px; border:1px solid #d0d0d0; border-radius:6px;">${opts}</select>
-          <button class="btn" data-bn-allow-remove="${escapeHtml(row.email)}" type="button" style="color:#9b1c1c;">Quitar</button>
+          <button class="btn" data-bn-allow-remove="${escapeHtml(row.email)}" type="button" style="color:#9b1c1c;">Remove</button>
         </div>`;
       }).join('');
       allowEl.querySelectorAll('[data-bn-allow-remove]').forEach(b => {
@@ -4878,7 +4878,7 @@ async function bnRenderAdminPage() {
       if (!permByEmail.has(e)) merged.push({ kind: 'allowlist-pending', email: e, user_id: null, permission: null, notes: a.notes });
     });
     if (!merged.length) {
-      permsEl.innerHTML = '<div style="padding:14px; color:#888; text-align:center;">No hay nadie todavía. Añade un email a la allowlist a la izquierda.</div>';
+      permsEl.innerHTML = '<div style="padding:14px; color:#888; text-align:center;">No one yet. Add an email to the allowlist on the left.</div>';
     } else {
       // Sort: signed-in first, then pending, alphabetically within each group.
       merged.sort((a, b) => {
@@ -4894,11 +4894,11 @@ async function bnRenderAdminPage() {
             <div style="flex:1;">
               <div style="font-weight:600;">${escapeHtml(row.email)} ${isSelf ? '<span style="font-size:11px; color:#888;">(tú)</span>' : ''}</div>
               ${pending
-                ? `<div style="font-size:11px; color:#d97706;">Pendiente sign in${row.notes ? ' · ' + escapeHtml(row.notes) : ''}</div>`
+                ? `<div style="font-size:11px; color:#d97706;">Pending sign in${row.notes ? ' · ' + escapeHtml(row.notes) : ''}</div>`
                 : `<div style="font-size:11px; color:#aaa; font-family:monospace;">${escapeHtml(row.user_id || '')}</div>`}
             </div>
             ${pending
-              ? '<span style="font-size:12px; color:#888;">Disponible al hacer sign in</span>'
+              ? '<span style="font-size:12px; color:#888;">Available after sign in</span>'
               : `<select data-bn-perm-user="${escapeHtml(row.user_id)}" ${isSelf ? 'disabled title="No puedes cambiar tu propio nivel"' : ''} style="padding:6px 8px; border:1px solid #d0d0d0; border-radius:6px;">${opts}</select>
                  <button class="btn" data-bn-perm-preview="${escapeHtml(row.email)}" ${isSelf ? 'disabled' : ''} type="button" title="Ver la app como este usuario (read-only)">👁️ Preview</button>`}
           </div>
@@ -4907,7 +4907,7 @@ async function bnRenderAdminPage() {
       permsEl.querySelectorAll('[data-bn-perm-user]').forEach(sel => {
         sel.addEventListener('change', () => {
           const uid = sel.getAttribute('data-bn-perm-user');
-          if (confirm('Cambiar permiso de este usuario a "' + sel.value + '"?')) {
+          if (confirm('Change this user\'s permission to "' + sel.value + '"?')) {
             bnAdminGrantPermission(uid, sel.value);
           } else {
             bnRenderAdminPage();
@@ -5131,13 +5131,13 @@ function bnImportBackupClick() {
     if (!file) return;
     let text;
     try { text = await file.text(); }
-    catch (err) { alert('Error leyendo archivo: ' + err.message); return; }
+    catch (err) { alert('Error reading file: ' + err.message); return; }
     let parsed;
     try { parsed = JSON.parse(text); }
-    catch (err) { alert('JSON inválido: ' + err.message); return; }
+    catch (err) { alert('Invalid JSON: ' + err.message); return; }
     const newStore = (parsed && parsed.store && typeof parsed.store === 'object') ? parsed.store : parsed;
     if (!newStore || !Array.isArray(newStore.tasks) || !Array.isArray(newStore.roadmaps)) {
-      alert('No parece un backup válido (faltan tasks o roadmaps).');
+      alert("Doesn't look like a valid backup (missing tasks or roadmaps).");
       return;
     }
     bnShowImportPreview(newStore, file.name, parsed);
@@ -5208,8 +5208,8 @@ function bnShowImportPreview(newStore, fileName, fullPayload) {
   cancelBtn.onclick = () => modal.remove();
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
   confirmBtn.onclick = () => {
-    const phrase = prompt('Para confirmar el reemplazo de tu data, escribe IMPORTAR:');
-    if (phrase !== 'IMPORTAR') { modal.remove(); return; }
+    const phrase = prompt('To confirm replacing your data, type IMPORT:');
+    if (phrase !== 'IMPORT') { modal.remove(); return; }
     try {
       bnRotateAutoSnapshot('pre-import');
       STORE = newStore;
@@ -5217,9 +5217,9 @@ function bnShowImportPreview(newStore, fileName, fullPayload) {
       saveStore(STORE);
       modal.remove();
       if (typeof render === 'function') { try { render(); } catch (_) {} }
-      alert('Backup importado. Versión anterior preservada en bn-auto-snapshot-1 para rollback.');
+      alert('Backup imported. Previous version preserved in bn-auto-snapshot-1 for rollback.');
     } catch (err) {
-      alert('Error aplicando import: ' + err.message + '\nNada se ha cambiado.');
+      alert('Error applying import: ' + err.message + '\nNothing was changed.');
       console.error('[import] failed', err);
     }
   };
@@ -5231,7 +5231,7 @@ window.bnRollbackToSnapshot = function(n) {
   const k = BN_AUTO_SNAP_PREFIX + n;
   const v = localStorage.getItem(k);
   if (!v) return 'No snapshot at ' + k;
-  if (!confirm('Esto va a reemplazar tu data actual con el snapshot ' + k + '. ¿Seguro?')) return 'aborted';
+  if (!confirm('This will replace your current data with snapshot ' + k + '. Are you sure?')) return 'aborted';
   // Save current to bn-auto-snapshot-0 (rescue) before rollback
   const cur = localStorage.getItem(STORE_KEY);
   if (cur) localStorage.setItem(BN_AUTO_SNAP_PREFIX + '0', cur);
@@ -5524,7 +5524,7 @@ function bnBulkGoToStage2(){
       extraComments: (r.extraComments||'').trim(),
     }));
   }
-  if (rows.length === 0) { alert('No hay subjects rellenados. Escribe al menos uno antes de continuar.'); return; }
+  if (rows.length === 0) { alert('No subjects filled in. Type at least one before continuing.'); return; }
 
   // Build drafts for stage 2 (one per row, with default field values + _tmpId for cross-anchoring)
   bnBulkDrafts = rows.map((r, i) => ({
@@ -5657,7 +5657,7 @@ function bnBulkRenderStage2(){
     } else {
       html += '<span class="idx">#' + (idx+1) + '</span>';
       html += '<div class="subject">' + esc(d.subject) + '</div>';
-      html += '<button class="card-del" data-action="del" title="Quitar esta task">Remove</button>';
+      html += '<button class="card-del" data-action="del" title="Remove this task">Remove</button>';
     }
     html += '</div>';
     if (!isDefaults && d.extraComments) html += '<div class="comments">' + esc(d.extraComments) + '</div>';
@@ -6213,7 +6213,7 @@ function bnBulkRenderStage2(){
       const d = getDraft();
       const selected = new Set(d.proposedByIds||[]);
       // Source: TEAM + EXTERNAL_TEAM + entire Bookline SLACK_DIRECTORY. _slackOnly people
-      // appear in a dedicated section "Bookline · Sin tasks aún".
+      // appear in a dedicated section "Bookline · No tasks yet".
       const allList = (typeof bnAllPeopleForProposedBy === 'function')
         ? bnAllPeopleForProposedBy()
         : (typeof allPeopleForPicker === 'function' ? allPeopleForPicker() : [...TEAM, ...((typeof EXTERNAL_TEAM !== 'undefined') ? EXTERNAL_TEAM : [])]);
@@ -6254,7 +6254,7 @@ function bnBulkRenderStage2(){
         if (tM.length > 0)  { h += '<div class="resp-picker-section-label">Team</div>' + tM.map(row).join(''); }
         if (sM.length > 0)  { h += '<div class="resp-picker-section-label">Supplementary</div>' + sM.map(row).join(''); }
         if (bM.length > 0)  { h += '<div class="resp-picker-section-label">Bookline</div>' + bM.map(row).join(''); }
-        if (slM.length > 0) { h += '<div class="resp-picker-section-label">Bookline · Sin tasks aún</div>' + slM.map(row).join(''); }
+        if (slM.length > 0) { h += '<div class="resp-picker-section-label">Bookline · No tasks yet</div>' + slM.map(row).join(''); }
       }
       listEl.innerHTML = h;
       listEl.querySelectorAll('.resp-picker-item').forEach(it => {
@@ -6459,7 +6459,7 @@ function bnBulkApplyDefaultsToAll(){
     changes++;
   }
   if (changes === 0) {
-    alert('Rellena algún valor en la fila Default antes de pulsar Apply.');
+    alert('Fill in some value in the Default row before clicking Apply.');
     return;
   }
   bnBulkRenderStage2();
@@ -6542,7 +6542,7 @@ function bnBulkOpenAnchorPicker(anchorBtn, draftIdx, mySide){
   const pop = document.createElement('div');
   pop.className = 'bn-bulk-anchor-pop';
   let html = '<div class="head"><strong>Anclar ' + (mySide==='start'?'start':'end') + ' a…</strong><button type="button" class="close">✕</button></div>';
-  html += '<input type="text" class="search" placeholder="Buscar tasks…" autocomplete="off">';
+  html += '<input type="text" class="search" placeholder="Search tasks…" autocomplete="off">';
   if (drafts.length > 0) {
     html += '<div class="group-label">In this batch (' + drafts.length + ')</div>';
     drafts.forEach(c => {
@@ -6555,7 +6555,7 @@ function bnBulkOpenAnchorPicker(anchorBtn, draftIdx, mySide){
       html += bnBulkAnchorRow(c);
     });
   }
-  if (all.length === 0) html += '<div class="empty">No hay tasks con fechas para anclar todavía.</div>';
+  if (all.length === 0) html += '<div class="empty">No tasks with dates to anchor yet.</div>';
   pop.innerHTML = html;
   document.body.appendChild(pop);
 
@@ -6625,7 +6625,7 @@ function bnBulkAnchorRow(c){
 }
 
 function bnBulkSave(){
-  if (bnBulkDrafts.length === 0) { alert('No hay tasks que crear.'); return; }
+  if (bnBulkDrafts.length === 0) { alert('No tasks to create.'); return; }
   if (typeof bnRotateAutoSnapshot === 'function') bnRotateAutoSnapshot('pre-bulk-create');
 
   // Step 1: pre-generate real IDs for each draft, so cross-draft anchors can resolve.
@@ -6717,7 +6717,7 @@ function bnBulkSave(){
   try {
     const toast = document.createElement('div');
     toast.style.cssText = 'position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1a1a1a; color:#fff; padding:10px 18px; border-radius:8px; z-index:99999; font-size:14px; font-weight:600;';
-    toast.textContent = '✓ ' + createdIds.length + ' tasks creadas';
+    toast.textContent = '✓ ' + createdIds.length + ' tasks created';
     document.body.appendChild(toast);
     setTimeout(()=>{ try{toast.remove();}catch(_){} }, 2500);
   } catch (_) {}
@@ -8179,7 +8179,7 @@ function render() {
       // restore on next reload.
       if (!document.getElementById('bnAdminAllowlist')) {
         const wrap = document.getElementById('view-admin');
-        if (wrap) wrap.innerHTML = '<div style="padding:24px; color:#888;">Recargando la pestaña Admin… Si esto persiste, refresca la página con Cmd+Shift+R.</div>';
+        if (wrap) wrap.innerHTML = '<div style="padding:24px; color:#888;">Reloading the Admin tab… If this persists, refresh the page with Cmd+Shift+R.</div>';
       } else if (typeof bnRenderAdminPage === 'function') {
         bnRenderAdminPage();
       }
@@ -8191,8 +8191,8 @@ function render() {
         div.id = 'bnAdminDeniedBanner';
         div.style.cssText = 'padding:24px; color:#9b1c1c;';
         div.textContent = bnUserPermission == null
-          ? 'Comprobando permisos…'
-          : 'Acceso denegado: solo el admin puede ver esta sección.';
+          ? 'Checking permissions…'
+          : 'Access denied: only the admin can view this section.';
         wrap.prepend(div);
       }
     }
@@ -8623,7 +8623,7 @@ function filterProposedDropdown(query) {
     const ini = initials(p.name||'');
     const photoImg = p.photo ? '<img src="'+escapeHtml(p.photo)+'" alt="" onerror="this.remove()">' : '';
     const sc = ' ' + _proposedSectionClass(p);
-    const slackTag = p._slackOnly ? '<span class="proposed-dd-ext" style="background:#f3f4f6;color:#6b7280">sin tasks</span>' : (p.external ? '<span class="proposed-dd-ext">extended</span>' : '');
+    const slackTag = p._slackOnly ? '<span class="proposed-dd-ext" style="background:#f3f4f6;color:#6b7280">no tasks</span>' : (p.external ? '<span class="proposed-dd-ext">extended</span>' : '');
     return '<div class="proposed-dd-item'+sc+'" data-pid="'+escapeHtml(p.id)+'">' +
       '<span class="av-mini" style="background:'+(p.color||'#9a9a9a')+'">'+photoImg+'<span class="ini">'+escapeHtml(ini)+'</span></span>' +
       '<div class="proposed-dd-meta"><div class="proposed-dd-name">'+escapeHtml(p.name||'')+'</div>' +
@@ -8636,7 +8636,7 @@ function filterProposedDropdown(query) {
   if (bTeam.length)  html += header('Team')          + bTeam.map(renderRow).join('');
   if (bSupp.length)  html += header('Supplementary') + bSupp.map(renderRow).join('');
   if (bBook.length)  html += header('Bookline')      + bBook.map(renderRow).join('');
-  if (bSlack.length) html += header('Bookline · Sin tasks aún') + bSlack.map(renderRow).join('');
+  if (bSlack.length) html += header('Bookline · No tasks yet') + bSlack.map(renderRow).join('');
   dd.innerHTML = html;
   dd.style.display = '';
   dd.querySelectorAll('.proposed-dd-item').forEach(it => {
@@ -10447,7 +10447,7 @@ function renderMemberSearchResults(results) {
       '<div class="info"><div class="name">' + escapeHtml(r.name) + '</div><div class="email">' + escapeHtml(r.email || r.userId) + '</div></div>' +
       (inTeam
         ? '<button class="btn" disabled style="opacity:0.6">Already in team</button>'
-        : '<button class="btn primary" data-add-uid="' + escapeHtml(r.userId) + '" data-add-name="' + escapeHtml(r.name) + '" data-add-email="' + escapeHtml(r.email) + '" data-add-photo="' + escapeHtml(r.photo) + '">Añadir</button>'
+        : '<button class="btn primary" data-add-uid="' + escapeHtml(r.userId) + '" data-add-name="' + escapeHtml(r.name) + '" data-add-email="' + escapeHtml(r.email) + '" data-add-photo="' + escapeHtml(r.photo) + '">Add</button>'
       ) +
     '</div>';
   }).join("");
@@ -14098,8 +14098,8 @@ function renderMembersPage() {
         '</div>';
     }
     let inner = '';
-    if (bookline.length > 0)        inner += renderSub('bookline-with',    'Con tasks', bookline);
-    if (booklineNoTasks.length > 0) inner += renderSub('bookline-without', 'Sin tasks', booklineNoTasks);
+    if (bookline.length > 0)        inner += renderSub('bookline-with',    'With tasks',    bookline);
+    if (booklineNoTasks.length > 0) inner += renderSub('bookline-without', 'Without tasks', booklineNoTasks);
     html += makeSectionHtml('bookline', heading, inner, 'members-grid-bookline-with-subs');
   }
   if (disabled.length > 0) {
@@ -14325,8 +14325,8 @@ function renderProfilePage() {
   if (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'admin') {
     const personEmail = (person.email || '').trim().toLowerCase();
     html += '<div id="bnProfilePermsPanel" data-person-email="' + escapeHtml(personEmail) + '" style="margin: 12px 0 20px; padding: 14px 16px; border: 1px solid #ececec; border-radius: 10px; background: #fafafa;">' +
-      '<div style="font-weight: 600; font-size: 13px; margin-bottom: 8px;">⭐ Permisos (admin)</div>' +
-      '<div style="font-size: 12.5px; color: #6b6b6b;">Cargando…</div>' +
+      '<div style="font-weight: 600; font-size: 13px; margin-bottom: 8px;">⭐ Permissions (admin)</div>' +
+      '<div style="font-size: 12.5px; color: #6b6b6b;">Loading…</div>' +
     '</div>';
   }
 
