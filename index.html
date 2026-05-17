@@ -4814,23 +4814,45 @@ async function bnRenderAdminPage() {
       });
     }
   }
-  // ---- Permissions render ----
+  // ---- Permissions render: UNION of user_permissions + signup_allowlist ----
+  // People who haven't signed up yet appear with status "Pending signup" — we can't grant
+  // them a permission until they have a row in user_permissions (only created on first
+  // sign-in), but they're surfaced here so the admin sees every person in one place.
   const permsEl = document.getElementById('bnAdminPermsList');
   if (permsEl) {
-    if (!perms.length) {
-      permsEl.innerHTML = '<div style="padding:14px; color:#888; text-align:center;">Nadie ha hecho sign in todavía.</div>';
+    const permByEmail = new Map();
+    perms.forEach(p => { if (p.email) permByEmail.set(p.email.toLowerCase(), p); });
+    // Combined list, dedupe by email.
+    const merged = [];
+    perms.forEach(p => { if (p.email) merged.push({ kind: 'signed-in', email: p.email.toLowerCase(), user_id: p.user_id, permission: p.permission, notes: null }); });
+    allowlist.forEach(a => {
+      const e = (a.email || '').toLowerCase();
+      if (!permByEmail.has(e)) merged.push({ kind: 'allowlist-pending', email: e, user_id: null, permission: null, notes: a.notes });
+    });
+    if (!merged.length) {
+      permsEl.innerHTML = '<div style="padding:14px; color:#888; text-align:center;">No hay nadie todavía. Añade un email a la allowlist a la izquierda.</div>';
     } else {
-      permsEl.innerHTML = perms.map(row => {
-        const isSelf = row.email && (row.email.toLowerCase() === (bnSupabaseUser && bnSupabaseUser.email || '').toLowerCase());
+      // Sort: signed-in first, then pending, alphabetically within each group.
+      merged.sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind === 'signed-in' ? -1 : 1;
+        return a.email.localeCompare(b.email);
+      });
+      permsEl.innerHTML = merged.map(row => {
+        const isSelf = row.email && (row.email === (bnSupabaseUser && bnSupabaseUser.email || '').toLowerCase());
         const opts = ['none','restricted_view','admin'].map(p => `<option value="${p}" ${row.permission === p ? 'selected' : ''}>${p}</option>`).join('');
+        const pending = row.kind === 'allowlist-pending';
         return `
-          <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #f0f0f0;">
+          <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #f0f0f0; ${pending ? 'background:#fafafa;' : ''}">
             <div style="flex:1;">
-              <div style="font-weight:600;">${escapeHtml(row.email || '(sin email)')} ${isSelf ? '<span style="font-size:11px; color:#888;">(tú)</span>' : ''}</div>
-              <div style="font-size:11px; color:#aaa; font-family:monospace;">${escapeHtml(row.user_id)}</div>
+              <div style="font-weight:600;">${escapeHtml(row.email)} ${isSelf ? '<span style="font-size:11px; color:#888;">(tú)</span>' : ''}</div>
+              ${pending
+                ? '<div style="font-size:11px; color:#d97706;">Pendiente sign in${row.notes ? ' · ' + escapeHtml(row.notes) : ''}</div>'
+                : `<div style="font-size:11px; color:#aaa; font-family:monospace;">${escapeHtml(row.user_id || '')}</div>`}
             </div>
-            <select data-bn-perm-user="${escapeHtml(row.user_id)}" ${isSelf ? 'disabled title="No puedes cambiar tu propio nivel"' : ''} style="padding:6px 8px; border:1px solid #d0d0d0; border-radius:6px;">${opts}</select>
-            <button class="btn" data-bn-perm-preview="${escapeHtml(row.email || '')}" ${(!row.email || isSelf) ? 'disabled' : ''} type="button" title="Ver la app como este usuario (read-only)">👁️ Preview</button>
+            ${pending
+              ? '<span style="font-size:12px; color:#888;">Disponible al hacer sign in</span>'
+              : `<select data-bn-perm-user="${escapeHtml(row.user_id)}" ${isSelf ? 'disabled title="No puedes cambiar tu propio nivel"' : ''} style="padding:6px 8px; border:1px solid #d0d0d0; border-radius:6px;">${opts}</select>
+                 <button class="btn" data-bn-perm-preview="${escapeHtml(row.email)}" ${isSelf ? 'disabled' : ''} type="button" title="Ver la app como este usuario (read-only)">👁️ Preview</button>`}
           </div>
         `;
       }).join('');
@@ -4840,7 +4862,6 @@ async function bnRenderAdminPage() {
           if (confirm('Cambiar permiso de este usuario a "' + sel.value + '"?')) {
             bnAdminGrantPermission(uid, sel.value);
           } else {
-            // Revert visually (we'll re-render on success anyway)
             bnRenderAdminPage();
           }
         });
