@@ -8489,11 +8489,13 @@ function filterProposedDropdown(query) {
   if (!dd) return;
   const q = (query||'').trim().toLowerCase();
   const all = allPeopleForPicker();
-  // NO cap: cap-of-12 was effectively hiding all EXTERNAL_TEAM (Bookline extended)
-  // members from the empty-query view, so users could only "see" people who happened
-  // to be in TEAM. The popover is scrollable — show everyone, scroll if needed.
+  // Rules:
+  //  • ALL Bookline members appear (Team, Supplementary, External). No cap.
+  //  • Disabled people are NEVER shown.
+  //  • Already-selected people are excluded so they don't double up.
   const matches = all.filter(p => {
     if (proposedSelectedIds.includes(p.id)) return false;
+    try { if (typeof isDeactivated === 'function' && isDeactivated(p.id)) return false; } catch(_) {}
     if (!q) return true;
     return (p.name||'').toLowerCase().includes(q) ||
            (p.displayName||'').toLowerCase().includes(q) ||
