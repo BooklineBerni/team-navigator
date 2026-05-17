@@ -3731,11 +3731,17 @@ Métricas semanales por país" spellcheck="false"></textarea>
           <div style="font-size:12.5px; color:#6b6b6b; margin-bottom:12px;">
             Emails que pueden registrarse (sign up con Google). Hacer sign up no concede permisos para ver tareas — eso se otorga abajo.
           </div>
-          <div style="display:flex; gap:6px; margin-bottom:12px;">
-            <input type="email" id="bnAdminAllowEmail" placeholder="persona@bookline.ai" style="flex:1; padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
-            <input type="text" id="bnAdminAllowNotes" placeholder="Notes (optional)" style="flex:1; padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
+          <div style="display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap;">
+            <input type="email" id="bnAdminAllowEmail" placeholder="persona@bookline.ai" style="flex:2; min-width:180px; padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
+            <input type="text" id="bnAdminAllowNotes" placeholder="Notes (optional)" style="flex:2; min-width:140px; padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
+            <select id="bnAdminAllowPerm" title="Permiso que se aplicará al hacer sign in" style="padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
+              <option value="none">none</option>
+              <option value="restricted_view" selected>restricted_view</option>
+              <option value="admin">admin</option>
+            </select>
             <button class="btn primary" id="bnAdminAllowAddBtn" type="button">+ Add</button>
           </div>
+          <div id="bnAdminAllowError" style="display:none; color:#9b1c1c; font-size:12px; margin-bottom:8px;"></div>
           <div id="bnAdminAllowlist" style="border:1px solid #ececec; border-radius:8px; overflow:hidden;"></div>
         </div>
 
@@ -4669,10 +4675,19 @@ function bnUpdateAdminNavVisibility() {
 async function bnAdminLoadAllowlist() {
   if (!bnSupabase) return [];
   try {
-    const { data, error } = await bnSupabase.from('signup_allowlist').select('email, notes, added_at').order('added_at', { ascending: true });
+    // permission column added by the pre_signup_permissions migration. Older DBs may not
+    // have it yet — if the column doesn't exist we just degrade to undefined client-side.
+    const { data, error } = await bnSupabase.from('signup_allowlist').select('email, notes, permission, added_at').order('added_at', { ascending: true });
     if (error) { console.warn('[BN] allowlist load failed:', error.message); return []; }
     return data || [];
   } catch (e) { return []; }
+}
+// Basic RFC-ish email validation. Refuses obvious typos / missing parts.
+function bnIsValidEmail(s) {
+  s = (s || '').trim().toLowerCase();
+  if (s.length < 5 || s.length > 254) return false;
+  // local@domain.tld — at least one dot in the domain, no spaces, no leading/trailing dots.
+  return /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(s);
 }
 async function bnAdminLoadPermissions() {
   if (!bnSupabase) return [];
@@ -4682,12 +4697,25 @@ async function bnAdminLoadPermissions() {
     return data || [];
   } catch (e) { return []; }
 }
-async function bnAdminAddAllowlist(email, notes) {
+async function bnAdminAddAllowlist(email, notes, permission) {
   const e = (email || '').trim().toLowerCase();
-  if (!e) return;
+  if (!e) return { ok: false, msg: 'Email vacío' };
+  if (!bnIsValidEmail(e)) return { ok: false, msg: 'Email no válido: ' + e };
+  const perm = ['none','restricted_view','admin'].includes(permission) ? permission : 'restricted_view';
   try {
-    const { error } = await bnSupabase.rpc('admin_add_allowlist', { target_email: e, target_notes: notes || null });
-    if (error) { alert('Error añadiendo a la allowlist: ' + error.message); return; }
+    // The RPC accepts 3 args after the migration; before the migration it ignores
+    // target_permission silently (positional argument with default). Either way works.
+    const { error } = await bnSupabase.rpc('admin_add_allowlist', { target_email: e, target_notes: notes || null, target_permission: perm });
+    if (error) return { ok: false, msg: error.message };
+    if (typeof bnRenderAdminPage === 'function') bnRenderAdminPage();
+    return { ok: true };
+  } catch (ex) { return { ok: false, msg: (ex && ex.message) || String(ex) }; }
+}
+async function bnAdminSetAllowlistPermission(email, newPermission) {
+  if (!bnSupabase) return;
+  try {
+    const { error } = await bnSupabase.rpc('admin_set_allowlist_permission', { target_email: email, new_permission: newPermission });
+    if (error) { alert('Error cambiando permiso: ' + error.message); return; }
     if (typeof bnRenderAdminPage === 'function') bnRenderAdminPage();
   } catch (ex) { alert('Error: ' + (ex && ex.message || ex)); }
 }
@@ -4734,30 +4762,35 @@ async function bnPopulateProfilePermsPanel() {
     if (!a.error) allowRow = a.data;
     if (!p.error) permRow = p.data;
   } catch (e) { console.warn('[BN] profile perms lookup failed:', e && e.message); }
-  // Render
-  const opts = ['none','restricted_view','admin'].map(p => `<option value="${p}" ${permRow && permRow.permission === p ? 'selected' : ''}>${p}</option>`).join('');
+  // Render. Permission selector is always available now — if the user hasn't signed up
+  // yet, we update signup_allowlist.permission and the trigger will copy it to
+  // user_permissions on first sign-in.
   const inAllow = !!allowRow;
   const hasSignedUp = !!permRow;
+  const currentPerm = hasSignedUp ? permRow.permission : (allowRow && allowRow.permission) || 'none';
+  const opts = ['none','restricted_view','admin'].map(p => `<option value="${p}" ${currentPerm === p ? 'selected' : ''}>${p}</option>`).join('');
   const status = inAllow
-    ? (hasSignedUp ? '<span style="color:#16a34a;font-weight:600">Activo</span> · puede entrar y tiene permiso <strong>' + escapeHtml(permRow.permission) + '</strong>'
-                   : '<span style="color:#d97706;font-weight:600">En allowlist</span> · todavía no ha hecho sign in')
+    ? (hasSignedUp ? '<span style="color:#16a34a;font-weight:600">Activo</span> · puede entrar'
+                   : '<span style="color:#d97706;font-weight:600">Invitado</span> · todavía no ha hecho sign in')
     : '<span style="color:#9a9a9a">No invitado</span> · no puede hacer sign up';
   panel.innerHTML =
     '<div style="font-weight:600;font-size:13px;margin-bottom:8px">⭐ Permisos (admin)</div>' +
     '<div style="font-size:12.5px;color:#6b6b6b;margin-bottom:10px">Email: <strong>' + escapeHtml(email) + '</strong> · ' + status + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
       (inAllow
-        ? '<button class="btn" data-bn-perms-remove-allow type="button" style="color:#9b1c1c">Quitar de allowlist</button>'
-        : '<button class="btn primary" data-bn-perms-add-allow type="button">+ Añadir a allowlist</button>') +
-      (hasSignedUp
         ? '<label style="font-size:12.5px;color:#6b6b6b">Permiso:&nbsp;<select data-bn-perms-set>' + opts + '</select></label>' +
-          '<button class="btn" data-bn-perms-preview type="button">👁️ Preview as</button>'
-        : '') +
+          (hasSignedUp ? '<button class="btn" data-bn-perms-preview type="button">👁️ Preview as</button>' : '') +
+          '<button class="btn" data-bn-perms-remove-allow type="button" style="color:#9b1c1c">Quitar acceso</button>'
+        : '<label style="font-size:12.5px;color:#6b6b6b">Permiso al invitar:&nbsp;<select data-bn-perms-set>' + opts + '</select></label>' +
+          '<button class="btn primary" data-bn-perms-add-allow type="button">+ Invitar</button>') +
     '</div>';
   // Wire actions
+  const setSel = panel.querySelector('[data-bn-perms-set]');
   const addBtn = panel.querySelector('[data-bn-perms-add-allow]');
   if (addBtn) addBtn.addEventListener('click', async () => {
-    await bnAdminAddAllowlist(email, '');
+    const p = setSel ? setSel.value : 'restricted_view';
+    const r = await bnAdminAddAllowlist(email, '', p);
+    if (!r.ok) alert('Error: ' + r.msg);
     bnPopulateProfilePermsPanel();
   });
   const rmBtn = panel.querySelector('[data-bn-perms-remove-allow]');
@@ -4765,15 +4798,15 @@ async function bnPopulateProfilePermsPanel() {
     await bnAdminRemoveAllowlist(email);
     bnPopulateProfilePermsPanel();
   });
-  const setSel = panel.querySelector('[data-bn-perms-set]');
-  if (setSel) setSel.addEventListener('change', async () => {
-    if (!permRow) return;
-    if (confirm('Cambiar permiso de ' + email + ' a "' + setSel.value + '"?')) {
+  if (setSel && inAllow) setSel.addEventListener('change', async () => {
+    if (!confirm('Cambiar permiso de ' + email + ' a "' + setSel.value + '"?')) { bnPopulateProfilePermsPanel(); return; }
+    // If already signed up, update user_permissions (active). Otherwise update allowlist row.
+    if (hasSignedUp) {
       await bnAdminGrantPermission(permRow.user_id, setSel.value);
-      bnPopulateProfilePermsPanel();
     } else {
-      bnPopulateProfilePermsPanel(); // revert
+      await bnAdminSetAllowlistPermission(email, setSel.value);
     }
+    bnPopulateProfilePermsPanel();
   });
   const prevBtn = panel.querySelector('[data-bn-perms-preview]');
   if (prevBtn) prevBtn.addEventListener('click', () => bnAdminPreviewAs(email));
@@ -4800,17 +4833,24 @@ async function bnRenderAdminPage() {
     if (!allowlist.length) {
       allowEl.innerHTML = '<div style="padding:14px; color:#888; text-align:center;">No hay nadie en la allowlist todavía.</div>';
     } else {
-      allowEl.innerHTML = allowlist.map(row => `
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid #f0f0f0;">
-          <div>
+      allowEl.innerHTML = allowlist.map(row => {
+        const perm = row.permission || 'none';
+        const opts = ['none','restricted_view','admin'].map(p => `<option value="${p}" ${perm === p ? 'selected' : ''}>${p}</option>`).join('');
+        return `
+        <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #f0f0f0;">
+          <div style="flex:1;">
             <div style="font-weight:600;">${escapeHtml(row.email)}</div>
             ${row.notes ? `<div style="font-size:12px; color:#8a8a8a; margin-top:2px;">${escapeHtml(row.notes)}</div>` : ''}
           </div>
+          <select data-bn-allow-perm="${escapeHtml(row.email)}" title="Permiso que se aplica al hacer sign in" style="padding:6px 8px; border:1px solid #d0d0d0; border-radius:6px;">${opts}</select>
           <button class="btn" data-bn-allow-remove="${escapeHtml(row.email)}" type="button" style="color:#9b1c1c;">Quitar</button>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
       allowEl.querySelectorAll('[data-bn-allow-remove]').forEach(b => {
         b.addEventListener('click', () => bnAdminRemoveAllowlist(b.getAttribute('data-bn-allow-remove')));
+      });
+      allowEl.querySelectorAll('[data-bn-allow-perm]').forEach(sel => {
+        sel.addEventListener('change', () => bnAdminSetAllowlistPermission(sel.getAttribute('data-bn-allow-perm'), sel.value));
       });
     }
   }
@@ -4876,16 +4916,28 @@ async function bnRenderAdminPage() {
 document.addEventListener('DOMContentLoaded', () => {
   const addBtn = document.getElementById('bnAdminAllowAddBtn');
   if (addBtn) {
-    addBtn.addEventListener('click', () => {
+    addBtn.addEventListener('click', async () => {
       const emailEl = document.getElementById('bnAdminAllowEmail');
       const notesEl = document.getElementById('bnAdminAllowNotes');
+      const permEl  = document.getElementById('bnAdminAllowPerm');
+      const errEl   = document.getElementById('bnAdminAllowError');
       const email = (emailEl && emailEl.value || '').trim();
       const notes = (notesEl && notesEl.value || '').trim();
-      if (!email) { alert('Pon un email'); return; }
-      bnAdminAddAllowlist(email, notes).then(() => {
-        if (emailEl) emailEl.value = '';
-        if (notesEl) notesEl.value = '';
-      });
+      const perm  = (permEl  && permEl.value)  || 'restricted_view';
+      function showErr(msg) {
+        if (errEl) { errEl.textContent = msg; errEl.style.display = ''; }
+      }
+      function clearErr() {
+        if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+      }
+      clearErr();
+      if (!email) { showErr('Pon un email'); return; }
+      if (!bnIsValidEmail(email)) { showErr('Email no válido: "' + email + '". Formato esperado: usuario@dominio.tld'); return; }
+      const result = await bnAdminAddAllowlist(email, notes, perm);
+      if (!result.ok) { showErr(result.msg || 'Error desconocido'); return; }
+      if (emailEl) emailEl.value = '';
+      if (notesEl) notesEl.value = '';
+      // keep the perm selector at whatever the admin had picked (sticky)
     });
   }
   const exitBtn = document.getElementById('bnAdminPreviewExit');
