@@ -8065,12 +8065,34 @@ function render() {
     return;
   }
   if (currentView === "admin") {
-    // Defensive: non-admins can't render this view even if they navigate by URL/state.
+    // Non-admins (or admins before permission resolves async) need a placeholder
+    // WITHOUT destroying the static HTML scaffold. We render the denial message into
+    // a dedicated element, leaving #view-admin's original children intact so the
+    // proper render can populate them once permission resolves.
     if (bnUserPermission === 'admin') {
-      if (typeof bnRenderAdminPage === 'function') bnRenderAdminPage();
+      // Make sure any previous denial banner is removed before rendering.
+      const denied = document.getElementById('bnAdminDeniedBanner');
+      if (denied) denied.remove();
+      // If a previous bug already nuked the scaffold, fall back to a notice that we'll
+      // restore on next reload.
+      if (!document.getElementById('bnAdminAllowlist')) {
+        const wrap = document.getElementById('view-admin');
+        if (wrap) wrap.innerHTML = '<div style="padding:24px; color:#888;">Recargando la pestaña Admin… Si esto persiste, refresca la página con Cmd+Shift+R.</div>';
+      } else if (typeof bnRenderAdminPage === 'function') {
+        bnRenderAdminPage();
+      }
     } else {
+      // Show denial without destroying the scaffold so it can re-render later.
       const wrap = document.getElementById('view-admin');
-      if (wrap) wrap.innerHTML = '<div style="padding:24px; color:#9b1c1c;">Acceso denegado: solo el admin puede ver esta sección.</div>';
+      if (wrap && !document.getElementById('bnAdminDeniedBanner')) {
+        const div = document.createElement('div');
+        div.id = 'bnAdminDeniedBanner';
+        div.style.cssText = 'padding:24px; color:#9b1c1c;';
+        div.textContent = bnUserPermission == null
+          ? 'Comprobando permisos…'
+          : 'Acceso denegado: solo el admin puede ver esta sección.';
+        wrap.prepend(div);
+      }
     }
     return;
   }
