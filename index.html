@@ -4382,9 +4382,14 @@ async function bnSyncPushToCloud(options) {
   bnSyncPushTimer = setTimeout(doPush, 1200);
 }
 // Reads the caller's permission row. Returns 'admin' | 'restricted_view' | 'none' | null.
-// The hardcoded admin email is a defensive fallback (the DB seed should already grant admin).
+// IMPORTANT: BN_ADMIN_EMAIL is ALWAYS admin, regardless of what's in the DB. This avoids
+// the failure mode where a stale/incorrect user_permissions row could lock the owner out
+// of their own deploy (the DB is only a hint for non-bernat users).
 async function bnFetchPermission() {
   if (!bnSupabase || !bnSupabaseUser) { bnUserPermission = null; return null; }
+  const email = (bnSupabaseUser.email || '').toLowerCase();
+  // Hard override for the owner: always admin.
+  if (email === BN_ADMIN_EMAIL) { bnUserPermission = 'admin'; return 'admin'; }
   try {
     const { data, error } = await bnSupabase
       .from('user_permissions')
@@ -4392,10 +4397,7 @@ async function bnFetchPermission() {
       .eq('user_id', bnSupabaseUser.id)
       .maybeSingle();
     if (error) { console.warn('[BN] permission lookup failed:', error.message); }
-    let perm = (data && data.permission) || null;
-    // Hardcoded fallback: the seeded admin always gets admin even if the row is missing.
-    const email = (bnSupabaseUser.email || '').toLowerCase();
-    if (!perm && email === BN_ADMIN_EMAIL) perm = 'admin';
+    const perm = (data && data.permission) || null;
     bnUserPermission = perm;
     return perm;
   } catch (e) {
@@ -4441,9 +4443,14 @@ async function bnAuthBoot() {
   } catch (e) {
     if (BN_AUTH_REQUIRED) bnAuthShowGate(true, { errorMsg: 'Auth boot error: ' + (e && e.message || e) });
   }
-  // Re-evaluate on session change (e.g., user logs in via OAuth redirect)
+  // Re-evaluate on session changes. We deduplicate by user-id so spurious
+  // INITIAL_SESSION / TOKEN_REFRESHED events don't keep re-rendering the gate.
   try {
-    bnSupabase.auth.onAuthStateChange(async (_event, session) => {
+    bnSupabase.auth.onAuthStateChange(async (event, session) => {
+      const newUid = (session && session.user && session.user.id) || null;
+      const oldUid = (bnSupabaseUser && bnSupabaseUser.id) || null;
+      console.info('[BN] auth event:', event, '· uid changed?', newUid !== oldUid);
+      if (newUid === oldUid) return; // no state change, nothing to do
       bnSupabaseSession = session || null;
       bnSupabaseUser = (session && session.user) || null;
       await bnAuthResolveGate();
