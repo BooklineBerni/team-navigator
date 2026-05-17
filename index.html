@@ -4227,7 +4227,7 @@ function bnAuthShowGate(show, options) {
     gate.classList.remove('hidden');
     gate.setAttribute('aria-hidden', 'false');
     document.body.classList.add('bn-locked');
-    // Mode: 'signin' (default) or 'waiting' (signed-in but no permission yet)
+    // Mode: 'signin' (default) | 'waiting' (signed-in, no permission) | 'loading' (OAuth handoff in flight)
     const mode = options.mode || 'signin';
     const title = document.getElementById('bnAuthTitle');
     const subtitle = document.getElementById('bnAuthSubtitle');
@@ -4238,6 +4238,10 @@ function bnAuthShowGate(show, options) {
         const who = options.email ? (' (' + options.email + ')') : '';
         subtitle.innerHTML = 'Tu cuenta' + who + ' ha iniciado sesión, pero el admin todavía no te ha concedido permisos para ver tareas.<br><br>Pídele a <strong>bernat@bookline.ai</strong> que te otorgue acceso desde la sección <em>Admin</em>.';
       }
+      if (body) body.style.display = 'none';
+    } else if (mode === 'loading') {
+      if (title) title.textContent = 'Berni Navigator';
+      if (subtitle) subtitle.textContent = 'Entrando…';
       if (body) body.style.display = 'none';
     } else {
       if (title) title.textContent = 'Berni Navigator';
@@ -4408,7 +4412,7 @@ async function bnFetchPermission() {
 // Gate logic in one place: decide what to show based on session + permission.
 //   no session       → sign-in gate
 //   session, perm=none/null → "waiting for permission" gate (no app data)
-//   session, perm=restricted_view/admin → unlock app + pull filtered store
+//   session, perm=restricted_view/admin → unlock app + pull filtered store (non-blocking)
 async function bnAuthResolveGate() {
   const email = bnSupabaseUser && (bnSupabaseUser.email || '');
   if (BN_AUTH_REQUIRED && !bnSupabaseUser) {
@@ -4416,17 +4420,20 @@ async function bnAuthResolveGate() {
     return;
   }
   if (!bnSupabaseUser) {
-    // Localhost path with no session: leave the app unlocked, no cloud activity.
     bnAuthShowGate(false);
     return;
   }
   const perm = await bnFetchPermission();
   if (perm === 'admin' || perm === 'restricted_view') {
+    // Unlock UI IMMEDIATELY — don't block on the cloud pull. The local STORE is already
+    // available (either from a previous pull or as a deploy-seeded baseline), and the
+    // background pull will refresh it without making the user wait.
     bnAuthShowGate(false);
-    await bnSyncPullFromCloud();
     if (typeof bnUpdateAdminNavVisibility === 'function') bnUpdateAdminNavVisibility();
+    if (typeof render === 'function') { try { render(); } catch(_) {} }
+    // Fire-and-forget: pull from cloud in the background.
+    bnSyncPullFromCloud().catch(e => console.warn('[BN] background pull error:', e && e.message));
   } else {
-    // Signed-in but not yet granted access.
     bnAuthShowGate(true, { mode: 'waiting', email: email, showSignOut: true });
   }
 }
@@ -4440,97 +4447,88 @@ function bnDecodeJwtPayload(token) {
     return JSON.parse(decodeURIComponent(escape(atob(b64))));
   } catch (e) { return null; }
 }
+// Synchronously parse OAuth tokens out of the URL hash, decode the JWT, and persist
+// the Supabase session to localStorage. Returns the user object (or null).
+// This runs BEFORE the SDK so we don't depend on `setSession()` (which has been observed
+// to hang indefinitely on this project) and we don't pay the cost of an HTTP round trip.
+function bnHydrateSessionFromHashSync() {
+  try {
+    if (!location.hash || location.hash.indexOf('access_token=') === -1) return null;
+    const params = new URLSearchParams(location.hash.slice(1));
+    const access_token = params.get('access_token');
+    if (!access_token) return null;
+    const refresh_token = params.get('refresh_token') || '';
+    const expires_in = parseInt(params.get('expires_in') || '3600', 10);
+    const token_type = params.get('token_type') || 'bearer';
+    const provider_token = params.get('provider_token') || null;
+    const payload = bnDecodeJwtPayload(access_token);
+    if (!payload || !payload.sub) return null;
+    const user = {
+      id: payload.sub,
+      aud: payload.aud || 'authenticated',
+      role: payload.role || 'authenticated',
+      email: payload.email || '',
+      phone: payload.phone || '',
+      app_metadata: payload.app_metadata || { provider: 'google', providers: ['google'] },
+      user_metadata: payload.user_metadata || {},
+      identities: payload.identities || [],
+      created_at: payload.created_at || new Date().toISOString(),
+      updated_at: payload.updated_at || new Date().toISOString()
+    };
+    const session = {
+      access_token,
+      refresh_token,
+      expires_in,
+      expires_at: payload.exp || (Math.floor(Date.now() / 1000) + expires_in),
+      token_type,
+      provider_token,
+      user
+    };
+    const m = BN_SUPABASE_URL.match(/^https?:\/\/([^.]+)\./);
+    const ref = m ? m[1] : '';
+    try { localStorage.setItem('sb-' + ref + '-auth-token', JSON.stringify(session)); } catch(_) {}
+    // Wipe tokens out of the URL so they don't linger in history.
+    try { history.replaceState(null, '', location.pathname + location.search); } catch(_) {}
+    bnSupabaseSession = session;
+    bnSupabaseUser = user;
+    console.info('[BN] Hydrated session synchronously from hash · user:', user.email);
+    return user;
+  } catch (e) { console.warn('[BN] sync hydrate exception:', e && e.message); return null; }
+}
 async function bnAuthBoot() {
   if (!bnSupabase) {
     if (BN_AUTH_REQUIRED) bnAuthShowGate(true, { errorMsg: 'No se pudo cargar el SDK de Supabase. Revisa tu conexión.' });
     return;
   }
-  // Defensive: if URL hash carries an implicit-flow access_token, we hydrate the session
-  // ourselves by writing directly to localStorage in the Supabase v2 format. We bypass
-  // `setSession()` because it makes a /user network call that has been observed to hang
-  // indefinitely on this project, leaving the user stranded on the sign-in screen.
-  let hydratedFromHash = false;
-  try {
-    if (location.hash && location.hash.indexOf('access_token=') !== -1) {
-      const params = new URLSearchParams(location.hash.slice(1));
-      const access_token = params.get('access_token');
-      const refresh_token = params.get('refresh_token') || '';
-      const expires_in = parseInt(params.get('expires_in') || '3600', 10);
-      const token_type = params.get('token_type') || 'bearer';
-      const provider_token = params.get('provider_token') || null;
-      if (access_token) {
-        const payload = bnDecodeJwtPayload(access_token);
-        console.info('[BN] Found tokens in URL hash · email:', payload && payload.email, '· exp:', payload && payload.exp);
-        if (payload && payload.sub) {
-          const user = {
-            id: payload.sub,
-            aud: payload.aud || 'authenticated',
-            role: payload.role || 'authenticated',
-            email: payload.email || '',
-            phone: payload.phone || '',
-            app_metadata: payload.app_metadata || { provider: 'google', providers: ['google'] },
-            user_metadata: payload.user_metadata || {},
-            identities: payload.identities || [],
-            created_at: payload.created_at || new Date().toISOString(),
-            updated_at: payload.updated_at || new Date().toISOString()
-          };
-          const session = {
-            access_token,
-            refresh_token,
-            expires_in,
-            expires_at: payload.exp || (Math.floor(Date.now() / 1000) + expires_in),
-            token_type,
-            provider_token,
-            user
-          };
-          // Project ref is the first hostname segment of SUPABASE_URL.
+  // FAST PATH: if we have OAuth tokens in the URL hash, we already hydrated them
+  // synchronously above. Just resolve the gate immediately — no SDK round-trip needed.
+  // SLOW PATH: no hash tokens → fall back to getSession (which reads localStorage).
+  if (!bnSupabaseUser) {
+    try {
+      const session = await Promise.race([
+        bnSupabase.auth.getSession().then(({ data }) => data && data.session || null),
+        new Promise(resolve => setTimeout(() => resolve(null), 1500))
+      ]);
+      // Fallback: read localStorage directly if SDK still didn't yield a session.
+      let resolved = session;
+      if (!resolved) {
+        try {
           const m = BN_SUPABASE_URL.match(/^https?:\/\/([^.]+)\./);
           const ref = m ? m[1] : '';
-          const key = 'sb-' + ref + '-auth-token';
-          try {
-            localStorage.setItem(key, JSON.stringify(session));
-            console.info('[BN] Wrote session to localStorage key:', key);
-            hydratedFromHash = true;
-          } catch (e) { console.warn('[BN] could not persist session:', e && e.message); }
-          // Tell the SDK in-memory state about it too (best-effort, non-blocking).
-          // We DON'T await this — if it hangs the way setSession does, we don't care because
-          // localStorage already has the session and getSession() will pick it up on reload.
-          try {
-            bnSupabase.auth.setSession({ access_token, refresh_token }).catch(() => {});
-          } catch (_) {}
-          // Wipe tokens from URL bar so they don't sit in browser history.
-          try { history.replaceState(null, '', location.pathname + location.search); } catch(_) {}
-        }
+          const raw = localStorage.getItem('sb-' + ref + '-auth-token');
+          if (raw) resolved = JSON.parse(raw);
+        } catch (_) {}
       }
+      bnSupabaseSession = resolved || null;
+      bnSupabaseUser = (resolved && resolved.user) || null;
+    } catch (e) {
+      console.warn('[BN] auth boot error:', e && e.message);
+      if (BN_AUTH_REQUIRED) bnAuthShowGate(true, { errorMsg: 'Auth boot error: ' + (e && e.message || e) });
+      return;
     }
-  } catch (e) { console.warn('[BN] hash hydrate exception:', e && e.message); }
-  // getSession() reads the SDK's in-memory session, which is populated at construction.
-  // If we just wrote to localStorage, the SDK doesn't know about it yet — so we race
-  // getSession against a short timeout. If it doesn't return a session quickly, we fall
-  // back to reading the JWT we already parsed and persisted ourselves.
-  try {
-    const racePromise = Promise.race([
-      bnSupabase.auth.getSession().then(({ data }) => data && data.session || null),
-      new Promise(resolve => setTimeout(() => resolve(null), 1500))
-    ]);
-    let session = await racePromise;
-    if (!session && hydratedFromHash) {
-      // SDK didn't pick up our localStorage write — read it back manually.
-      try {
-        const m = BN_SUPABASE_URL.match(/^https?:\/\/([^.]+)\./);
-        const ref = m ? m[1] : '';
-        const raw = localStorage.getItem('sb-' + ref + '-auth-token');
-        if (raw) session = JSON.parse(raw);
-      } catch (_) {}
-    }
-    bnSupabaseSession = session || null;
-    bnSupabaseUser = (session && session.user) || null;
-    console.info('[BN] boot session resolved · user:', bnSupabaseUser && bnSupabaseUser.email);
-    await bnAuthResolveGate();
-  } catch (e) {
-    console.warn('[BN] auth boot error:', e && e.message);
-    if (BN_AUTH_REQUIRED) bnAuthShowGate(true, { errorMsg: 'Auth boot error: ' + (e && e.message || e) });
   }
+  console.info('[BN] boot session resolved · user:', bnSupabaseUser && bnSupabaseUser.email);
+  await bnAuthResolveGate();
   // Re-evaluate on session changes. We deduplicate by user-id so spurious
   // INITIAL_SESSION / TOKEN_REFRESHED events don't keep re-rendering the gate.
   try {
@@ -4545,14 +4543,27 @@ async function bnAuthBoot() {
     });
   } catch (_) {}
 }
+// Hydrate session from OAuth hash AS EARLY AS POSSIBLE — before DOMContentLoaded — so the
+// user never sees the sign-in form flash after a successful Google consent.
+const bnHashHasOAuth = !!(location.hash && location.hash.indexOf('access_token=') !== -1);
+if (bnHashHasOAuth && bnSupabase) {
+  // Note: bnSupabaseUser and bnSupabaseSession will be set as a side effect.
+  try { bnHydrateSessionFromHashSync(); } catch (_) {}
+}
 // Wire the gate buttons once the DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   const inBtn = document.getElementById('bnAuthSignInBtn');
   if (inBtn) inBtn.addEventListener('click', bnAuthSignInWithGoogle);
   const outBtn = document.getElementById('bnAuthSignOutBtn');
   if (outBtn) outBtn.addEventListener('click', bnAuthSignOut);
-  // If deploy requires auth and user is not yet known, lock the UI immediately to prevent flash of data
-  if (BN_AUTH_REQUIRED) bnAuthShowGate(true, {});
+  // Initial gate state. Choose based on what we already know:
+  //   • Just came back from Google consent → show 'Loading…' (not the signin button)
+  //   • Otherwise auth-required → show signin gate
+  //   • Localhost → no gate at all
+  if (BN_AUTH_REQUIRED) {
+    if (bnHashHasOAuth || bnSupabaseUser) bnAuthShowGate(true, { mode: 'loading' });
+    else bnAuthShowGate(true, {});
+  }
   bnAuthBoot();
 });
 
