@@ -3733,8 +3733,8 @@ Métricas semanales por país" spellcheck="false"></textarea>
           </div>
           <div style="display:flex; gap:6px; margin-bottom:12px;">
             <input type="email" id="bnAdminAllowEmail" placeholder="persona@bookline.ai" style="flex:1; padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
-            <input type="text" id="bnAdminAllowNotes" placeholder="Notas (opcional)" style="flex:1; padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
-            <button class="btn primary" id="bnAdminAllowAddBtn" type="button">+ Añadir</button>
+            <input type="text" id="bnAdminAllowNotes" placeholder="Notes (optional)" style="flex:1; padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
+            <button class="btn primary" id="bnAdminAllowAddBtn" type="button">+ Add</button>
           </div>
           <div id="bnAdminAllowlist" style="border:1px solid #ececec; border-radius:8px; overflow:hidden;"></div>
         </div>
@@ -4711,6 +4711,72 @@ async function bnAdminPreviewAs(email) {
   // Re-pull the store as the preview user (or back to admin view if null).
   await bnSyncPullFromCloud();
   if (typeof bnRenderAdminPage === 'function') bnRenderAdminPage();
+}
+// Populates the per-profile permissions card (only rendered when the viewer is admin).
+// Shows whether the person is in the signup allowlist, whether they've signed in, and
+// their current permission level — with controls to change all three.
+async function bnPopulateProfilePermsPanel() {
+  const panel = document.getElementById('bnProfilePermsPanel');
+  if (!panel || !bnSupabase) return;
+  const email = (panel.getAttribute('data-person-email') || '').trim().toLowerCase();
+  const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  if (!email) {
+    panel.innerHTML = '<div style="font-weight:600;font-size:13px;margin-bottom:6px">⭐ Permisos (admin)</div><div style="font-size:12.5px;color:#9b1c1c">Esta persona no tiene email. Añade un email en su perfil para gestionar permisos.</div>';
+    return;
+  }
+  // Look up allowlist + permission in parallel.
+  let allowRow = null, permRow = null;
+  try {
+    const [a, p] = await Promise.all([
+      bnSupabase.from('signup_allowlist').select('email,notes,added_at').eq('email', email).maybeSingle(),
+      bnSupabase.from('user_permissions').select('user_id,permission,updated_at').eq('email', email).maybeSingle()
+    ]);
+    if (!a.error) allowRow = a.data;
+    if (!p.error) permRow = p.data;
+  } catch (e) { console.warn('[BN] profile perms lookup failed:', e && e.message); }
+  // Render
+  const opts = ['none','restricted_view','admin'].map(p => `<option value="${p}" ${permRow && permRow.permission === p ? 'selected' : ''}>${p}</option>`).join('');
+  const inAllow = !!allowRow;
+  const hasSignedUp = !!permRow;
+  const status = inAllow
+    ? (hasSignedUp ? '<span style="color:#16a34a;font-weight:600">Activo</span> · puede entrar y tiene permiso <strong>' + escapeHtml(permRow.permission) + '</strong>'
+                   : '<span style="color:#d97706;font-weight:600">En allowlist</span> · todavía no ha hecho sign in')
+    : '<span style="color:#9a9a9a">No invitado</span> · no puede hacer sign up';
+  panel.innerHTML =
+    '<div style="font-weight:600;font-size:13px;margin-bottom:8px">⭐ Permisos (admin)</div>' +
+    '<div style="font-size:12.5px;color:#6b6b6b;margin-bottom:10px">Email: <strong>' + escapeHtml(email) + '</strong> · ' + status + '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+      (inAllow
+        ? '<button class="btn" data-bn-perms-remove-allow type="button" style="color:#9b1c1c">Quitar de allowlist</button>'
+        : '<button class="btn primary" data-bn-perms-add-allow type="button">+ Añadir a allowlist</button>') +
+      (hasSignedUp
+        ? '<label style="font-size:12.5px;color:#6b6b6b">Permiso:&nbsp;<select data-bn-perms-set>' + opts + '</select></label>' +
+          '<button class="btn" data-bn-perms-preview type="button">👁️ Preview as</button>'
+        : '') +
+    '</div>';
+  // Wire actions
+  const addBtn = panel.querySelector('[data-bn-perms-add-allow]');
+  if (addBtn) addBtn.addEventListener('click', async () => {
+    await bnAdminAddAllowlist(email, '');
+    bnPopulateProfilePermsPanel();
+  });
+  const rmBtn = panel.querySelector('[data-bn-perms-remove-allow]');
+  if (rmBtn) rmBtn.addEventListener('click', async () => {
+    await bnAdminRemoveAllowlist(email);
+    bnPopulateProfilePermsPanel();
+  });
+  const setSel = panel.querySelector('[data-bn-perms-set]');
+  if (setSel) setSel.addEventListener('change', async () => {
+    if (!permRow) return;
+    if (confirm('Cambiar permiso de ' + email + ' a "' + setSel.value + '"?')) {
+      await bnAdminGrantPermission(permRow.user_id, setSel.value);
+      bnPopulateProfilePermsPanel();
+    } else {
+      bnPopulateProfilePermsPanel(); // revert
+    }
+  });
+  const prevBtn = panel.querySelector('[data-bn-perms-preview]');
+  if (prevBtn) prevBtn.addEventListener('click', () => bnAdminPreviewAs(email));
 }
 async function bnRenderAdminPage() {
   if (bnUserPermission !== 'admin') return;
@@ -13993,6 +14059,15 @@ function renderProfilePage() {
   html += '</div>';
   html += '</div>';
 
+  // Admin-only permissions panel for this profile (populated async after render).
+  if (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'admin') {
+    const personEmail = (person.email || '').trim().toLowerCase();
+    html += '<div id="bnProfilePermsPanel" data-person-email="' + escapeHtml(personEmail) + '" style="margin: 12px 0 20px; padding: 14px 16px; border: 1px solid #ececec; border-radius: 10px; background: #fafafa;">' +
+      '<div style="font-weight: 600; font-size: 13px; margin-bottom: 8px;">⭐ Permisos (admin)</div>' +
+      '<div style="font-size: 12.5px; color: #6b6b6b;">Cargando…</div>' +
+    '</div>';
+  }
+
   // Stats — current statuses, ordered by STATUS_ORDER and colored from the status palette
   const STATUS_PALETTE = {
     "Waiting": "#60a5fa", "Proposed": "#1d4ed8", "Later / Next": "#dc2626",
@@ -14075,6 +14150,10 @@ function renderProfilePage() {
   wireProfileHeader(person);
   wireProfileTasks();
   wireProfilePersonalRoadmap(personTasks);
+  // Populate the admin-only permissions panel for this profile (async).
+  if (typeof bnPopulateProfilePermsPanel === 'function') {
+    bnPopulateProfilePermsPanel().catch(e => console.warn('[BN] perms panel error:', e && e.message));
+  }
 }
 
 // ===== Personal roadmap (6-month horizontal Gantt of the profile person's tasks) =====
