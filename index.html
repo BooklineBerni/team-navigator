@@ -2637,7 +2637,10 @@ function sortTaskList(tasks) {
 function render() {
   updateTabCounts();
   if (currentView === "home") {
-    renderHomePage();
+    // renderHomePage lives in views/home.js — guard so an early render()
+    // during inline boot (before view scripts load) is a no-op; the final
+    // render() at the bottom of <body> will repaint once everything loaded.
+    if (typeof renderHomePage === 'function') renderHomePage();
     return;
   }
   if (currentView === "members") {
@@ -2653,13 +2656,13 @@ function render() {
     return;
   }
   if (currentView === "requests") {
-    renderRequestsPage();
+    if (typeof renderRequestsPage === 'function') renderRequestsPage();
     // Trigger a background refresh so the user sees fresh data without clicking Sync now
     if (typeof bnLoadRequests === 'function') bnLoadRequests({ skipNotify: true });
     return;
   }
   if (currentView === "files") {
-    renderFilesPage();
+    if (typeof renderFilesPage === 'function') renderFilesPage();
     return;
   }
   if (currentView === "trash") {
@@ -12243,5 +12246,8 @@ detectBlockedPhotos();
 <script src="views/files.js"></script>
 <!-- Requests page view. -->
 <script src="views/requests.js"></script>
+<!-- All view scripts loaded; trigger one final render so the initial view paints
+     correctly (the render() during inline boot was guarded to skip extracted views). -->
+<script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
 </body>
 </html>
