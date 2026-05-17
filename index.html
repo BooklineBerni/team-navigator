@@ -254,6 +254,11 @@
 
   /* Members page grid */
   .members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  /* When a section has sub-groups (e.g. Bookline · Con tasks / Sin tasks), don't grid the outer */
+  .members-grid.members-grid-bookline-with-subs { display: block; }
+  .members-grid-bookline-with-subs .members-subsection-label { font-size: 12px; font-weight: 600; color: #9a9a9a; text-transform: uppercase; letter-spacing: 0.04em; margin: 14px 0 8px; padding-left: 2px; }
+  .members-grid-bookline-with-subs .members-subsection-label:first-child { margin-top: 0; }
+  .members-grid-bookline-with-subs .members-subsection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
   .member-card { padding: 16px; background: #fff; border: 1px solid #ececea; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: all .12s; min-width: 0; overflow: hidden; }
   .member-card .person-row { min-width: 0; }
   .member-card .person-row .meta { min-width: 0; flex: 1; }
@@ -14076,17 +14081,22 @@ function renderMembersPage() {
     const inner = 'Supplementary <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + supplementary.length + ')</span> <span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— people you collaborate with, not on your direct team</span>';
     html += makeSectionHtml('supplementary', inner, supplementary.map(p => memberCardHtml(p, 'supplementary')).join(""));
   }
-  if (bookline.length > 0) {
-    const inner = '<img class="bookline-logo-img" src="https://framerusercontent.com/images/uTJVj3ufTlg1OOblrAuZMyDSHOA.png" alt="Bookline">' +
-      ' <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + bookline.length + ')</span> ' +
-      '<span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— people who proposed tasks but aren\'t on your team</span>';
-    html += makeSectionHtml('bookline', inner, bookline.map(p => memberCardHtml(p, 'bookline')).join(""));
-  }
-  if (booklineNoTasks.length > 0) {
-    const inner = '<img class="bookline-logo-img" src="https://framerusercontent.com/images/uTJVj3ufTlg1OOblrAuZMyDSHOA.png" alt="Bookline"> · Sin tasks' +
-      ' <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + booklineNoTasks.length + ')</span> ' +
-      '<span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— added to the directory but no tasks or proposals yet</span>';
-    html += makeSectionHtml('bookline-no-tasks', inner, booklineNoTasks.map(p => memberCardHtml(p, 'bookline')).join(""));
+  // Bookline: single section with two sub-groups inside the grid — "Con tasks" and "Sin tasks".
+  if (bookline.length > 0 || booklineNoTasks.length > 0) {
+    const total = bookline.length + booklineNoTasks.length;
+    const heading = '<img class="bookline-logo-img" src="https://framerusercontent.com/images/uTJVj3ufTlg1OOblrAuZMyDSHOA.png" alt="Bookline">' +
+      ' <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + total + ')</span> ' +
+      '<span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— every Bookline Slack member, grouped by whether they have tasks</span>';
+    let inner = '';
+    if (bookline.length > 0) {
+      inner += '<div class="members-subsection-label">Con tasks <span style="color:#9a9a9a;font-weight:400">(' + bookline.length + ')</span></div>';
+      inner += '<div class="members-subsection-grid">' + bookline.map(p => memberCardHtml(p, 'bookline')).join('') + '</div>';
+    }
+    if (booklineNoTasks.length > 0) {
+      inner += '<div class="members-subsection-label">Sin tasks <span style="color:#9a9a9a;font-weight:400">(' + booklineNoTasks.length + ')</span></div>';
+      inner += '<div class="members-subsection-grid">' + booklineNoTasks.map(p => memberCardHtml(p, 'bookline')).join('') + '</div>';
+    }
+    html += makeSectionHtml('bookline', heading, inner, 'members-grid-bookline-with-subs');
   }
   if (disabled.length > 0) {
     const inner = 'Disabled <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + disabled.length + ')</span>';
