@@ -1,0 +1,55 @@
+# =============================================================================
+# .github/workflows/smoke-test.yml
+# ---------------------------------------------------------------------------
+# Runs the Playwright smoke test (tests/smoke.spec.js) on every push to main
+# and on pull requests. If this fails, the page is broken and the deploy
+# (also triggered on push to main) should be considered unsafe.
+#
+# This is the safety net the project lacked for years. Keep it green.
+# =============================================================================
+name: Smoke test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'lib/**'
+      - 'views/**'
+      - 'data/**'
+      - 'tests/**'
+      - 'playwright.config.js'
+      - 'package.json'
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Playwright + Chromium
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install chromium --with-deps
+
+      - name: Run smoke test
+        run: npx playwright test tests/smoke.spec.js
+
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          if-no-files-found: ignore
