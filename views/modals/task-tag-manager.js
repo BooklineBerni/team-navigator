@@ -10,7 +10,6 @@
 // =============================================================================
 
 // ---- Task Tag Manager modal ----
-let _taskTagDragFromIdx = null;
 function openTaskTagManager() {
   renderTaskTagManager();
   document.getElementById("taskTagManagerBg").classList.add("show");
