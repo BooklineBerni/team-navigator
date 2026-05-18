@@ -34,6 +34,8 @@ lib/                        ← infraestructura compartida
   permissions.js            ← admin allowlist + preview-as
   filters.js                ← predicados unificados (window.BNFilters)
   date-picker.js            ← popover de fecha custom (hijack de <input type=date>)
+  files-integration.js      ← Drive link parsing + Google Picker OAuth + Team Files sync
+  requests-feature.js       ← Slack requests fetch/decrypt + notifications + helpers
 
 views/                      ← un archivo por vista del sidebar
   home.js                   ← renderHomePage
@@ -45,12 +47,28 @@ views/                      ← un archivo por vista del sidebar
   roadmaps.js               ← renderRoadmapsTimelinePage (delgado, llama al calendar)
   roadmap-calendar.js       ← renderRoadmapCalendar (1700 líneas: Gantt completo)
   bulk-create.js            ← modal Bulk Create (Stage 1 + Stage 2)
+  modals/
+    person-tags.js          ← Person tags modal
+    add-member.js           ← Add Member modal (Slack search)
+    tag-manager.js          ← renderTaskTagsInModal (in-task tag rendering)
+    subtasks-panel.js       ← Subtasks panel for group tasks
+    task-tag-manager.js     ← Task Tag Manager + global Tag Manager
 
-index.html                  ← núcleo + boot. Sigue siendo grande (~8.800 líneas).
-                              No es ideal pero contiene cosas inevitables.
+tests/
+  smoke.spec.js             ← Playwright smoke test (corre en CI cada push)
+playwright.config.js        ← config del test (sirve estático con python -m http.server)
+package.json                ← solo @playwright/test, no hay build step
+
+index.html                  ← núcleo + boot. Ahora ~7.400 líneas tras todas las
+                              extracciones. Contiene STORE, auth bootstrap,
+                              modales del task, anchor/date helpers, capa de
+                              orquestación (render() central + filtros).
 
 supabase/migrations/        ← schemas SQL (aplican vía GH Actions)
-.github/workflows/          ← deploy de Pages + apply de migrations Supabase
+.github/workflows/
+  smoke-test.yml            ← corre el smoke test cada push (NUEVO)
+  supabase-migrations.yml   ← aplica migrations
+  sync-requests.yml         ← Slack → requests.json
 requests.json               ← cache de requests sincronizadas desde Slack
 team-files.json             ← cache de archivos compartidos del equipo
 README.md                   ← landing (mínimo, no contiene arquitectura)
@@ -88,18 +106,33 @@ Orden en `index.html` `<head>`:
 <!-- 6. Vistas + componentes que pueden cargar después. -->
 <script src="views/bulk-create.js"></script>
 <script src="views/home.js"></script>
+<script src="lib/files-integration.js"></script>      ← antes de views/files.js
 <script src="views/files.js"></script>
+<script src="lib/requests-feature.js"></script>       ← antes de views/requests.js
 <script src="views/requests.js"></script>
 <script src="views/tasks.js"></script>
 <script src="views/team.js"></script>
 <script src="views/profile.js"></script>
 <script src="lib/date-picker.js"></script>
-<script src="views/roadmap-calendar.js"></script>
+<script src="views/modals/person-tags.js"></script>
+<script src="views/modals/add-member.js"></script>
+<script src="views/modals/tag-manager.js"></script>
+<script src="views/modals/subtasks-panel.js"></script>
+<script src="views/modals/task-tag-manager.js"></script>
+<script src="views/roadmap-calendar.js"></script>      ← antes de views/roadmaps.js
 <script src="views/roadmaps.js"></script>
 
 <!-- 7. Re-render final (las vistas ya están definidas para entonces). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
 ```
+
+**Reglas de orden de carga importantes:**
+- `lib/files-integration.js` antes que `views/files.js` (renderFilesPage usa
+  bnUpdateFilesBadge, fileIconForType, detectFileType).
+- `lib/requests-feature.js` antes que `views/requests.js` (renderRequestsPage
+  usa bnPendingRequests, rqCardHtml).
+- `views/roadmap-calendar.js` antes que `views/roadmaps.js` (la reasignación
+  en roadmaps.js no la necesita en parse time pero queda más limpio así).
 
 **Reglas críticas de orden:**
 
@@ -382,10 +415,12 @@ Cada filtro (status, prio, type, taskTag, roadmap, dateStatus) tiene
 
 ## 8. Deuda técnica reconocida
 
-- **`index.html` sigue grande (~8.800 líneas).** Los candidatos para
+- **`index.html` sigue grande (~7.400 líneas).** Los candidatos para
   futura extracción están en la sección 5.
-- **No hay tests automáticos.** Cada refactor verificado manualmente
-  en Chrome. Riesgo medio a largo plazo.
+- **✅ Hay smoke test automático** (Playwright + GH Actions, corre cada
+  push a main). Si el test falla, el deploy debe considerarse inseguro.
+  Si añades una función global crítica, considera añadir su verificación
+  al `tests/smoke.spec.js`.
 - **No hay build step.** Bueno para simplicidad pero significa que
   tampoco hay minification, tree-shaking, ni TypeScript. Cuando el
   código crezca >50k líneas considera Vite/esbuild + ESM.
@@ -468,11 +503,11 @@ git log --oneline -- views/profile.js
 
 ## 12. Esta sesión (resumen para continuidad)
 
-La última sesión hizo el refactor grande:
+El refactor completo en esta sesión:
 
 - **Antes:** `index.html` 18.121 líneas en un solo archivo.
-- **Ahora:** `index.html` 8.806 líneas + 13 archivos externos
-  bien organizados.
+- **Ahora:** `index.html` ~7.400 líneas + 20+ archivos externos
+  organizados por responsabilidad + smoke test en CI.
 
 Pasos numerados (commits en `main`):
 
@@ -489,15 +524,22 @@ Pasos numerados (commits en `main`):
 11. Paso 7f: views/roadmap-calendar.js (1700 líneas, el más gordo)
 12. Cleanup: monkey-patch eliminado en views/roadmaps.js
 13. Extra: lib/date-picker.js
+14. Extra: views/modals/ (5 archivos, ~620 líneas)
+15. Extra: lib/files-integration.js (Drive + Picker + Team sync, 616 líneas)
+16. Extra: lib/requests-feature.js (Slack ingest + decrypt + notifications, 164 líneas)
+17. Extra: smoke test con Playwright + GH Action en cada push
 
 Decisiones clave que **NO debes revertir** sin pensarlo dos veces:
 
 - Mantener `parseDate`/`addDays`/`DAY_MS` en inline.
 - Mantener anchor helpers (`effectiveDatesForTask`,
   `bnPropagateAnchorChanges`, etc.) en inline.
-- `views/*.js` cargan después del inline (no antes).
+- Mantener `render()` central + capa de filtros/counts en inline.
+- `views/*.js` y `lib/*-integration.js` cargan después del inline.
 - Usar `typeof renderXxx === 'function'` guard en `render()` central.
 - No usar IIFE en archivos extraídos (rompería call-sites globales).
+- Antes de mover algo nuevo: `grep -n` para call-sites top-level. Si
+  los hay, conviértelos a arrow wrappers PRIMERO.
 
 ---
 
