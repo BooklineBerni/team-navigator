@@ -20,6 +20,7 @@ on:
       - 'tests/**'
       - 'playwright.config.js'
       - 'package.json'
+      - '.github/workflows/smoke-test.yml'
   pull_request:
     branches: [main]
   workflow_dispatch: {}
