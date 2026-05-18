@@ -20,19 +20,6 @@ function closeAddMember() {
   document.getElementById("addMemberBg").classList.remove("show");
 }
 
-function parseSlackUserResults(text) {
-  // Parses the markdown-format response from slack_search_users
-  const blocks = text.split(/### Result \d+ of \d+/).slice(1);
-  return blocks.map(b => {
-    const get = (re) => { const m = b.match(re); return m ? m[1].trim() : ""; };
-    const name = get(/Name:\s*(.+)/);
-    const userId = get(/User ID:\s*(\S+)/);
-    const email = get(/Email:\s*(\S+)/);
-    const photoMatch = b.match(/Profile Pic: \[Photo\]\((https?:[^)]+)\)/);
-    const photo = photoMatch ? photoMatch[1] : "";
-    return { name, userId, email, photo };
-  }).filter(r => r.userId);
-}
 
 function renderMemberSearchResults(results) {
   const cont = document.getElementById("memberSearchResults");

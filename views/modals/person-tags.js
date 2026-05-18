@@ -12,19 +12,6 @@
 // ---------- Person tags modal ----------
 let editingPersonId = null;
 
-function openPersonModal(personId) {
-  editingPersonId = personId;
-  const p = findPerson(personId);
-  document.getElementById("personModalTitle").textContent = "Edit " + (p ? p.displayName : "person");
-  // Pre-fill available week time and disabled checkbox
-  const settings = getPersonSettings(personId);
-  const awtInput = document.getElementById("f_availableWeekTime");
-  awtInput.value = (settings.availableWeekTime != null && settings.availableWeekTime !== "") ? settings.availableWeekTime : "";
-  const _personSectionEl = document.getElementById("f_personSection");
-  if (_personSectionEl) _personSectionEl.value = getPersonSection(personId);
-  renderPersonModal();
-  document.getElementById("personModalBg").classList.add("show");
-}
 function closePersonModal() {
   document.getElementById("personModalBg").classList.remove("show");
   editingPersonId = null;

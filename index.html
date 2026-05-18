@@ -1703,12 +1703,7 @@ function renderTaskProposersMini(t) {
   const title = 'Proposed by: ' + names.join(', ') + (ids.length > maxShown ? ' and ' + (ids.length - maxShown) + ' more' : '');
   return '<span class="task-proposers" title="' + escapeHtml(title) + '">' + chipsHtml + moreHtml + '</span>';
 }
-function tagMiniHtml(tag) {
-  const style = getTagStyle(tag);
-  const klass = style ? "" : "tag-default";
-  return '<span class="tag-mini ' + klass + '" style="' + style + '">' + escapeHtml(tag) + '</span>';
-}
-function mapPanelStatus(s) { const v = (s||'').toLowerCase(); if (v.includes('complete')) return 'completed'; if (v.includes('progress') || v.includes('review')) return 'in_progress'; if (v.includes('discard')) return 'discarded'; if (v.includes('archived')) return 'archived'; return 'pending'; }
+// dead code removed: tagMiniHtml + mapPanelStatus (no callers in the codebase)
 
 // Snapshot of current filter state. Built fresh per call so it always reflects
 // the latest `let`-declared filter Sets. Aliased Set refs are fine (read-only).
@@ -4938,54 +4933,7 @@ function groupProgress(groupId) {
   const pct = total > 0 ? Math.round(100 * done / total) : 0;
   return { done, total, pct };
 }
-function groupRowHtml(g) {
-  const expanded = isGroupExpanded(g.id);
-  const prog = groupProgress(g.id);
-  const sel = isSelected(g.id);
-  return '<div class="group-row' + (expanded ? ' expanded' : '') + '" data-gid="' + escapeHtml(g.id) + '"' + (sel ? ' data-selected="true"' : '') + '>' +
-      '<span class="checkbox group-checkbox' + (sel ? ' checked' : '') + '" data-gid="' + escapeHtml(g.id) + '" title="Select this group for bulk actions"></span>' +
-      '<button type="button" class="group-caret" title="' + (expanded ? 'Collapse' : 'Expand') + ' group">▶</button>' +
-      '<button type="button" class="group-title" title="Edit group"><span class="folder-emoji">📁</span><span class="group-title-text">' + escapeHtml(g.subject || '(unnamed group)') + '</span></button>' +
-      '<span class="group-progress">' +
-        '<span class="group-progress-bar-wrap"><span class="group-progress-bar-fill" style="width:' + prog.pct + '%"></span></span>' +
-        '<span class="group-progress-text">' + prog.done + '/' + prog.total + '</span>' +
-      '</span>' +
-    '</div>';
-}
-function attachGroupHandlers(container) {
-  container.querySelectorAll(".group-row").forEach(node => {
-    const gid = node.dataset.gid;
-    // Title click → open the edit modal
-    const title = node.querySelector(".group-title");
-    if (title) title.addEventListener("click", e => {
-      e.stopPropagation();
-      openModal(gid);
-    });
-    // Caret click → expand/collapse
-    const caret = node.querySelector(".group-caret");
-    if (caret) caret.addEventListener("click", e => {
-      e.stopPropagation();
-      toggleGroupExpanded(gid);
-      const childrenEl = node.nextElementSibling;
-      if (childrenEl && childrenEl.classList.contains("group-children")) {
-        childrenEl.classList.toggle("collapsed");
-        node.classList.toggle("expanded");
-        caret.title = node.classList.contains("expanded") ? "Collapse group" : "Expand group";
-      } else if (typeof render === "function") {
-        render();
-      }
-    });
-    // Checkbox → multi-select toggle
-    const cb = node.querySelector(".group-checkbox");
-    if (cb) cb.addEventListener("click", e => {
-      e.stopPropagation();
-      toggleSelected(gid);
-      const sel = isSelected(gid);
-      node.dataset.selected = sel ? "true" : "";
-      cb.classList.toggle("checked", sel);
-    });
-  });
-}
+// dead code removed: groupRowHtml + attachGroupHandlers (no callers in the codebase)
 
 // ===== Tasks page =====
 // renderFlatTasks moved to views/tasks.js (loaded right after inline script).
