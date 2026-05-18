@@ -69,6 +69,7 @@ test('smoke: page loads, globals exist, views switch, modals open/close', async 
     'views/modals/tag-manager.js',
     'views/modals/subtasks-panel.js',
     'views/modals/task-tag-manager.js',
+    'lib/bulk-popovers.js',
   ];
   for (const want of expected) {
     expect(scriptSrcs.some(s => s.includes(want.split('/').pop())),
