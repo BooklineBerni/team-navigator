@@ -100,6 +100,20 @@ test('smoke: page loads, globals exist, views switch, modals open/close', async 
     openPersonModal: typeof window.openPersonModal,
     openAddMember: typeof window.openAddMember,
     openFileModal: typeof window.openFileModal,
+    // Recently extracted libs:
+    bnSoftDeleteTask: typeof window.bnSoftDeleteTask,
+    bnRenderTrashPage: typeof window.bnRenderTrashPage,
+    bnRotateAutoSnapshot: typeof window.bnRotateAutoSnapshot,
+    bnExportBackup: typeof window.bnExportBackup,
+    renderRoadmapsInModal: typeof window.renderRoadmapsInModal,
+    setColoredPicker: typeof window.setColoredPicker,
+    setResponsiblePicker: typeof window.setResponsiblePicker,
+    renderBulkRoadmapsPopover: typeof window.renderBulkRoadmapsPopover,
+    // Filter / state cycle helpers:
+    cycleStatusFilter: typeof window.cycleStatusFilter,
+    clearPrioFilter: typeof window.clearPrioFilter,
+    selectAllVisible: typeof window.selectAllVisible,
+    clearSelection: typeof window.clearSelection,
   }));
   for (const [name, type] of Object.entries(globals)) {
     expect(type, `${name} should be a function/object`).not.toBe('undefined');
