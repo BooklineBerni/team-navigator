@@ -50,16 +50,24 @@ function setProfilePerson(id) {
   else localStorage.removeItem("bookline-profilePersonId");
   renderProfilePage();
 }
-// Helper: find the TEAM id matching the signed-in user's email. Used for
+// Helper: find the TEAM id matching the "effective" user's email. Used for
 // restricted_view enforcement above (can only see own profile).
+//
+//   • If admin is previewing AS someone (bnPreviewAsEmail set), prefer that email
+//     so the profile reflects the previewed user, not the admin.
+//   • Otherwise, fall back to the signed-in user's email.
 function bnFindOwnTeamId() {
   try {
-    const email = (typeof bnSupabaseUser !== 'undefined' && bnSupabaseUser && bnSupabaseUser.email || '').toLowerCase();
+    const previewEmail = (typeof bnPreviewAsEmail !== 'undefined' && bnPreviewAsEmail) ? String(bnPreviewAsEmail).toLowerCase() : '';
+    const sessionEmail = (typeof bnSupabaseUser !== 'undefined' && bnSupabaseUser && bnSupabaseUser.email || '').toLowerCase();
+    const email = previewEmail || sessionEmail;
     if (!email) return null;
     const rosters = [];
     try { if (typeof DEFAULT_TEAM !== 'undefined') rosters.push(DEFAULT_TEAM); } catch (_) {}
     try { if (typeof EXTERNAL_TEAM !== 'undefined') rosters.push(EXTERNAL_TEAM); } catch (_) {}
     try { if (typeof SLACK_DIRECTORY !== 'undefined') rosters.push(SLACK_DIRECTORY); } catch (_) {}
+    // Also include the live STORE roster — admin may have added members not in the static rosters.
+    try { if (typeof STORE !== 'undefined' && Array.isArray(STORE.team)) rosters.push(STORE.team); } catch (_) {}
     for (const roster of rosters) {
       const match = roster.find(p => p && p.email && p.email.toLowerCase() === email);
       if (match) return match.id;
@@ -169,9 +177,9 @@ function renderProfilePage() {
     html += '</select>';
   }
   html += '</div>';
-  // Fields (read-only or editable)
+  // Fields (read-only or editable). Hours/week and Section are admin-only metadata —
+  // restricted_view users (and admins previewing as a restricted user) should not see them.
   const hoursVal = (settings.availableWeekTime != null && settings.availableWeekTime !== "") ? settings.availableWeekTime : "";
-  html += '<div class="profile-fields-grid">';
   const sec = getPersonSection(person.id);
   function sectionLabelHtml(s) {
     if (s === "team")          return '<span style="color:#16a34a;font-weight:600">Team</span>';
@@ -179,20 +187,23 @@ function renderProfilePage() {
     if (s === "disabled")      return '<span style="color:#9a9a9a">Disabled</span>';
     return '<span style="color:#0F2A4F;font-weight:600">Bookline</span>';
   }
-  if (profileEditMode) {
-    html += '<div class="profile-field"><label>Hours / week</label><input id="profileHoursInput" type="number" step="0.5" min="0" max="80" placeholder="—" value="' + hoursVal + '"></div>';
-    html += '<div class="profile-field"><label>Section</label>' +
-      '<select id="profileSectionSel">' +
-        '<option value=""' + (sec === "" ? ' selected' : '') + '>— Bookline (default)</option>' +
-        '<option value="team"' + (sec === "team" ? ' selected' : '') + '>Team</option>' +
-        '<option value="supplementary"' + (sec === "supplementary" ? ' selected' : '') + '>Supplementary</option>' +
-        '<option value="disabled"' + (sec === "disabled" ? ' selected' : '') + '>Disabled</option>' +
-      '</select></div>';
-  } else {
-    html += '<div class="profile-field"><label>Hours / week</label><div style="font-size:13px;color:#1a1a1a;padding:0">' + (hoursVal !== "" ? escapeHtml(String(hoursVal)) + 'h' : '<span style="color:#9a9a9a">—</span>') + '</div></div>';
-    html += '<div class="profile-field"><label>Section</label><div style="font-size:13px;padding:0">' + sectionLabelHtml(sec) + '</div></div>';
+  if (!isRestricted) {
+    html += '<div class="profile-fields-grid">';
+    if (profileEditMode) {
+      html += '<div class="profile-field"><label>Hours / week</label><input id="profileHoursInput" type="number" step="0.5" min="0" max="80" placeholder="—" value="' + hoursVal + '"></div>';
+      html += '<div class="profile-field"><label>Section</label>' +
+        '<select id="profileSectionSel">' +
+          '<option value=""' + (sec === "" ? ' selected' : '') + '>— Bookline (default)</option>' +
+          '<option value="team"' + (sec === "team" ? ' selected' : '') + '>Team</option>' +
+          '<option value="supplementary"' + (sec === "supplementary" ? ' selected' : '') + '>Supplementary</option>' +
+          '<option value="disabled"' + (sec === "disabled" ? ' selected' : '') + '>Disabled</option>' +
+        '</select></div>';
+    } else {
+      html += '<div class="profile-field"><label>Hours / week</label><div style="font-size:13px;color:#1a1a1a;padding:0">' + (hoursVal !== "" ? escapeHtml(String(hoursVal)) + 'h' : '<span style="color:#9a9a9a">—</span>') + '</div></div>';
+      html += '<div class="profile-field"><label>Section</label><div style="font-size:13px;padding:0">' + sectionLabelHtml(sec) + '</div></div>';
+    }
+    html += '</div>';
   }
-  html += '</div>';
   html += '</div>';
   // Actions (Edit / Done button) — hidden for restricted_view (they can't edit anything).
   html += '<div class="actions">';

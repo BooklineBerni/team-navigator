@@ -41,6 +41,19 @@ function renderRequestsPage() {
     return;
   }
 
+  // Guard: if the admin just came back from a preview-as session (page was reloaded with
+  // localStorage cleared), STORE.requestActions starts as {} and incomingRequestsCache is
+  // populated independently from the network. Without a sync flag, every cached request
+  // would render as "pending" until bnSyncPullFromCloud arrives. Show a quiet loading
+  // state until the cloud sync completes — render() is called from bnSyncPullFromCloud's
+  // success path, so we'll be re-invoked automatically.
+  const adminOwnView = (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'admin' &&
+                       (typeof bnPreviewAsEmail === 'undefined' || !bnPreviewAsEmail));
+  if (adminOwnView && typeof bnSupabaseUser !== 'undefined' && bnSupabaseUser && !window.__bnCloudSyncedAt) {
+    cont.innerHTML = '<div class="rq-empty">Syncing requests…</div>';
+    return;
+  }
+
   const pending = bnPendingRequests();
   const handled = bnHandledRequests();
   let html = '';

@@ -467,6 +467,12 @@ Weekly metrics by country" spellcheck="false"></textarea>
       </div>
 
       <!-- Preview-as banner removed: the sidebar shows the previewed user's avatar + email + permission instead, and the "B" logo is the exit button. -->
+
+      <!-- Owner card: signed-in admin's own profile, separate from Per-user permissions.
+           No permission picklist, no "Preview as" button — managing your own role from a
+           list of all users is nonsensical, and previewing yourself is a no-op. -->
+      <div id="bnAdminOwnerCard" style="margin-bottom:20px;"></div>
+
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
         <!-- Allowlist column -->
         <div>
@@ -1748,6 +1754,10 @@ function renderTaskProposersMini(t) {
 function bnGetFilterState() {
   return {
     teamOnly, searchQuery,
+    // activeOnly hides tasks whose responsible is in the Disabled section.
+    // The state mirrors what `getActiveOnly()` reads from localStorage so the
+    // pure predicates in lib/filters.js can apply it without poking globals.
+    activeOnly: (typeof getActiveOnly === 'function') ? getActiveOnly() : true,
     personInclude, personExclude,
     statusInclude, statusExclude,
     prioInclude, prioExclude,
@@ -2775,11 +2785,37 @@ populateUserSelects();
 function openModal(tid, overrides) {
   let t;
   if (tid === "new") {
+    // Restricted users (and admins previewing as restricted) cannot create new tasks.
+    if (typeof bnIsRestrictedView === 'function' && bnIsRestrictedView()) {
+      console.info('[BN] openModal("new") blocked — restricted view.');
+      return;
+    }
     t = { id: uid(), subject: "", completed: false, responsibleId: currentPersonIds.size === 1 ? Array.from(currentPersonIds)[0] : "", responsibleRaw: "", proposedById: "", proposedByRaw: "", proposedByIds: [], priority: "", type: "", dueDate: "", slackStatus: "Proposed", dedicatedHours: "", estimatedHours: "", shareWith: "", extraComments: "", sharing: false, isGroup: false, groupId: "", _pendingSync: true, _createdLocal: Date.now(), _isNew: true };
     if (overrides && typeof overrides === 'object') Object.assign(t, overrides);
   } else {
     t = bnTaskById(tid);
     if (!t) return;
+    // Restricted users can only OPEN/expand tasks where they are the responsible or
+    // appear in the proposed-by list. Any other task — even one shared with them — is
+    // viewable in the list but the modal stays closed. This matches the user spec:
+    //   "solo me debería dejar ver tasks en expansión si estoy como proposed by o
+    //    como responsable"
+    if (typeof bnIsRestrictedView === 'function' && bnIsRestrictedView()) {
+      const ownId = (typeof bnFindOwnTeamId === 'function') ? bnFindOwnTeamId() : null;
+      if (ownId) {
+        const isResp = t.responsibleId === ownId;
+        const inProposed = (Array.isArray(t.proposedByIds) && t.proposedByIds.includes(ownId))
+                          || t.proposedById === ownId;
+        if (!isResp && !inProposed) {
+          console.info('[BN] openModal blocked — restricted user is not proposed/responsible on this task.');
+          return;
+        }
+      } else {
+        // No team-id resolvable for the current viewer → safest is to block.
+        console.info('[BN] openModal blocked — restricted user with no resolvable team id.');
+        return;
+      }
+    }
   }
   editingId = t.id;
   const isG = !!t.isGroup;
@@ -5270,6 +5306,13 @@ let rmfDraft = null;  // { id, name, responsibleId, startDate, endDate, tasks, c
 let rmfMode = 'edit';  // 'edit' | 'new'
 
 function openRoadmapEdit(id) {
+  // Restricted users (and admins previewing as restricted) cannot create/edit roadmaps.
+  // Block at the entry point so the modal never opens; the CSS read-only rules would
+  // also hide save/delete, but skipping the open is cleaner UX.
+  if (typeof bnIsRestrictedView === 'function' && bnIsRestrictedView()) {
+    console.info('[BN] openRoadmapEdit blocked — restricted view.');
+    return;
+  }
   if (id === null) {
     // New roadmap mode: build a draft locally, don't persist until Save
     rmfMode = 'new';
