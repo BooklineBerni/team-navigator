@@ -36,7 +36,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+        # No `cache: npm` because we don't keep a package-lock.json — the only
+        # dependency is @playwright/test and a clean install on each run is fine.
 
       - name: Install Playwright + Chromium
         run: |
