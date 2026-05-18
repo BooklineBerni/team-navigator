@@ -1596,6 +1596,14 @@ function renderRoadmapCalendar(roadmapId) {
       });
     }
     node.querySelector('.rm-task-del').addEventListener('click', () => {
+      // Defense-in-depth: even though CSS hides the X button in restricted view,
+      // also guard at the click handler so a leaked click doesn't visually splice
+      // the row out (the saveStore wrapper would drop the write to disk, but the
+      // user explicitly asked that the row not disappear even visually).
+      if (typeof bnIsRestrictedView === 'function' && bnIsRestrictedView()) {
+        console.info('[BN] rm-task-del blocked — restricted view.');
+        return;
+      }
       const task = bnTaskById(tid);
       const name = task ? task.subject : 'this task';
       if (!confirm("Remove '" + name + "' from this roadmap?\n\nThe task itself stays in your task list.")) return;

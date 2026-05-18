@@ -3252,6 +3252,60 @@
   body.bn-read-only [data-bn-person-hours] {
     display: none !important;
   }
+  /* PRIVACY: hide every dedicated/estimated hours field and badge.
+     – `.badge.hours`: the "0h / 5h" pill on task cards.
+     – `.bn-hours-field`: the Ded.h / Est.h field rows inside the task modal.
+     – `.bn-bulk-hours`: the same fields inside the bulk-create stage 2 grid. */
+  body.bn-read-only .badge.hours,
+  body.bn-read-only .bn-hours-field,
+  body.bn-read-only .bn-bulk-hours,
+  body.bn-read-only #f_dedicatedHours,
+  body.bn-read-only #f_estimatedHours,
+  body.bn-read-only [data-f="dedicatedHours"],
+  body.bn-read-only [data-f="estimatedHours"] {
+    display: none !important;
+  }
+  /* Roadmap calendar header: hide the Edit + Delete buttons in restricted view.
+     They're already non-functional (openRoadmapEdit is blocked) but cleaner to
+     hide them entirely so the affordance never appears. */
+  body.bn-read-only #rmEditBtn,
+  body.bn-read-only #rmDeleteBtn {
+    display: none !important;
+  }
+  /* Roadmap sidebar (Unscheduled + Archived): all rows must behave as view-only.
+     Block pointer-events on each task row so clicking date/duration/anchor pins,
+     picker chips, and the X delete button does nothing. The X button is also
+     hidden so the user can't even visually attempt to remove a task. The title
+     button stays clickable (opens the task modal, which is already gated). */
+  body.bn-read-only .rm-unscheduled .rm-task-row,
+  body.bn-read-only .rm-archived-body .rm-task-row {
+    /* allow scrolling, block mutations */
+  }
+  body.bn-read-only .rm-unscheduled .rm-task-row > *:not(.rmt-head),
+  body.bn-read-only .rm-archived-body .rm-task-row > *:not(.rmt-head) {
+    pointer-events: none !important;
+  }
+  body.bn-read-only .rm-unscheduled .rm-task-row input,
+  body.bn-read-only .rm-unscheduled .rm-task-row select,
+  body.bn-read-only .rm-unscheduled .rm-task-row textarea,
+  body.bn-read-only .rm-archived-body .rm-task-row input,
+  body.bn-read-only .rm-archived-body .rm-task-row select,
+  body.bn-read-only .rm-archived-body .rm-task-row textarea {
+    pointer-events: none !important;
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+    background: transparent !important;
+  }
+  body.bn-read-only .rm-unscheduled .rm-task-row .rm-task-del,
+  body.bn-read-only .rm-archived-body .rm-task-row .rm-task-del,
+  body.bn-read-only .rm-unscheduled .rm-task-row .rmt-pin,
+  body.bn-read-only .rm-archived-body .rm-task-row .rmt-pin,
+  body.bn-read-only .rm-unscheduled .rm-task-row .rmt-gp-box,
+  body.bn-read-only .rm-archived-body .rm-task-row .rmt-gp-box,
+  body.bn-read-only .rm-unscheduled .rm-task-row .gp-clear,
+  body.bn-read-only .rm-archived-body .rm-task-row .gp-clear {
+    display: none !important;
+  }
   /* Banner: prominent so the user knows why some buttons are missing. */
   body.bn-read-only #bnReadOnlyBanner {
     background: #fef3c7 !important;
