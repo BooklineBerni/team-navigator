@@ -3089,3 +3089,70 @@
   html[data-bn-needs-auth="1"] body > footer { display: none !important; }
   html[data-bn-needs-auth="1"] body { background: #0a0a0a; overflow: hidden; }
   html[data-bn-needs-auth="1"] .bn-auth-gate { display: flex !important; }
+  /* =====================================================================
+     READ-ONLY MODE — body.bn-read-only is applied when window.__bnReadOnly
+     is true (restricted_view role, or admin previewing as another user).
+     We let the user navigate, search, filter and scroll, but everything
+     that could mutate the store is visually disabled.
+     ===================================================================== */
+  /* Hide buttons that exist solely to create/mutate data. */
+  body.bn-read-only #newTaskBtn,
+  body.bn-read-only #addMemberBtn,
+  body.bn-read-only #teamAddMemberBtn,
+  body.bn-read-only #newRoadmapBtnTop,
+  body.bn-read-only #manageTagsBtn,
+  body.bn-read-only #teamManageTagsBtn,
+  body.bn-read-only #manageTaskTagsBtn,
+  body.bn-read-only #bnImportBackupBtn,
+  body.bn-read-only #bulkBar {
+    display: none !important;
+  }
+  /* Disable bulk-bar fully (in case it sneaks visible) and any "save/delete/create" action button. */
+  body.bn-read-only .bulk-bar,
+  body.bn-read-only button[id*="save" i]:not([id*="filter" i]):not([id*="view" i]),
+  body.bn-read-only button[id*="delete" i],
+  body.bn-read-only button[id*="create" i],
+  body.bn-read-only button[id*="add" i]:not(.nav-item):not([data-view]):not(#bnAuthSignOutBtn) {
+    pointer-events: none !important;
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+  }
+  /* Inside any modal: make all inputs read-only, hide Save/Delete buttons, keep Cancel/Close. */
+  body.bn-read-only .modal-bg input,
+  body.bn-read-only .modal-bg textarea,
+  body.bn-read-only .modal-bg select,
+  body.bn-read-only .modal-bg [contenteditable] {
+    pointer-events: none !important;
+    user-select: text !important; /* let user copy text */
+    background: rgba(255,255,255,0.02) !important;
+    color: #aaa !important;
+  }
+  body.bn-read-only .modal-bg .modal-actions button:not([id*="close" i]):not([id*="cancel" i]) {
+    display: none !important;
+  }
+  /* Task cards: prevent dragging/sorting. Click to open the modal is fine (it'll be read-only). */
+  body.bn-read-only .task-card[draggable],
+  body.bn-read-only .roadmap-pill[draggable],
+  body.bn-read-only .unscheduled-row[draggable] {
+    cursor: default !important;
+  }
+  body.bn-read-only .task-card[draggable] { -webkit-user-drag: none; }
+  /* Calendar: disable drag-resize handles. */
+  body.bn-read-only .pill-resize-handle,
+  body.bn-read-only .pill-drag-handle {
+    pointer-events: none !important;
+    opacity: 0.3 !important;
+  }
+  /* Tag/colour pickers, custom dropdowns inside the views (not filter pills). */
+  body.bn-read-only .cp-trigger:not(.filter-pill),
+  body.bn-read-only .bn-cp-trigger:not(.filter-pill) {
+    pointer-events: none !important;
+    opacity: 0.6 !important;
+  }
+  /* Make the banner more prominent so users know why things are disabled. */
+  body.bn-read-only #bnReadOnlyBanner {
+    background: #fef3c7 !important;
+    color: #78350f !important;
+    font-weight: 600;
+    border-bottom: 2px solid #f59e0b !important;
+  }
