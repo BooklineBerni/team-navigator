@@ -3134,19 +3134,43 @@
   body.bn-read-only .nav-item[data-view="admin"] {
     display: none !important;
   }
-  /* Modal task / person / roadmap edit: fields become read-only, action buttons
-     for mutation are hidden. The modal can still be opened, scrolled, closed. */
+  /* Modal task / person / roadmap edit: fully read-only. Clicking any field does
+     NOTHING — no value change, no picklist dropdown, no clearing. Text stays black
+     so the user can actually read it. The modal can still be scrolled and closed.
+     We achieve "click-does-nothing" by blocking pointer-events on the modal body
+     (everything except the modal header — which holds the close button and our
+     new "View only" pill — and explicitly-allowed elements with class .bn-ro-allow). */
+  body.bn-read-only .modal-bg .modal {
+    /* The modal frame stays interactable so users can close/scroll */
+  }
+  body.bn-read-only .modal-bg .modal > *:not(.modal-header):not(.modal-actions):not(.bn-ro-allow) {
+    pointer-events: none !important;
+  }
+  /* Inputs / textareas: text in BLACK (not gray), so the user can actually read it.
+     Background stays subtle; pointer-events:none so clicking does nothing. */
   body.bn-read-only .modal-bg input:not([type="checkbox"]):not([type="radio"]):not(.bn-ro-allow),
   body.bn-read-only .modal-bg textarea,
   body.bn-read-only .modal-bg select {
     pointer-events: none !important;
-    background: rgba(255,255,255,0.02) !important;
-    color: #c9c9c9 !important;
+    background: transparent !important;
+    color: #1a1a1a !important;
+    border-color: #eaeaea !important;
+    -webkit-text-fill-color: #1a1a1a !important;   /* Safari override */
+    opacity: 1 !important;
+  }
+  body.bn-read-only .modal-bg input[disabled],
+  body.bn-read-only .modal-bg textarea[disabled],
+  body.bn-read-only .modal-bg select[disabled] {
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+    opacity: 1 !important;
   }
   body.bn-read-only .modal-bg [contenteditable] {
     pointer-events: none !important;
     user-select: text !important;
+    color: #1a1a1a !important;
   }
+  /* Hide the mutation action buttons inside modals. Cancel + close keep working. */
   body.bn-read-only .modal-bg button[id*="save" i]:not([id*="close" i]):not([id*="cancel" i]),
   body.bn-read-only .modal-bg button[id*="delete" i],
   body.bn-read-only .modal-bg button[id*="create" i]:not([id*="close" i]):not([id*="cancel" i]),
@@ -3154,12 +3178,34 @@
   body.bn-read-only .modal-bg button[id*="remove" i]:not([id*="filter" i]) {
     display: none !important;
   }
-  /* Pickers inside modals — colour pickers, custom triggers — disabled visually. */
+  /* Pickers inside modals — colour pickers, custom triggers — fully neutralised,
+     not just dimmed. We previously opacity'd them to 0.55, which still let clicks
+     open dropdowns. */
   body.bn-read-only .modal-bg .cp-trigger,
   body.bn-read-only .modal-bg .bn-cp-trigger,
-  body.bn-read-only .modal-bg [class*="picker-trigger"] {
+  body.bn-read-only .modal-bg [class*="picker-trigger"],
+  body.bn-read-only .modal-bg .cp-popover,
+  body.bn-read-only .modal-bg .bn-cp-pop,
+  body.bn-read-only .modal-bg .bn-cp-dropdown {
     pointer-events: none !important;
-    opacity: 0.55 !important;
+  }
+  body.bn-read-only .modal-bg .cp-popover,
+  body.bn-read-only .modal-bg .bn-cp-pop,
+  body.bn-read-only .modal-bg .bn-cp-dropdown {
+    display: none !important;
+  }
+  /* "View only" pill — anchored to the bottom of the modal, replaces the empty
+     space left where Save/Delete used to sit. Only shown to restricted/preview users. */
+  body.bn-read-only .modal-bg .modal-actions::before {
+    content: '👁 View only';
+    display: inline-block;
+    padding: 6px 12px;
+    background: #e0f2fe;
+    color: #0369a1;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: auto;
   }
   /* Calendar: allow navigation, prev/next, view-mode toggles, expand/collapse.
      Block ONLY the things that mutate dates: dragging pills, resize handles,
