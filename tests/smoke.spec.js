@@ -56,6 +56,7 @@ test('smoke: page loads, globals exist, views switch, modals open/close', async 
     'lib/date-picker.js',
     'lib/pickers.js',
     'lib/trash.js',
+    'lib/backup.js',
     'views/bulk-create.js',
     'views/home.js',
     'views/files.js',
