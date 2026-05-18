@@ -157,7 +157,7 @@ test('smoke: page loads, globals exist, views switch, modals open/close', async 
     const out = {};
     // a) HOLIDAYS data is loaded and a known date is recognised
     out.holidaysLoaded = typeof HOLIDAYS === 'object' && !!HOLIDAYS['2026-01-01'];
-    // b) Filter system: include "Proposed" status → visible count ≤ total
+    // b) Filter system: include "Proposed" status → visible count ≤ total, clear restores
     const before = window.visibleTasksCount();
     try {
       window.cycleStatusFilter('Proposed');
@@ -183,6 +183,71 @@ test('smoke: page loads, globals exist, views switch, modals open/close', async 
       tasks: Array.isArray(STORE.tasks),
       roadmaps: Array.isArray(STORE.roadmaps) || STORE.roadmaps === undefined,
     };
+    // f) Tag library is initialised + has fallback
+    try {
+      const lib = window.getTagLibrary();
+      out.tagLibrary = Array.isArray(lib) && lib.length > 0 && lib.every(t => t.name && t.bg && t.fg);
+    } catch (e) { out.tagLibrary = 'err: ' + e.message; }
+    // g) Task tag library is initialised
+    try {
+      const tlib = window.getTaskTagLibrary();
+      out.taskTagLibrary = Array.isArray(tlib);
+    } catch (e) { out.taskTagLibrary = 'err: ' + e.message; }
+    // h) Each task in STORE has the minimum expected shape
+    try {
+      const missing = STORE.tasks.filter(t => !t.id || typeof t.subject !== 'string');
+      out.taskShape = missing.length === 0;
+    } catch (e) { out.taskShape = 'err: ' + e.message; }
+    // i) Selecting all visible + clearing → counts match
+    try {
+      window.selectAllVisible();
+      const selN = selectedTaskIds.size;
+      window.clearSelection();
+      const clearedN = selectedTaskIds.size;
+      out.selectFlow = selN >= 0 && clearedN === 0;
+    } catch (e) { out.selectFlow = 'err: ' + e.message; }
+    // j) Tristate filter: cycling priority through include→exclude→off lands back at off.
+    // NOTE: bnGetFilterState() returns *references* to the live Set objects, not
+    // snapshots. We must capture each state IMMEDIATELY into a plain object.
+    try {
+      window.clearPrioFilter();
+      const cap = () => {
+        const s = window.bnGetFilterState();
+        return { inc: new Set(s.prioInclude), exc: new Set(s.prioExclude) };
+      };
+      const s0 = cap();
+      window.cyclePrioFilter('Alta');
+      const s1 = cap();
+      window.cyclePrioFilter('Alta');
+      const s2 = cap();
+      window.cyclePrioFilter('Alta');
+      const s3 = cap();
+      window.clearPrioFilter();   // leave state clean
+      out.tristate = {
+        startEmpty: s0.inc.size === 0 && s0.exc.size === 0,
+        include:    s1.inc.has('Alta'),
+        exclude:    s2.exc.has('Alta'),
+        backToOff:  !s3.inc.has('Alta') && !s3.exc.has('Alta'),
+      };
+    } catch (e) { out.tristate = 'err: ' + e.message; }
+    // k) Permissions: bnIsValidEmail accepts/rejects correctly
+    try {
+      out.emails = {
+        valid:   window.bnIsValidEmail('foo@bookline.ai') === true,
+        invalid: window.bnIsValidEmail('not-an-email') === false,
+      };
+    } catch (e) { out.emails = 'err: ' + e.message; }
+    // l) Date picker helpers parse/format roundtrip
+    try {
+      const d = window.bnParseDate('2026-05-18');
+      const s = window.bnFormatDate(d);
+      out.datePicker = s === '2026-05-18';
+    } catch (e) { out.datePicker = 'err: ' + e.message; }
+    // m) Holiday lookup: 2026-01-01 is "Año Nuevo"
+    try {
+      const dt = new Date('2026-01-01T00:00:00');
+      out.holidayLookup = window.holidayName(dt) === 'Año Nuevo';
+    } catch (e) { out.holidayLookup = 'err: ' + e.message; }
     return out;
   });
   expect(business.holidaysLoaded, 'HOLIDAYS data must include 2026-01-01').toBeTruthy();
@@ -190,6 +255,18 @@ test('smoke: page loads, globals exist, views switch, modals open/close', async 
   expect(business.predicates, 'BNFilters.allFiltersOK must return boolean').toBe(true);
   expect(business.selectionEmpty, 'selectedTaskIds must start empty').toBe(true);
   expect(business.storeShape.tasks, 'STORE.tasks must be array').toBe(true);
+  expect(business.tagLibrary, 'getTagLibrary returns valid library').toBe(true);
+  expect(business.taskTagLibrary, 'getTaskTagLibrary returns array').toBe(true);
+  expect(business.taskShape, 'every task has id + subject').toBe(true);
+  expect(business.selectFlow, 'select-all/clear flow works').toBe(true);
+  expect(business.tristate.startEmpty,  'prio filter starts empty').toBe(true);
+  expect(business.tristate.include,     'first cycle → include').toBe(true);
+  expect(business.tristate.exclude,     'second cycle → exclude').toBe(true);
+  expect(business.tristate.backToOff,   'third cycle → off').toBe(true);
+  expect(business.emails.valid,         'valid email accepted').toBe(true);
+  expect(business.emails.invalid,       'invalid email rejected').toBe(true);
+  expect(business.datePicker,           'date parse/format roundtrip').toBe(true);
+  expect(business.holidayLookup,        'holidayName(2026-01-01) === "Año Nuevo"').toBe(true);
 
   // === Step 8: no JavaScript page errors (parse/runtime exceptions) during the run. ===
   // Console messages are not checked here: in CI the page can't reach Google/
