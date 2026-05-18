@@ -39,6 +39,8 @@ lib/                        ← infraestructura compartida
   requests-feature.js       ← Slack requests fetch/decrypt + notifications + helpers
   pickers.js                ← Proposed-by + Responsible + Custom colored picklist + Group helpers
   bulk-popovers.js          ← Popovers de bulk-bar (multi-roadmap, multi-proposed-by, set-parent)
+  trash.js                  ← Soft-delete: bnSoftDeleteTask, bnRestoreFromTrash, bnRenderTrashPage
+  backup.js                 ← Rolling snapshots + Export + Import preview + Rollback helper
 
 views/                      ← un archivo por vista del sidebar
   home.js                   ← renderHomePage
@@ -62,13 +64,13 @@ tests/
 playwright.config.js        ← config del test (sirve estático con python -m http.server)
 package.json                ← solo @playwright/test, no hay build step
 
-index.html                  ← núcleo + boot. Ahora ~6.600 líneas tras todas las
+index.html                  ← núcleo + boot. Ahora ~6.270 líneas tras todas las
                               extracciones. Contiene STORE, auth bootstrap,
                               tag library helpers, anchor/date helpers, capa
                               de orquestación (render() central + filtros),
                               task modal (openModal/closeModal), task schedule
                               sidebar, roadmap modal-edit (renderRoadmapsList
-                              etc.), trash, holidays helpers.
+                              etc.), holidays helpers.
 
 supabase/migrations/        ← schemas SQL (aplican vía GH Actions)
 .github/workflows/
