@@ -3092,114 +3092,100 @@
   /* =====================================================================
      READ-ONLY MODE — body.bn-read-only is applied when window.__bnReadOnly
      is true (restricted_view role, or admin previewing as another user).
-     The lockdown is intentionally aggressive: EVERY interactive element
-     inside the app's main content + modals is unclickable, EXCEPT a small
-     allowlist (sidebar nav, search, filter pills, sign-out, modal-close,
-     view toggles, expand/collapse, and task cards themselves so the user
-     can still open the read-only task modal).
+     Philosophy: DEFAULT ALLOW. The user can navigate freely, expand and
+     collapse, switch views, interact with the calendar (Day/Week/Month/Year),
+     filter, search, open tasks, scroll. We hide the few buttons that exist
+     solely to mutate data. Modals open in a read-only mode (inputs disabled,
+     Save/Delete hidden). The saveStore() wrap is the final safety net.
      ===================================================================== */
-  /* 1) Default lockdown: block every interactive element. */
-  body.bn-read-only main.main-content button,
-  body.bn-read-only main.main-content input,
-  body.bn-read-only main.main-content select,
-  body.bn-read-only main.main-content textarea,
-  body.bn-read-only main.main-content [contenteditable],
-  body.bn-read-only main.main-content [draggable="true"],
-  body.bn-read-only main.main-content [role="button"],
-  body.bn-read-only main.main-content [onclick],
-  body.bn-read-only header.top button,
-  body.bn-read-only header.top input:not(#searchInput):not([type="search"]),
-  body.bn-read-only header.top select,
+  /* Hide buttons whose sole purpose is to mutate data. Hiding (display:none)
+     instead of disabling so they don't visually clutter the UI for users
+     who can't use them. */
+  body.bn-read-only #newTaskBtn,
+  body.bn-read-only #addBtn,
+  body.bn-read-only #tasksAddBtn,
+  body.bn-read-only #tasksBulkAddBtn,
+  body.bn-read-only #addMemberBtn,
+  body.bn-read-only #teamAddMemberBtn,
+  body.bn-read-only #newRoadmapBtnTop,
+  body.bn-read-only #newRoadmapBtn,
+  body.bn-read-only #manageTagsBtn,
+  body.bn-read-only #teamManageTagsBtn,
+  body.bn-read-only #manageTaskTagsBtn,
+  body.bn-read-only #tasksManageTaskTagsBtn,
+  body.bn-read-only #bnExportBackupBtn,
+  body.bn-read-only #bnImportBackupBtn,
+  body.bn-read-only #addFileBtn,
+  body.bn-read-only #syncFilesBtn,
+  body.bn-read-only #restoreHiddenBtn,
+  body.bn-read-only #bulkBar,
   body.bn-read-only .bulk-bar,
-  body.bn-read-only .modal-bg button,
-  body.bn-read-only .modal-bg input,
-  body.bn-read-only .modal-bg select,
-  body.bn-read-only .modal-bg textarea,
-  body.bn-read-only .modal-bg [contenteditable],
-  body.bn-read-only .modal-bg [role="button"],
-  body.bn-read-only .modal-bg [onclick] {
-    pointer-events: none !important;
-    user-select: text !important;
-    cursor: default !important;
+  body.bn-read-only .nav-item[data-view="trash"],
+  body.bn-read-only .nav-item[data-view="admin"] {
+    display: none !important;
   }
-  body.bn-read-only main.main-content input,
-  body.bn-read-only main.main-content textarea,
-  body.bn-read-only main.main-content select,
-  body.bn-read-only .modal-bg input,
+  /* Modal task / person / roadmap edit: fields become read-only, action buttons
+     for mutation are hidden. The modal can still be opened, scrolled, closed. */
+  body.bn-read-only .modal-bg input:not([type="checkbox"]):not([type="radio"]):not(.bn-ro-allow),
   body.bn-read-only .modal-bg textarea,
   body.bn-read-only .modal-bg select {
+    pointer-events: none !important;
     background: rgba(255,255,255,0.02) !important;
-    color: #aaa !important;
+    color: #c9c9c9 !important;
   }
-  /* 2) Allowlist: re-enable safe regions. */
-  body.bn-read-only .sidebar,
-  body.bn-read-only .sidebar *,
-  body.bn-read-only #bnReadOnlyBanner,
-  body.bn-read-only #bnReadOnlyBanner *,
-  body.bn-read-only #bnAuthSignOutBtn,
-  body.bn-read-only #searchInput,
-  body.bn-read-only .filter-pill,
-  body.bn-read-only .filters,
-  body.bn-read-only .filters * {
-    pointer-events: auto !important;
-    cursor: auto !important;
+  body.bn-read-only .modal-bg [contenteditable] {
+    pointer-events: none !important;
+    user-select: text !important;
   }
-  body.bn-read-only .modal-bg,
-  body.bn-read-only .modal-bg .modal-close,
-  body.bn-read-only .modal-bg .close-btn,
-  body.bn-read-only .modal-bg [class*="close"],
-  body.bn-read-only .modal-bg [id*="close" i],
-  body.bn-read-only .modal-bg [class*="cancel"],
-  body.bn-read-only .modal-bg [id*="cancel" i] {
-    pointer-events: auto !important;
-    cursor: pointer !important;
+  body.bn-read-only .modal-bg button[id*="save" i]:not([id*="close" i]):not([id*="cancel" i]),
+  body.bn-read-only .modal-bg button[id*="delete" i],
+  body.bn-read-only .modal-bg button[id*="create" i]:not([id*="close" i]):not([id*="cancel" i]),
+  body.bn-read-only .modal-bg button[id*="apply" i]:not([id*="filter" i]),
+  body.bn-read-only .modal-bg button[id*="remove" i]:not([id*="filter" i]) {
+    display: none !important;
   }
-  /* 3) View-mode toggles + disclosure (don't mutate data). */
-  body.bn-read-only [data-view-mode],
-  body.bn-read-only [class*="view-toggle"],
-  body.bn-read-only [class*="view-mode"],
-  body.bn-read-only [class*="expand"],
-  body.bn-read-only [class*="collapse"],
-  body.bn-read-only [class*="chevron"],
-  body.bn-read-only [data-bn-ro-allow],
-  body.bn-read-only [data-bn-ro-allow] * {
-    pointer-events: auto !important;
-    cursor: pointer !important;
+  /* Pickers inside modals — colour pickers, custom triggers — disabled visually. */
+  body.bn-read-only .modal-bg .cp-trigger,
+  body.bn-read-only .modal-bg .bn-cp-trigger,
+  body.bn-read-only .modal-bg [class*="picker-trigger"] {
+    pointer-events: none !important;
+    opacity: 0.55 !important;
   }
-  /* 4) Task cards: clickable to open the read-only modal, but NOT draggable. */
-  body.bn-read-only .task-card,
-  body.bn-read-only .task-row {
-    pointer-events: auto !important;
-  }
+  /* Calendar: allow navigation, prev/next, view-mode toggles, expand/collapse.
+     Block ONLY the things that mutate dates: dragging pills, resize handles,
+     clicking holidays to toggle, clicking empty cells to assign dates. */
   body.bn-read-only [draggable="true"] {
     -webkit-user-drag: none !important;
     user-drag: none !important;
   }
   body.bn-read-only .pill-resize-handle,
   body.bn-read-only .pill-drag-handle,
-  body.bn-read-only .resize-handle {
+  body.bn-read-only .resize-handle,
+  body.bn-read-only .day-cell.holiday-toggle,
+  body.bn-read-only .holiday-toggle-btn {
     pointer-events: none !important;
     opacity: 0 !important;
   }
-  /* 5) Hide explicit "create/edit/save/delete" buttons. */
-  body.bn-read-only #addBtn,
-  body.bn-read-only #tasksAddBtn,
-  body.bn-read-only #newTaskBtn,
-  body.bn-read-only #addMemberBtn,
-  body.bn-read-only #teamAddMemberBtn,
-  body.bn-read-only #newRoadmapBtnTop,
-  body.bn-read-only #manageTagsBtn,
+  /* Inline edit-in-place affordances on cards (status badge clickable, etc.)
+     The mutation goes via saveStore which is wrapped, so it's safe — but we
+     visually mute the cursor to signal it's not interactive. */
+  body.bn-read-only .task-card .status-badge[onclick],
+  body.bn-read-only .task-card .priority-badge[onclick] {
+    cursor: default !important;
+  }
+  /* People page: hide the per-person tag chips and the Add-member button. */
+  body.bn-read-only .person-tag,
+  body.bn-read-only .person-card .tag,
+  body.bn-read-only .person-card .tag-chip,
+  body.bn-read-only [data-bn-ro-hide-tags],
   body.bn-read-only #teamManageTagsBtn,
-  body.bn-read-only #manageTaskTagsBtn,
-  body.bn-read-only #bnImportBackupBtn,
-  body.bn-read-only #bulkBar,
-  body.bn-read-only .modal-bg button[id*="save" i]:not([id*="close" i]):not([id*="cancel" i]),
-  body.bn-read-only .modal-bg button[id*="delete" i],
-  body.bn-read-only .modal-bg button[id*="create" i],
-  body.bn-read-only .modal-bg button[id*="apply" i] {
+  body.bn-read-only .disabled-section,
+  body.bn-read-only .members-disabled,
+  body.bn-read-only #disabledPeople,
+  body.bn-read-only [data-section="disabled"] {
     display: none !important;
   }
-  /* 6) Banner: prominent so the user knows why everything is locked. */
+  /* Banner: prominent so the user knows why some buttons are missing. */
   body.bn-read-only #bnReadOnlyBanner {
     background: #fef3c7 !important;
     color: #78350f !important;

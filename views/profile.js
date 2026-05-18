@@ -37,11 +37,35 @@ function _persistProfilePrExpandedGroups() {
 const profileCollapsedGroups = new Set(JSON.parse(localStorage.getItem("bookline-profileCollapsedGroups") || "[]"));
 
 function setProfilePerson(id) {
+  // For restricted_view users, the Profile page is locked to their own profile —
+  // they cannot peek at colleagues. Admins (including when previewing as someone)
+  // can navigate freely.
+  if (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'restricted_view') {
+    const ownId = bnFindOwnTeamId();
+    if (ownId) id = ownId;
+  }
   profilePersonId = id;
   profileEditMode = false; // reset edit mode when switching person
   if (id) localStorage.setItem("bookline-profilePersonId", id);
   else localStorage.removeItem("bookline-profilePersonId");
   renderProfilePage();
+}
+// Helper: find the TEAM id matching the signed-in user's email. Used for
+// restricted_view enforcement above (can only see own profile).
+function bnFindOwnTeamId() {
+  try {
+    const email = (typeof bnSupabaseUser !== 'undefined' && bnSupabaseUser && bnSupabaseUser.email || '').toLowerCase();
+    if (!email) return null;
+    const rosters = [];
+    try { if (typeof DEFAULT_TEAM !== 'undefined') rosters.push(DEFAULT_TEAM); } catch (_) {}
+    try { if (typeof EXTERNAL_TEAM !== 'undefined') rosters.push(EXTERNAL_TEAM); } catch (_) {}
+    try { if (typeof SLACK_DIRECTORY !== 'undefined') rosters.push(SLACK_DIRECTORY); } catch (_) {}
+    for (const roster of rosters) {
+      const match = roster.find(p => p && p.email && p.email.toLowerCase() === email);
+      if (match) return match.id;
+    }
+  } catch (_) {}
+  return null;
 }
 function setProfileGroupBy(g) {
   profileGroupBy = g;
@@ -62,6 +86,14 @@ function getRoadmapsForPerson(personId) {
 function renderProfilePage() {
   const cont = document.getElementById("profilePageContent");
   if (!cont) return;
+
+  // restricted_view users are locked to their own profile (no picker, no other people).
+  const isRestricted = (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'restricted_view');
+  if (isRestricted) {
+    const ownId = bnFindOwnTeamId();
+    if (ownId) profilePersonId = ownId;
+    profilePickerOpen = false;
+  }
 
   // Validate selection still exists
   if (profilePersonId && !findPerson(profilePersonId)) profilePersonId = null;
