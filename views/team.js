@@ -12,7 +12,7 @@ function renderMembersPage() {
   const q = (membersPageQuery || "").toLowerCase();
   // For restricted_view users: show ALL active people in a single "bookline" section,
   // no tags, no disabled section. (Admins see the full structured page.)
-  const isRestricted = (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'restricted_view');
+  const isRestricted = (typeof bnIsRestrictedView === 'function') ? bnIsRestrictedView() : (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'restricted_view');
   function matchesQuery(p) {
     if (!q) return true;
     return (p.name + " " + (p.email||"") + " " + (p.displayName||"") + " " + getTagsFor(p.id).join(" ")).toLowerCase().includes(q);

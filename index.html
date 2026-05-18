@@ -230,6 +230,7 @@
         <div class="filters">
           <label class="show-counts-toggle" title="Show task/member counts on each filter button"><input type="checkbox" id="showCountsChk"> <span>Counts</span></label>
           <label class="show-counts-toggle" title="Show only tasks assigned to people on your active Team"><input type="checkbox" id="teamOnlyChk"> <span>Team only</span></label>
+          <label class="show-counts-toggle" title="Hide people marked as Disabled from the people strip"><input type="checkbox" id="activeOnlyChk"> <span>Active only</span></label>
           <label class="show-counts-toggle" title="Show the Unassigned card (tasks without a responsible person) at the top of the people grid"><input type="checkbox" id="showUnassignedChk"> <span>Show Unassigned</span></label>
           <input class="search-input" id="searchInput" placeholder="Search titles and comments...">
           <div id="statusFilterContainer" class="filter-group"></div>
@@ -1879,15 +1880,19 @@ function renderTeamStrip() {
   if (teamOnly) {
     availableTeam = [...TEAM, ...(typeof EXTERNAL_TEAM !== 'undefined' ? EXTERNAL_TEAM : [])].filter(p => isTeamMember(p.id));
   } else {
-    // Start with TEAM but FILTER OUT anyone whose current section moved them out of
-    // the active team (e.g. javi@bookline.ai used to be team but is now 'bookline').
-    // Only people in section 'team' or 'supplementary' should appear as filter pills.
+    // 'Active only' (default ON) hides anyone whose section is 'disabled'.
+    // For restricted_view users, force activeOnly = true.
+    const isRestrictedStrip = (typeof bnIsRestrictedView === 'function') && bnIsRestrictedView();
+    const activeOnly = isRestrictedStrip || (typeof getActiveOnly === 'function' ? getActiveOnly() : true);
+    const validSec = (sec) => {
+      if (sec === 'team' || sec === 'supplementary') return true;
+      if (sec === 'disabled') return !activeOnly;
+      return false; // '' (bookline default) → never as a pill
+    };
     availableTeam = TEAM.filter(p => {
       const sec = (typeof getPersonSection === 'function') ? getPersonSection(p.id) : '';
-      return sec === 'team' || sec === 'supplementary';
+      return validSec(sec);
     });
-    // Add anyone who owns at least one task (incl. groups) but isn't already in.
-    // Same active-section filter applies.
     const _seen = new Set(availableTeam.map(p => p.id));
     const ownerIds = new Set();
     (STORE.tasks||[]).forEach(t => { if (t.responsibleId) ownerIds.add(t.responsibleId); });
@@ -1896,7 +1901,7 @@ function renderTeamStrip() {
       const p = findPerson(id);
       if (!p) return;
       const sec = (typeof getPersonSection === 'function') ? getPersonSection(p.id) : '';
-      if (sec === 'team' || sec === 'supplementary') {
+      if (validSec(sec)) {
         availableTeam.push(p);
         _seen.add(id);
       }
@@ -5841,6 +5846,22 @@ document.getElementById("teamOnlyChk").addEventListener("change", e => {
   localStorage.setItem("bookline-teamOnly", teamOnly ? "true" : "false");
   render();
 });
+// Active only: when checked, hide people whose section is 'disabled' from the team strip.
+// Default ON so disabled people are hidden until the admin explicitly wants to see them.
+(function() {
+  const activeChk = document.getElementById("activeOnlyChk");
+  if (!activeChk) return;
+  const stored = localStorage.getItem("bookline-activeOnly");
+  activeChk.checked = (stored === null) ? true : (stored === "true");
+  activeChk.addEventListener("change", e => {
+    localStorage.setItem("bookline-activeOnly", e.target.checked ? "true" : "false");
+    render();
+  });
+})();
+function getActiveOnly() {
+  const v = localStorage.getItem("bookline-activeOnly");
+  return v === null ? true : v === "true";
+}
 (function() {
   const suChk = document.getElementById("showUnassignedChk");
   if (!suChk) return;

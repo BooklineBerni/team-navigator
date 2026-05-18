@@ -40,7 +40,7 @@ function setProfilePerson(id) {
   // For restricted_view users, the Profile page is locked to their own profile —
   // they cannot peek at colleagues. Admins (including when previewing as someone)
   // can navigate freely.
-  if (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'restricted_view') {
+  if (typeof bnIsRestrictedView === 'function' ? bnIsRestrictedView() : (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'restricted_view')) {
     const ownId = bnFindOwnTeamId();
     if (ownId) id = ownId;
   }
@@ -88,7 +88,7 @@ function renderProfilePage() {
   if (!cont) return;
 
   // restricted_view users are locked to their own profile (no picker, no other people).
-  const isRestricted = (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'restricted_view');
+  const isRestricted = (typeof bnIsRestrictedView === 'function') ? bnIsRestrictedView() : (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'restricted_view');
   if (isRestricted) {
     const ownId = bnFindOwnTeamId();
     if (ownId) profilePersonId = ownId;
@@ -274,7 +274,7 @@ function renderProfilePage() {
     }
   }
 
-  // Tasks section (collapsible)
+  // Tasks section (collapsible) — tasks where this person is the RESPONSIBLE.
   html += '<div class="profile-section-title profile-section-toggle" id="profileTasksToggle">' +
     '<span><span class="caret">' + (profileTasksCollapsed ? '▸' : '▾') + '</span> Tasks</span>' +
     '<span class="count">' + counts.total + '</span>' +
@@ -290,6 +290,29 @@ function renderProfilePage() {
     html += '</select>';
     html += '</div>';
     html += renderProfileTasks(personTasks, profileGroupBy);
+  }
+
+  // Proposed-by section: tasks where this person is in the proposedByIds list (or
+  // proposedById fallback), excluding ones where they are also the responsible (those
+  // already appear in the Tasks section above).
+  if (!person.isUnassigned) {
+    const proposedTasks = STORE.tasks.filter(t => {
+      const isProposer = Array.isArray(t.proposedByIds)
+        ? t.proposedByIds.includes(person.id)
+        : (t.proposedById === person.id);
+      return isProposer && t.responsibleId !== person.id;
+    });
+    if (proposedTasks.length > 0) {
+      const proposedCollapsedKey = "bookline-profileProposedCollapsed";
+      const proposedCollapsed = localStorage.getItem(proposedCollapsedKey) !== "0";
+      html += '<div class="profile-section-title profile-section-toggle" id="profileProposedToggle" data-collapsed-key="' + proposedCollapsedKey + '">' +
+        '<span><span class="caret">' + (proposedCollapsed ? '▸' : '▾') + '</span> Proposed by ' + escapeHtml(person.displayName || person.name || '?') + '</span>' +
+        '<span class="count">' + proposedTasks.length + '</span>' +
+      '</div>';
+      if (!proposedCollapsed) {
+        html += renderProfileTasks(proposedTasks, profileGroupBy);
+      }
+    }
   }
 
   cont.innerHTML = html;
@@ -531,7 +554,7 @@ function wireProfilePersonalRoadmap(personTasks) {
 
 function buildProfilePickerTrigger(person) {
   // restricted_view users can't switch people — render the name without the trigger.
-  const isRestricted = (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'restricted_view');
+  const isRestricted = (typeof bnIsRestrictedView === 'function') ? bnIsRestrictedView() : (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'restricted_view');
   if (person) {
     if (isRestricted) {
       return '<h3 style="margin:0">' + escapeHtml(person.name || person.displayName || '?') + '</h3>';
@@ -965,6 +988,15 @@ function wireProfileTasks() {
     tasksToggle.addEventListener("click", () => {
       profileTasksCollapsed = !profileTasksCollapsed;
       localStorage.setItem("bookline-profileTasksCollapsed", profileTasksCollapsed ? "1" : "0");
+      renderProfilePage();
+    });
+  }
+  const proposedToggle = document.getElementById("profileProposedToggle");
+  if (proposedToggle) {
+    proposedToggle.addEventListener("click", () => {
+      const key = "bookline-profileProposedCollapsed";
+      const cur = localStorage.getItem(key) !== "0";
+      localStorage.setItem(key, cur ? "0" : "1");
       renderProfilePage();
     });
   }
