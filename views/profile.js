@@ -194,12 +194,14 @@ function renderProfilePage() {
   }
   html += '</div>';
   html += '</div>';
-  // Actions (Edit / Done button)
+  // Actions (Edit / Done button) — hidden for restricted_view (they can't edit anything).
   html += '<div class="actions">';
-  if (profileEditMode) {
-    html += '<button class="btn primary" id="profileEditToggleBtn">Done</button>';
-  } else {
-    html += '<button class="btn" id="profileEditToggleBtn">Edit</button>';
+  if (!isRestricted) {
+    if (profileEditMode) {
+      html += '<button class="btn primary" id="profileEditToggleBtn">Done</button>';
+    } else {
+      html += '<button class="btn" id="profileEditToggleBtn">Edit</button>';
+    }
   }
   html += '</div>';
   html += '</div>';
@@ -528,7 +530,12 @@ function wireProfilePersonalRoadmap(personTasks) {
 }
 
 function buildProfilePickerTrigger(person) {
+  // restricted_view users can't switch people — render the name without the trigger.
+  const isRestricted = (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'restricted_view');
   if (person) {
+    if (isRestricted) {
+      return '<h3 style="margin:0">' + escapeHtml(person.name || person.displayName || '?') + '</h3>';
+    }
     return '<div class="profile-name-trigger' + (profilePickerOpen ? ' open' : '') + '" id="profilePickerTrigger">' +
       '<h3 style="margin:0">' + escapeHtml(person.name || person.displayName || '?') + '</h3>' +
       '<span class="arrow">▾</span>' +

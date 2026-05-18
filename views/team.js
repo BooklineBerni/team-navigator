@@ -10,6 +10,9 @@
 function renderMembersPage() {
   const grid = document.getElementById("membersGrid");
   const q = (membersPageQuery || "").toLowerCase();
+  // For restricted_view users: show ALL active people in a single "bookline" section,
+  // no tags, no disabled section. (Admins see the full structured page.)
+  const isRestricted = (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'restricted_view');
   function matchesQuery(p) {
     if (!q) return true;
     return (p.name + " " + (p.email||"") + " " + (p.displayName||"") + " " + getTagsFor(p.id).join(" ")).toLowerCase().includes(q);
@@ -68,10 +71,12 @@ function renderMembersPage() {
   }
 
   function memberCardHtml(p, mode) {
-    const tags = getTagsFor(p.id);
-    const tagsHtml = tags.length
-      ? '<div class="person-tags-line">' + tags.map(t => tagBadgeHtml(t, false)).join("") + '</div>'
-      : '<div class="person-tags-line" style="color:#bbb">No tags</div>';
+    const tags = isRestricted ? [] : getTagsFor(p.id);
+    const tagsHtml = isRestricted
+      ? ''
+      : (tags.length
+          ? '<div class="person-tags-line">' + tags.map(t => tagBadgeHtml(t, false)).join("") + '</div>'
+          : '<div class="person-tags-line" style="color:#bbb">No tags</div>');
     const settings = getPersonSettings(p.id);
     const awt = (settings.availableWeekTime != null && settings.availableWeekTime !== "")
       ? '<div class="role" style="color:#0891b2; font-weight:600">Available: ' + settings.availableWeekTime + 'h/week</div>' : "";
@@ -153,35 +158,48 @@ function renderMembersPage() {
   }
 
   let html = '';
-  if (teamSorted.length > 0) {
-    const inner = 'Team <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + teamSorted.length + ')</span>';
-    html += makeSectionHtml('team', inner, teamSorted.map(p => memberCardHtml(p, 'team')).join(""));
-  }
-  if (supplementary.length > 0) {
-    const inner = 'Supplementary <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + supplementary.length + ')</span> <span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— people you collaborate with, not on your direct team</span>';
-    html += makeSectionHtml('supplementary', inner, supplementary.map(p => memberCardHtml(p, 'supplementary')).join(""));
-  }
-  // Bookline: single section with two collapsible sub-groups — "Con tasks" and "Sin tasks".
-  if (bookline.length > 0 || booklineNoTasks.length > 0) {
-    const total = bookline.length + booklineNoTasks.length;
+  if (isRestricted) {
+    // Restricted_view collapses all active people (team + supplementary + bookline with
+    // tasks + bookline without tasks) into a single "Bookline" section. Disabled is hidden.
+    const allActive = [...teamSorted, ...supplementary, ...bookline, ...booklineNoTasks];
+    const dedup = [];
+    const seenIds = new Set();
+    allActive.forEach(p => { if (p && !seenIds.has(p.id)) { seenIds.add(p.id); dedup.push(p); } });
+    dedup.sort((a, b) => (a.name||'').localeCompare(b.name||''));
     const heading = '<img class="bookline-logo-img" src="https://framerusercontent.com/images/uTJVj3ufTlg1OOblrAuZMyDSHOA.png" alt="Bookline">' +
-      ' <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + total + ')</span>';
-    function renderSub(subKey, label, items) {
-      const collapsed = localStorage.getItem('bn-people-subsection-collapsed-' + subKey) === '1';
-      const caret = '<span class="members-subsection-caret">' + (collapsed ? '▸' : '▾') + '</span>';
-      return '<div class="members-subsection-label" data-subsection="' + subKey + '">' + caret + label + ' <span style="color:#9a9a9a;font-weight:400">(' + items.length + ')</span></div>' +
-        '<div class="members-subsection-grid' + (collapsed ? ' members-grid-collapsed' : '') + '" data-subsection-grid="' + subKey + '">' +
-          items.map(p => memberCardHtml(p, 'bookline')).join('') +
-        '</div>';
+      ' <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + dedup.length + ')</span>';
+    html += makeSectionHtml('bookline', heading, dedup.map(p => memberCardHtml(p, 'bookline')).join(""));
+  } else {
+    if (teamSorted.length > 0) {
+      const inner = 'Team <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + teamSorted.length + ')</span>';
+      html += makeSectionHtml('team', inner, teamSorted.map(p => memberCardHtml(p, 'team')).join(""));
     }
-    let inner = '';
-    if (bookline.length > 0)        inner += renderSub('bookline-with',    'With tasks',    bookline);
-    if (booklineNoTasks.length > 0) inner += renderSub('bookline-without', 'Without tasks', booklineNoTasks);
-    html += makeSectionHtml('bookline', heading, inner, 'members-grid-bookline-with-subs');
-  }
-  if (disabled.length > 0) {
-    const inner = 'Disabled <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + disabled.length + ')</span>';
-    html += makeSectionHtml('disabled', inner, disabled.map(p => memberCardHtml(p, 'disabled')).join(""), 'members-grid-disabled');
+    if (supplementary.length > 0) {
+      const inner = 'Supplementary <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + supplementary.length + ')</span> <span style="color:#9a9a9a;font-weight:400;font-size:11.5px;margin-left:6px">— people you collaborate with, not on your direct team</span>';
+      html += makeSectionHtml('supplementary', inner, supplementary.map(p => memberCardHtml(p, 'supplementary')).join(""));
+    }
+    // Bookline: single section with two collapsible sub-groups — "Con tasks" and "Sin tasks".
+    if (bookline.length > 0 || booklineNoTasks.length > 0) {
+      const total = bookline.length + booklineNoTasks.length;
+      const heading = '<img class="bookline-logo-img" src="https://framerusercontent.com/images/uTJVj3ufTlg1OOblrAuZMyDSHOA.png" alt="Bookline">' +
+        ' <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + total + ')</span>';
+      function renderSub(subKey, label, items) {
+        const collapsed = localStorage.getItem('bn-people-subsection-collapsed-' + subKey) === '1';
+        const caret = '<span class="members-subsection-caret">' + (collapsed ? '▸' : '▾') + '</span>';
+        return '<div class="members-subsection-label" data-subsection="' + subKey + '">' + caret + label + ' <span style="color:#9a9a9a;font-weight:400">(' + items.length + ')</span></div>' +
+          '<div class="members-subsection-grid' + (collapsed ? ' members-grid-collapsed' : '') + '" data-subsection-grid="' + subKey + '">' +
+            items.map(p => memberCardHtml(p, 'bookline')).join('') +
+          '</div>';
+      }
+      let inner = '';
+      if (bookline.length > 0)        inner += renderSub('bookline-with',    'With tasks',    bookline);
+      if (booklineNoTasks.length > 0) inner += renderSub('bookline-without', 'Without tasks', booklineNoTasks);
+      html += makeSectionHtml('bookline', heading, inner, 'members-grid-bookline-with-subs');
+    }
+    if (disabled.length > 0) {
+      const inner = 'Disabled <span style="color:#9a9a9a;font-weight:400;font-size:13px">(' + disabled.length + ')</span>';
+      html += makeSectionHtml('disabled', inner, disabled.map(p => memberCardHtml(p, 'disabled')).join(""), 'members-grid-disabled');
+    }
   }
   grid.innerHTML = html;
   // Wire collapse toggles
