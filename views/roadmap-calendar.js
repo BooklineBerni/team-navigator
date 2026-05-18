@@ -58,7 +58,7 @@ function renderRoadmapCalendar(roadmapId) {
   function parseAnchorRef(entry, anchorVal) {
     if (!anchorVal) return null;
     if (anchorVal === 'group-start' || anchorVal === 'group-end') {
-      const t = STORE.tasks.find(x => x.id === entry.taskId);
+      const t = bnTaskById(entry.taskId);
       if (t && t.groupId) return { taskId: t.groupId, side: anchorVal === 'group-end' ? 'end' : 'start' };
       return null;
     }
@@ -81,10 +81,10 @@ function renderRoadmapCalendar(roadmapId) {
   // Build the list of anchor menu items for `entry` (excludes self). Returns [{value, label}, …].
   function buildAnchorItems(entry) {
     const items = [{ value: '', label: '○  Custom date' }];
-    const ownTask = STORE.tasks.find(x => x.id === entry.taskId);
+    const ownTask = bnTaskById(entry.taskId);
     // Order: parent group first (if any), then other groups, then standalone tasks.
     const others = (r.tasks || []).filter(e => e.taskId !== entry.taskId).map(e => ({
-      entry: e, task: STORE.tasks.find(t => t.id === e.taskId)
+      entry: e, task: bnTaskById(e.taskId)
     })).filter(x => x.task);
     others.sort((a, b) => {
       const ag = ownTask && ownTask.groupId === a.task.id ? 0 : (a.task.isGroup ? 1 : 2);
@@ -103,7 +103,7 @@ function renderRoadmapCalendar(roadmapId) {
   // Normalize an anchor for display selection: legacy 'group-start' → 'task:{groupId}:start' (for matching <select> options).
   function normalizeAnchorForSelect(entry, val) {
     if (val === 'group-start' || val === 'group-end') {
-      const t = STORE.tasks.find(x => x.id === entry.taskId);
+      const t = bnTaskById(entry.taskId);
       if (t && t.groupId) return 'task:' + t.groupId + (val === 'group-end' ? ':end' : ':start');
     }
     return val || '';
@@ -112,9 +112,9 @@ function renderRoadmapCalendar(roadmapId) {
   // Closes any previous menu, opens a new one positioned near `anchorBtn`.
   function openAnchorPicker(anchorBtn, entry, kind /* 'start'|'end' */, currentValue, onPicked) {
     document.querySelectorAll('.bn-anchor-menu').forEach(n => n.remove());
-    const ownTask = STORE.tasks.find(x => x.id === entry.taskId);
+    const ownTask = bnTaskById(entry.taskId);
     const others = (r.tasks || []).filter(e => e.taskId !== entry.taskId).map(e => ({
-      entry: e, task: STORE.tasks.find(t => t.id === e.taskId)
+      entry: e, task: bnTaskById(e.taskId)
     })).filter(x => x.task);
     if (others.length === 0) return;
     // Order: parent group first, then groups alpha, then tasks alpha
@@ -256,7 +256,7 @@ function renderRoadmapCalendar(roadmapId) {
     }, 0);
   }
   const events = (r.tasks || []).map(entry => {
-    const task = STORE.tasks.find(t => t.id === entry.taskId);
+    const task = bnTaskById(entry.taskId);
     const eff = effectiveDatesFor(entry);
     let start = parseDate(eff.startStr);
     let end = parseDate(eff.endStr);
@@ -269,14 +269,14 @@ function renderRoadmapCalendar(roadmapId) {
   // Archived tasks are pulled out into their own section so they don't clutter the active list.
   if (!window.__rmPendingApply) window.__rmPendingApply = new Set();
   const rawUnscheduled = (r.tasks || []).filter(entry => {
-    const t = STORE.tasks.find(x => x.id === entry.taskId);
+    const t = bnTaskById(entry.taskId);
     if (!t) return false;
     if (window.__rmPendingApply.has(entry.taskId)) return true;  // user is editing dates here
     const eff = effectiveDatesFor(entry);
     return !parseDate(eff.startStr);
   });
   function entryStatus(entry) {
-    const t = STORE.tasks.find(x => x.id === entry.taskId);
+    const t = bnTaskById(entry.taskId);
     return (t && t.slackStatus) || '';
   }
   const unscheduled = rawUnscheduled.filter(e => entryStatus(e) !== 'Archived');
@@ -866,7 +866,7 @@ function renderRoadmapCalendar(roadmapId) {
     const allGroups = (STORE.tasks || []).filter(t => t.isGroup);
     // Shared row builder so the same markup is used for active + archived rows.
     function buildSideRowHtml(entry) {
-      const task = STORE.tasks.find(t => t.id === entry.taskId);
+      const task = bnTaskById(entry.taskId);
       if (!task) return '';
       const eff = effectiveDatesFor(entry);
       const ready = !!parseDate(eff.startStr);
@@ -878,7 +878,7 @@ function renderRoadmapCalendar(roadmapId) {
       function anchorLabel(anchorVal) {
         const ref = parseAnchorRefGlobal({ taskId: task.id }, anchorVal);
         if (!ref) return '';
-        const tt = STORE.tasks.find(x => x.id === ref.taskId);
+        const tt = bnTaskById(ref.taskId);
         if (!tt) return '';
         return (tt.subject || '(unnamed)') + ' — ' + ref.side;
       }
@@ -1163,7 +1163,7 @@ function renderRoadmapCalendar(roadmapId) {
       const tid = node.dataset.tid;
       const entry = (r.tasks || []).find(en => en.taskId === tid);
       if (!entry) { openModal(tid); return; }
-      const task = STORE.tasks.find(t => t.id === tid);
+      const task = bnTaskById(tid);
       if (!task) return;
       closeCalEventPopover();
       const pop = document.createElement('div');
@@ -1180,7 +1180,7 @@ function renderRoadmapCalendar(roadmapId) {
         const ref = parseAnchorRef(entry, anchorVal);
         let labelHint = '';
         if (ref) {
-          const tt = STORE.tasks.find(x => x.id === ref.taskId);
+          const tt = bnTaskById(ref.taskId);
           if (tt) labelHint = (tt.subject || '(unnamed)') + ' — ' + ref.side;
         }
         const tooltip = isActive
@@ -1191,7 +1191,7 @@ function renderRoadmapCalendar(roadmapId) {
       function cepAnchorHint(anchorVal, kind) {
         const ref = parseAnchorRef(entry, anchorVal);
         if (!ref) return '';
-        const tt = STORE.tasks.find(x => x.id === ref.taskId);
+        const tt = bnTaskById(ref.taskId);
         if (!tt) return '';
         const icon = tt.isGroup ? '📁 ' : '';
         return '<div class="cep-anchor-hint">Linked to <strong>' + icon + escapeHtml(tt.subject || '(unnamed)') + '</strong> — ' + ref.side + '</div>';
@@ -1277,7 +1277,7 @@ function renderRoadmapCalendar(roadmapId) {
             const ref = parseAnchorRef(entry, newVal);
             let labelHint = '';
             if (ref) {
-              const tt = STORE.tasks.find(x => x.id === ref.taskId);
+              const tt = bnTaskById(ref.taskId);
               if (tt) labelHint = (tt.subject || '(unnamed)') + ' — ' + ref.side;
             }
             pin.title = newVal
@@ -1397,7 +1397,7 @@ function renderRoadmapCalendar(roadmapId) {
     }
     // Sidebar row writers now target the TASK directly. Dates are task-level: any change in this
     // row applies to ALL roadmaps the task is in (not just this roadmap entry).
-    const _sideTask = STORE.tasks.find(x => x.id === tid);
+    const _sideTask = bnTaskById(tid);
     // Helper: refresh duration input from task.durationDays or computed from Start/End
     function refreshDurInput() {
       const di = node.querySelector('.rmt-duration');
@@ -1549,7 +1549,7 @@ function renderRoadmapCalendar(roadmapId) {
         list.querySelectorAll('.group-picker-item').forEach(it => {
           it.addEventListener('mousedown', e => e.preventDefault());
           it.addEventListener('click', () => {
-            const task = STORE.tasks.find(t => t.id === taskId);
+            const task = bnTaskById(taskId);
             if (!task) return;
             task.groupId = it.dataset.gid;
             task._pendingSync = true;
@@ -1562,7 +1562,7 @@ function renderRoadmapCalendar(roadmapId) {
         // Click on the inline × clears the assignment without opening the popover
         if (e.target && e.target.classList && e.target.classList.contains('gp-clear')) {
           e.stopPropagation();
-          const task = STORE.tasks.find(t => t.id === taskId);
+          const task = bnTaskById(taskId);
           if (!task) return;
           task.groupId = '';
           task._pendingSync = true;
@@ -1590,7 +1590,7 @@ function renderRoadmapCalendar(roadmapId) {
       });
     }
     node.querySelector('.rm-task-del').addEventListener('click', () => {
-      const task = STORE.tasks.find(x => x.id === tid);
+      const task = bnTaskById(tid);
       const name = task ? task.subject : 'this task';
       if (!confirm("Remove '" + name + "' from this roadmap?\n\nThe task itself stays in your task list.")) return;
       if (idx >= 0) {

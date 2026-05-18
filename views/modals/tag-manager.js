@@ -51,7 +51,7 @@ function renderTaskTagsInModal(t) {
     node.addEventListener('click', () => {
       const n = node.dataset.tag;
       t.taskTags = (t.taskTags || []).filter(x => x !== n);
-      const stored = STORE.tasks.find(x => x.id === t.id);
+      const stored = bnTaskById(t.id);
       if (stored) { stored.taskTags = t.taskTags; stored._pendingSync = true; saveStore(STORE); }
       renderTaskTagsInModal(t);
     });
@@ -62,7 +62,7 @@ function renderTaskTagsInModal(t) {
       const n = node.dataset.tag;
       t.taskTags = t.taskTags || [];
       if (!t.taskTags.includes(n)) t.taskTags.push(n);
-      const stored = STORE.tasks.find(x => x.id === t.id);
+      const stored = bnTaskById(t.id);
       if (stored) { stored.taskTags = t.taskTags; stored._pendingSync = true; saveStore(STORE); }
       renderTaskTagsInModal(t);
     });

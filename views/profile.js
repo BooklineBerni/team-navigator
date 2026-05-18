@@ -672,7 +672,7 @@ function wireProfileHeader(person) {
 
 function renderProfileRoadmapCard(rm, personId) {
   const personTaskEntries = (rm.tasks || []).filter(entry => {
-    const t = STORE.tasks.find(x => x.id === entry.taskId);
+    const t = bnTaskById(entry.taskId);
     return t && t.responsibleId === personId;
   });
   const today = new Date(); today.setHours(0,0,0,0);
@@ -690,7 +690,7 @@ function renderProfileRoadmapCard(rm, personId) {
   // Find groups owned by this person within this roadmap; expansion toggles add their kids' events.
   if (!window.__profileGroupExp) window.__profileGroupExp = {};
   const personGroupsInRm = personTaskEntries
-    .map(en => STORE.tasks.find(t => t.id === en.taskId))
+    .map(en => bnTaskById(en.taskId))
     .filter(t => t && t.isGroup);
   // For each expanded group, collect entries of its CHILDREN in this roadmap (any responsible).
   const expandedKidEntries = [];
@@ -698,7 +698,7 @@ function renderProfileRoadmapCard(rm, personId) {
     const key = rm.id + '|' + g.id;
     if (!window.__profileGroupExp[key]) return;
     (rm.tasks || []).forEach(en => {
-      const ct = STORE.tasks.find(t => t.id === en.taskId);
+      const ct = bnTaskById(en.taskId);
       if (ct && !ct.isGroup && ct.groupId === g.id) {
         expandedKidEntries.push({ entry: en, task: ct, viaExpandedGroup: true });
       }
@@ -750,7 +750,7 @@ function renderProfileRoadmapCard(rm, personId) {
   const personGroupIdsInRm = new Set(personGroupsInRm.map(g => g.id));
   const overlayEvents = [];
   personTaskEntries.forEach(entry => {
-    const t = STORE.tasks.find(x => x.id === entry.taskId);
+    const t = bnTaskById(entry.taskId);
     if (!t) return;
     // If this task is a kid of a group also in personTaskEntries, only show it
     // when that group is expanded (we'll render it via expandedKidEntries instead).

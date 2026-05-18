@@ -50,7 +50,7 @@ function renderSubtasksInModal(t) {
       btn.addEventListener('click', e => {
         e.stopPropagation();
         const cid = btn.dataset.tid;
-        const c = STORE.tasks.find(x => x.id === cid);
+        const c = bnTaskById(cid);
         if (!c) return;
         c.groupId = '';
         c._pendingSync = true;
@@ -64,7 +64,7 @@ function renderSubtasksInModal(t) {
   let cur = t;
   while (cur && cur.groupId) {
     ancestors.add(cur.groupId);
-    cur = STORE.tasks.find(x => x.id === cur.groupId);
+    cur = bnTaskById(cur.groupId);
   }
   function getCandidates(query) {
     const q = (query || '').toLowerCase().trim();
@@ -95,7 +95,7 @@ function renderSubtasksInModal(t) {
         btn.addEventListener('mousedown', e => {   // mousedown so it fires before blur
           e.preventDefault();
           const cid = btn.dataset.tid;
-          const c = STORE.tasks.find(x => x.id === cid);
+          const c = bnTaskById(cid);
           if (!c) return;
           c.groupId = t.id;
           c._pendingSync = true;

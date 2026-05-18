@@ -2716,7 +2716,7 @@ function openModal(tid, overrides) {
     t = { id: uid(), subject: "", completed: false, responsibleId: currentPersonIds.size === 1 ? Array.from(currentPersonIds)[0] : "", responsibleRaw: "", proposedById: "", proposedByRaw: "", proposedByIds: [], priority: "", type: "", dueDate: "", slackStatus: "Proposed", dedicatedHours: "", estimatedHours: "", shareWith: "", extraComments: "", sharing: false, isGroup: false, groupId: "", _pendingSync: true, _createdLocal: Date.now(), _isNew: true };
     if (overrides && typeof overrides === 'object') Object.assign(t, overrides);
   } else {
-    t = STORE.tasks.find(x => x.id === tid);
+    t = bnTaskById(tid);
     if (!t) return;
   }
   editingId = t.id;
@@ -2824,7 +2824,7 @@ document.getElementById("saveBtn").addEventListener("click", () => {
     if (missing.length > 0) { alert("Please fill in: " + missing.join(", ")); return; }
   }
   const newCarry = document.getElementById("modal").__newTask;
-  let t = STORE.tasks.find(x => x.id === editingId);
+  let t = bnTaskById(editingId);
   if (!t && newCarry) { t = newCarry; delete t._isNew; STORE.tasks.push(t); }
   if (!t) return;
   t.subject = subject;
@@ -2888,7 +2888,7 @@ document.getElementById("saveBtn").addEventListener("click", () => {
 
 document.getElementById("deleteBtn").addEventListener("click", () => {
   if (!editingId) return;
-  const t = STORE.tasks.find(x => x.id === editingId);
+  const t = bnTaskById(editingId);
   if (t && t.isGroup) {
     const kids = (STORE.tasks || []).filter(x => x.groupId === t.id);
     if (kids.length > 0) {
@@ -3290,7 +3290,7 @@ function bnEndFromStartAndDuration(startStr, n) {
   // Apply button → commit the staged values to the task immediately.
   btnEl.addEventListener('click', () => {
     if (!editingId) return;
-    const t = STORE.tasks.find(x => x.id === editingId);
+    const t = bnTaskById(editingId);
     if (!t) return;
     const startV = startEl.value || '';
     const endV   = endEl.value || '';
@@ -3468,7 +3468,7 @@ function bnEndFromStartAndDuration(startStr, n) {
   }
   function autoSave() {
     if (!editingId) return;
-    const t = STORE.tasks.find(x => x.id === editingId);
+    const t = bnTaskById(editingId);
     if (!t) return;
     const startV = startEl.value || '';
     const endV   = endEl.value || '';
@@ -3775,7 +3775,7 @@ window.__renderTaskAggregatedSchedule = function(t) {
   window.__resetApplyToRoadmapsState = clearPendingApplyVisual;
   function bumpApplyState() {
     if (!editingId) { applyEl.disabled = true; return; }
-    const t = STORE.tasks.find(x => x.id === editingId);
+    const t = bnTaskById(editingId);
     if (!t) { applyEl.disabled = true; return; }
     const rms = getRoadmaps().filter(r => (r.tasks || []).some(e => e.taskId === t.id));
     const hasRoadmaps = rms.length > 0;
@@ -3976,7 +3976,7 @@ function toggleWorkedOverride(dateStr) {
 function parseAnchorRefGlobal(entry, anchorVal) {
   if (!anchorVal) return null;
   if (anchorVal === 'group-start' || anchorVal === 'group-end') {
-    const t = STORE.tasks.find(x => x.id === entry.taskId);
+    const t = bnTaskById(entry.taskId);
     if (t && t.groupId) return { taskId: t.groupId, side: anchorVal === 'group-end' ? 'end' : 'start' };
     return null;
   }
@@ -4116,7 +4116,7 @@ function openTaskScheduleAnchorPicker(anchorBtn, selfTaskId, kind /* 'start'|'en
   document.querySelectorAll('.bn-anchor-menu').forEach(n => n.remove());
   const others = (STORE.tasks || []).filter(t => t.id !== selfTaskId);
   if (others.length === 0) return;
-  const ownTask = STORE.tasks.find(t => t.id === selfTaskId);
+  const ownTask = bnTaskById(selfTaskId);
   others.sort((a, b) => {
     const ap = ownTask && ownTask.groupId === a.id ? 0 : (a.isGroup ? 1 : 2);
     const bp = ownTask && ownTask.groupId === b.id ? 0 : (b.isGroup ? 1 : 2);
@@ -4365,7 +4365,7 @@ function bnRenderTaskAggBadge(t) {
 }
 function bnPillStyleForTaskId(taskId) {
   if (!taskId) return null;
-  const tk = STORE.tasks.find(x => x.id === taskId);
+  const tk = bnTaskById(taskId);
   if (!tk) return null;
   return BN_STATUS_PILL[tk.slackStatus || ''] || BN_STATUS_PILL[''];
 }
@@ -4575,7 +4575,7 @@ function bnTaskAnchorLabel(anchorVal) {
   if (!anchorVal) return '';
   const ref = parseAnchorRefGlobal({ taskId: '' }, anchorVal);
   if (!ref) return '';
-  const t = STORE.tasks.find(x => x.id === ref.taskId);
+  const t = bnTaskById(ref.taskId);
   return (t ? (t.subject || '(unnamed)') : '?') + ' — ' + ref.side;
 }
 
@@ -4951,7 +4951,7 @@ function renderRoadmapsPage() {
     const p = findPerson(r.responsibleId);
     const taskCount = (r.tasks || []).length;
     const completedCount = (r.tasks || []).filter(entry => {
-      const t = STORE.tasks.find(x => x.id === entry.taskId);
+      const t = bnTaskById(entry.taskId);
       return t && (t.slackStatus === "Completed");
     }).length;
     const pct = taskCount > 0 ? Math.round(100 * completedCount / taskCount) : 0;
@@ -5011,7 +5011,7 @@ function renderRoadmapDetailInline(id) {
       return;
     }
     list.innerHTML = r.tasks.map((entry, idx) => {
-      const t = STORE.tasks.find(x => x.id === entry.taskId);
+      const t = bnTaskById(entry.taskId);
       const subject = t ? t.subject : "(missing task " + entry.taskId + ")";
       return '<div class="rm-task-row" data-idx="' + idx + '">' +
         '<span title="' + escapeHtml(subject) + '">' + escapeHtml(subject.slice(0, 60)) + (subject.length > 60 ? "..." : "") + '</span>' +
@@ -5305,7 +5305,7 @@ function renderRoadmapTasks() {
     return;
   }
   list.innerHTML = r.tasks.map((entry, idx) => {
-    const t = STORE.tasks.find(x => x.id === entry.taskId);
+    const t = bnTaskById(entry.taskId);
     const subject = t ? t.subject : "(missing task " + entry.taskId + ")";
     return '<div class="rm-task-row" data-idx="' + idx + '">' +
       '<span title="' + escapeHtml(subject) + '">' + escapeHtml(subject.slice(0, 60)) + (subject.length > 60 ? "…" : "") + '</span>' +
@@ -5622,7 +5622,7 @@ document.getElementById("bulkAddTagSel").addEventListener("change", e => {
   // Auto-add to library if missing (shouldn't happen since dropdown is populated from lib)
   if (!findTaskTag(tag)) addTaskTagToLibrary(tag);
   selectedTaskIds.forEach(tid => {
-    const t = STORE.tasks.find(x => x.id === tid);
+    const t = bnTaskById(tid);
     if (!t) return;
     t.taskTags = t.taskTags || [];
     if (!t.taskTags.includes(tag)) t.taskTags.push(tag);
@@ -5636,7 +5636,7 @@ document.getElementById("bulkRemoveTagSel").addEventListener("change", e => {
   const tag = e.target.value;
   if (!tag || selectedTaskIds.size === 0) { e.target.value = ""; return; }
   selectedTaskIds.forEach(tid => {
-    const t = STORE.tasks.find(x => x.id === tid);
+    const t = bnTaskById(tid);
     if (!t) return;
     t.taskTags = (t.taskTags || []).filter(x => x !== tag);
     t._pendingSync = true;
@@ -5650,7 +5650,7 @@ document.getElementById("bulkSetStatus").addEventListener("change", e => {
   if (!ps || selectedTaskIds.size === 0) { e.target.value = ""; return; }
   if (!confirm("Set status to '" + ps + "' on " + selectedTaskIds.size + " task(s)?")) { e.target.value = ""; return; }
   selectedTaskIds.forEach(tid => {
-    const t = STORE.tasks.find(x => x.id === tid);
+    const t = bnTaskById(tid);
     if (!t) return;
     t.slackStatus = ps;
     t._pendingSync = true;
@@ -5668,7 +5668,7 @@ document.getElementById("bulkSetType").addEventListener("change", e => {
   const lbl = (raw === "__empty") ? "(empty)" : newType;
   if (!confirm("Set type to '" + lbl + "' on " + selectedTaskIds.size + " task(s)?")) { e.target.value = ""; return; }
   selectedTaskIds.forEach(tid => {
-    const t = STORE.tasks.find(x => x.id === tid);
+    const t = bnTaskById(tid);
     if (!t) return;
     t.type = newType;
     t._pendingSync = true;
@@ -5686,7 +5686,7 @@ document.getElementById("bulkSetResponsible").addEventListener("change", e => {
   const name = person ? (person.displayName || person.name) : pid;
   if (!confirm("Set responsible to '" + name + "' on " + selectedTaskIds.size + " task(s)?")) { e.target.value = ""; return; }
   selectedTaskIds.forEach(tid => {
-    const t = STORE.tasks.find(x => x.id === tid);
+    const t = bnTaskById(tid);
     if (!t) return;
     t.responsibleId = pid;
     if (person) t.responsibleRaw = person.email || person.name;
@@ -5706,7 +5706,7 @@ if (_bulkPrioEl) _bulkPrioEl.addEventListener("change", e => {
   const lbl = (raw === "__empty") ? "(empty)" : newPrio;
   if (!confirm("Set priority to '" + lbl + "' on " + selectedTaskIds.size + " task(s)?")) { e.target.value = ""; return; }
   selectedTaskIds.forEach(tid => {
-    const t = STORE.tasks.find(x => x.id === tid);
+    const t = bnTaskById(tid);
     if (!t) return;
     t.priority = newPrio;
     t._pendingSync = true;
