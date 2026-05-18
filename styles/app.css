@@ -283,11 +283,7 @@
   /* Roadmaps page */
   .rm-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
   .rm-selector { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; min-width: 0; }
-  .rm-tab { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid #d8d6d1; background: #fff; color: #1a1a1a; border-radius: 999px; font-size: 12px; cursor: grab; font-weight: 600; font-family: inherit; position: relative; user-select: none; line-height: 1.2; }
-  .rm-tab:active { cursor: grabbing; }
   .rm-tab.dragging { opacity: .4; }
-  .rm-tab.drop-before { box-shadow: -3px 0 0 0 #1a1a1a; }
-  .rm-tab.drop-after { box-shadow: 3px 0 0 0 #1a1a1a; }
   .rm-tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
   /* Roadmap title picker — same pattern as Profile name picker */
   .rm-name-trigger {
@@ -342,21 +338,6 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .rm-modal-link:hover { text-decoration: underline; color: #78350f; }
-  .rm-modal-dates {
-    flex-shrink: 0;
-    display: inline-flex; align-items: center; gap: 4px;
-    white-space: nowrap;
-  }
-  .rm-modal-date-input {
-    background: #fff; border: 1px solid #fde68a;
-    color: #92400e;
-    padding: 2px 6px; border-radius: 6px;
-    font-size: 11px; font-family: inherit;
-    width: 130px;
-  }
-  .rm-modal-date-input:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
-  .rm-modal-date-input:disabled { background: #fef3c7; color: #92400e; cursor: not-allowed; }
-  .rm-modal-arrow { color: #92400e; font-weight: 600; font-size: 11px; }
   /* Per-row Apply-style component: pin + start + N days + end + pin, with source chips below.
      (The modal chip no longer renders date editors; this is kept for legacy callers.) */
   .rm-modal-row.has-dates { flex-wrap: wrap; align-items: flex-start; flex-basis: 100%; }
@@ -364,8 +345,6 @@
     display: inline-flex; align-items: flex-start; gap: 6px;
     flex-wrap: nowrap;
   }
-  .rm-modal-cell { display: inline-flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .rm-modal-input-wrap { display: inline-flex; align-items: center; gap: 3px; }
   .rm-modal-pin {
     background: #fff; border: 1px solid #fde68a; border-radius: 5px;
     padding: 2px 4px; cursor: pointer;
@@ -380,7 +359,6 @@
     text-align: center;
   }
   .rm-modal-days-cell input.rm-modal-days:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
-  .rm-modal-days-unit { font-size: 10px; color: #92400e; margin-left: 2px; }
   /* Pill that replaces the date input when a source label (start of X / end of X) is set.
      The whole pill is a single clickable button — clicking it clears the source and reveals the
      date input. The resolved date moves BELOW the pill as a dim "= YYYY-MM-DD" reference (also
@@ -410,13 +388,6 @@
   }
   .rm-modal-date-display:hover { opacity: 1; text-decoration: underline; }
   /* Read-only "= N days" indicator below the End date in each roadmap row */
-  .rm-modal-days-display {
-    font-size: 10px; color: #6b6b6b; opacity: 0.7;
-    font-variant-numeric: tabular-nums;
-    padding: 0 4px; margin-top: 1px;
-    align-self: flex-start;
-    font-weight: 600;
-  }
   /* Mini avatar used in roadmap rows / picker (replaces the old pin emoji) */
   .rm-owner-mini {
     flex-shrink: 0;
@@ -525,20 +496,9 @@
   }
   .rm-summary-meta .sep { color: #d8d6d1; }
   .rm-summary-actions { display: flex; gap: 6px; flex-shrink: 0; }
-  .gantt-container { background: #fff; border: 1px solid #ececea; border-radius: 12px; overflow: auto; max-width: 100%; }
-  .gantt-time-axis { display: grid; grid-template-columns: 220px 1fr; border-bottom: 1px solid #ececea; background: #faf9f7; position: sticky; top: 0; z-index: 5; }
-  .gantt-corner { padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.04em; border-right: 1px solid #ececea; }
-  .gantt-months { display: flex; height: 100%; align-items: center; position: relative; min-height: 32px; }
-  .gantt-month-tick { position: absolute; top: 0; bottom: 0; padding: 8px 0 0 6px; font-size: 11px; color: #6b6b6b; border-left: 1px solid #ececea; font-weight: 600; }
-  .gantt-row { display: grid; grid-template-columns: 220px 1fr; border-bottom: 1px solid #f0efeb; min-height: 36px; align-items: center; }
-  .gantt-task-label { padding: 6px 12px; font-size: 12px; line-height: 1.3; cursor: pointer; border-right: 1px solid #ececea; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .gantt-bar-area { position: relative; height: 36px; }
-  .gantt-today-line { position: absolute; top: 0; bottom: 0; width: 2px; background: #b42318; opacity: 0.4; z-index: 2; pointer-events: none; }
-  .gantt-bar { position: absolute; height: 22px; top: 7px; border-radius: 5px; padding: 0 8px; font-size: 11px; color: #fff; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; white-space: nowrap; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
   .rm-empty { padding: 40px; text-align: center; color: #9a9a9a; font-size: 13px; }
   .rm-task-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; margin-top: 6px; }
   .rm-task-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; align-items: center; padding: 6px 8px; background: #faf9f7; border: 1px solid #efeeea; border-radius: 6px; font-size: 12px; }
-
 
   /* === Roadmap Calendar (Google Calendar-style) === */
   .cal-toolbar {
@@ -815,17 +775,6 @@
   }
   .cal-event-edit-popover .cep-anchor-hint:empty { display: none; }
   .cal-event-edit-popover .cep-anchor-hint strong { color: #1a1a1a; font-weight: 700; }
-  .cal-more-events {
-    position: absolute; font-size: 10px; color: #6b6b6b; cursor: pointer;
-    padding: 2px 6px; pointer-events: auto;
-  }
-  .cal-more-events:hover { color: #1a1a1a; }
-  .cal-no-tasks {
-    background: #fff; border: 1px dashed #d8d6d1; border-radius: 12px;
-    padding: 40px; text-align: center; color: #9a9a9a; font-size: 13px; margin-top: 14px;
-  }
-
-
   /* Non-working days (weekends + holidays) */
   .cal-day.holiday { background: #ededec; }
   .cal-day.holiday .holiday-name {
@@ -870,11 +819,6 @@
   /* Make ALL day numbers clickable to toggle their state */
   .cal-day .day-num.toggle { cursor: pointer; padding: 2px 5px; border-radius: 5px; transition: background .12s; }
   .cal-day .day-num.toggle:hover { background: rgba(0,0,0,0.06); }
-  .cal-toolbar-help {
-    margin-left: auto; font-size: 11px; color: #9a9a9a;
-  }
-
-
   /* Task multi-select for roadmap assign */
   .rm-add-panel { margin-top: 14px; padding-top: 14px; border-top: 1px solid #eee; }
   .rm-add-panel h4 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
@@ -908,7 +852,6 @@
   .badge.roadmap-badge { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 3px; }
   .badge.roadmap-badge .rm-owner-mini { width: 14px; height: 14px; font-size: 8px; flex: 0 0 auto; vertical-align: middle; }
   .badge.roadmap-badge .rm-owner-mini .ini { font-size: 8px; }
-
 
   /* Roadmap page — full viewport, no outer scroll */
   body.view-roadmaps-active { overflow: hidden !important; height: 100vh; }
@@ -962,7 +905,6 @@
     z-index: 10;
   }
 
-
   /* Fixed full-height sidebar (independent of scroll) */
   .wrap { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: 100vh; }
   .app-layout { display: block !important; padding: 0 !important; margin: 0 !important; gap: 0 !important; }
@@ -992,14 +934,12 @@
     header.top, .main-content, footer.bot { margin-left: 0; }
   }
 
-
   .cal-toggle {
     display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #6b6b6b;
     cursor: pointer; user-select: none; padding: 4px 8px; border-radius: 6px;
   }
   .cal-toggle:hover { background: #f0efeb; }
   .cal-toggle input { cursor: pointer; margin: 0; }
-  .cal-toolbar-help { display: none; }
   /* Compact unscheduled rows in side panel */
   .rm-side-area .rm-unscheduled { padding: 12px; max-width: 100%; }
   /* Archived section (under Unscheduled) — collapsible */
@@ -1129,10 +1069,6 @@
     background: #f5f3ed; border: 1px solid #ececea; border-radius: 8px;
     padding: 8px 10px; margin-bottom: 8px;
   }
-  .bn-quick-apply-lbl {
-    font-size: 11px; font-weight: 700; color: #6b6b6b;
-    text-transform: uppercase; letter-spacing: .04em;
-  }
   .bn-quick-apply-inputs {
     display: flex; align-items: center; gap: 6px;
   }
@@ -1140,8 +1076,6 @@
     width: 140px; padding: 4px 6px; font-size: 12px;
     background: #fff; border: 1px solid #d6d3c8; border-radius: 6px;
   }
-  .bn-quick-apply-arrow { color: #9a9a9a; font-size: 13px; }
-  .bn-quick-apply-btn { font-size: 12px; padding: 5px 14px; }
   .bn-quick-apply-days { width: 56px; text-align: center; }
   .bn-quick-apply-days-unit { font-size: 11px; color: #6b6b6b; }
   .bn-quick-apply-days-cell { min-width: 0; }
@@ -1178,146 +1112,27 @@
     margin-top: 12px; padding: 10px 12px;
     background: #f5f3ed; border: 1px dashed #d6d3c8; border-radius: 8px;
   }
-  .bn-agg-display-lbl {
-    font-size: 10.5px; font-weight: 700; color: #6b6b6b;
-    text-transform: uppercase; letter-spacing: .04em;
-  }
-  .bn-agg-display-pair {
-    display: inline-flex; align-items: baseline; gap: 6px;
-  }
-  .bn-agg-display-key {
-    font-size: 10.5px; font-weight: 700; color: #9a9a9a;
-    text-transform: uppercase; letter-spacing: .04em;
-  }
   .bn-agg-display-val {
     font-size: 13px; font-weight: 700; color: #1a1a1a;
     font-variant-numeric: tabular-nums;
   }
   .bn-agg-display-val.empty { color: #b3b3b3; font-weight: 500; font-style: italic; }
-  .bn-agg-display-stack {
-    display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px;
-  }
   /* Plain "N days" indicator between Start and End — no pill, just dim text. */
-  .bn-agg-display-span {
-    font-size: 11px; font-weight: 600; color: #6b6b6b;
-    font-variant-numeric: tabular-nums;
-    padding: 0 4px;
-  }
   /* Date-below variant: smaller + "= " prefix — used only when a pill is present above it */
   .bn-agg-display-val.below {
     font-size: 11px; font-weight: 500; opacity: 0.75; color: #92400e;
   }
   .bn-agg-display-val.below::before { content: '= '; opacity: 0.6; }
-  .bn-agg-display-pill {
-    font-size: 11px; font-weight: 700;
-    color: #78350f; background: #fef3c7;
-    border: 1px solid #fde68a; border-radius: 5px;
-    padding: 1px 6px;
-    max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
   .bn-agg-display-stack .bn-agg-display-val { padding: 0 2px; }
   /* Task modal — Schedule sections (Apply-to-all editable + Aggregated read-only) */
-  .bn-sched-section {
-    background: #fbfaf6; border: 1px solid #ececea; border-radius: 10px;
-    padding: 10px 12px;
-  }
-  .bn-sched-section.bn-sched-view {
-    background: #f5f3ed; border-style: dashed;
-  }
-  .bn-sched-section-head {
-    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
-    margin-bottom: 8px;
-  }
-  .bn-sched-section-title {
-    font-size: 11.5px; font-weight: 700; color: #1a1a1a;
-    text-transform: uppercase; letter-spacing: .04em;
-  }
-  .bn-sched-section-sub {
-    font-size: 11px; color: #6b6b6b; font-weight: 500;
-  }
-  .bn-sched-row {
-    display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;
-  }
-  .bn-sched-cell {
-    display: flex; flex-direction: column; gap: 4px; min-width: 0;
-  }
-  .bn-sched-cell.bn-sched-dur { min-width: 120px; }
-  .bn-sched-cell.bn-sched-apply-cell { margin-left: auto; }
   .bn-sched-cell.bn-sched-apply-cell .btn { font-size: 12px; padding: 6px 14px; white-space: nowrap; }
-  .bn-sched-lbl {
-    font-size: 10px; font-weight: 700; color: #6b6b6b;
-    text-transform: uppercase; letter-spacing: .04em;
-  }
-  .bn-sched-input-wrap {
-    display: flex; align-items: center; gap: 4px;
-  }
-  .bn-sched-input { width: 150px; }
   .bn-sched-cell.bn-sched-dur input[type=number] { width: 64px; }
-  .bn-sched-pin {
-    background: #fff; border: 1px solid #d6d3c8; border-radius: 6px;
-    padding: 4px 6px; cursor: pointer;
-    font-size: 12px; line-height: 1;
-    opacity: .65; transition: all .12s;
-  }
-  .bn-sched-pin:hover { opacity: 1; border-color: #999; }
   .bn-sched-pin.active {
     background: #fef3c7; border-color: #f59e0b;
     opacity: 1;
   }
-  .bn-sched-anchor-hint {
-    font-size: 10.5px; color: #92400e; font-style: italic;
-    background: #fef3c7; padding: 2px 6px; border-radius: 4px;
-    max-width: 200px;
-  }
-  .bn-sched-hint {
-    font-size: 11px; color: #6b6b6b; margin-top: 8px;
-  }
-  .bn-sched-agg-view {
-    display: flex; flex-direction: column; gap: 6px;
-  }
-  .bn-sched-agg-summary {
-    display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
-    padding: 6px 0;
-    border-bottom: 1px dashed #d6d3c8;
-  }
-  .bn-sched-agg-summary .bn-agg-pair {
-    display: flex; gap: 6px; align-items: baseline;
-  }
-  .bn-sched-agg-summary .bn-agg-label {
-    font-size: 10.5px; font-weight: 700; color: #6b6b6b;
-    text-transform: uppercase; letter-spacing: .04em;
-  }
-  .bn-sched-agg-summary .bn-agg-value {
-    font-size: 13px; font-weight: 700; color: #1a1a1a;
-    font-variant-numeric: tabular-nums;
-  }
   .bn-sched-agg-summary .bn-agg-value.empty { color: #b3b3b3; font-weight: 500; font-style: italic; }
-  .bn-sched-agg-rows {
-    display: flex; flex-direction: column; gap: 3px;
-    font-size: 11.5px;
-  }
-  .bn-sched-agg-row {
-    display: grid; grid-template-columns: 1fr auto auto auto;
-    gap: 8px; align-items: center;
-    padding: 3px 0;
-  }
-  .bn-sched-agg-row .bn-agg-rm-name {
-    font-weight: 600; color: #1a1a1a;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .bn-sched-agg-row .bn-agg-cell {
-    font-variant-numeric: tabular-nums; color: #444;
-    min-width: 95px; text-align: right;
-  }
   .bn-sched-agg-row .bn-agg-cell.empty { color: #b3b3b3; font-style: italic; }
-  .bn-sched-agg-row .bn-agg-anchor-tag {
-    font-size: 9.5px; padding: 1px 5px; border-radius: 3px;
-    background: #fef3c7; color: #92400e; font-weight: 600;
-    text-transform: uppercase; letter-spacing: .03em;
-  }
-  .bn-sched-empty {
-    font-size: 11.5px; color: #9a9a9a; font-style: italic;
-  }
   /* Floating anchor picker menu — modern UI with search + filter chips + per-task start/end */
   .bn-anchor-menu {
     position: absolute; z-index: 300;
@@ -1506,7 +1321,6 @@
     align-self: flex-end; padding: 0 6px;
   }
 
-
   .rm-owner-chip {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 2px 10px 2px 2px; background: #f0efeb; border-radius: 999px;
@@ -1515,7 +1329,6 @@
   }
   .rm-owner-chip:hover { background: #e2e0db; }
   .rm-owner-chip .rm-owner-name { font-size: 13px; }
-
 
   .members-section-heading {
     font-size: 14px; font-weight: 700; color: #6b6b6b;
@@ -1951,13 +1764,6 @@
   }
   .profile-picker .picker-search { flex: 1; min-width: 200px; }
   .profile-picker .picker-strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .profile-chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 4px 10px 4px 4px; border: 1px solid #ececea; border-radius: 999px;
-    background: #fff; cursor: pointer; font-size: 12px; font-weight: 600; color: #1a1a1a;
-    transition: all .12s;
-  }
-  .profile-chip:hover { background: #f7f6f2; border-color: #d8d6d1; }
   .profile-chip.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
   .profile-chip .av { width: 22px; height: 22px; border-radius: 50%; }
   .profile-chip .av img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
@@ -2321,7 +2127,6 @@
   .field textarea { resize: vertical; min-height: 80px; }
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-  .checkbox-field { display: flex; align-items: center; gap: 8px; font-size: 13px; }
   .modal-actions {
     display: flex; gap: 8px; justify-content: space-between;
     margin: 16px -24px -24px;
@@ -2401,10 +2206,8 @@
 
   .show-counts-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #6b6b6b; user-select: none; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
   .show-counts-toggle input { cursor: pointer; margin: 0; }
-  .pending-sync-counter { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #92400e; background: #fef3c7; border: 1px solid #fde68a; padding: 4px 10px; border-radius: 999px; }
   kbd { background: #f0efeb; border: 1px solid #d8d6d1; border-radius: 4px; padding: 0 5px; font-size: 11px; font-family: inherit; }
   footer.bot { margin-top: 28px; font-size: 11.5px; color: #9a9a9a; text-align: center; }
-
 
     /* Home / Dashboard styles (light theme compatible) */
   .home-greeting { font-size: 28px; font-weight: 700; margin: 0 0 4px; color: #1a1a1a; letter-spacing: -0.02em; }
@@ -2444,7 +2247,6 @@
   .pipeline-bar { width: 100%; max-width: 80px; min-height: 6px; border-radius: 8px 8px 0 0; transition: all .3s; }
   .pipeline-bar:hover { transform: translateY(-3px); }
   .pipeline-bar-label { font-size: 11px; color: #6b6b6b; text-align: center; line-height: 1.2; }
-  .pipeline-bar-value { font-size: 16px; font-weight: 700; color: #1a1a1a; }
   .pipeline-bar-amount { font-size: 11px; color: #6b6b6b; margin-bottom: 4px; }
   .activity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 14px; }
   .activity-stat { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px; }
@@ -2522,24 +2324,11 @@
   .bn-bulk-task-card .bnf-pill.active:hover { background: #333; }
 
   /* Person picker chip — uses bn-cp-chip with avatar */
-  .bn-bulk-person-box { position: relative; min-width: 160px; }
-  .bn-bulk-person-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px 5px 5px; background: #fff; border: 1px solid #ececea; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; color: #1a1a1a; min-height: 28px; width: 100%; transition: border-color .15s; }
-  .bn-bulk-person-chip:hover { border-color: #1a1a1a; }
   .bn-bulk-person-chip .bn-cp-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bn-bulk-person-chip .bn-cp-caret { font-size: 10px; opacity: 0.6; flex-shrink: 0; }
-  .bn-bulk-person-avatar { width: 22px; height: 22px; border-radius: 50%; overflow: hidden; background: #ececea; color: #6b6b6b; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
   .bn-bulk-person-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .bn-bulk-person-avatar.is-empty { background: #f5f5f3; color: #c5c5c0; }
-  .bn-bulk-person-dd { position: absolute; z-index: 100000; top: calc(100% + 4px); left: 0; min-width: 240px; max-width: 280px; width: max-content; background: #fff; border: 1px solid #ececea; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); padding: 6px; max-height: 280px; display: flex; flex-direction: column; }
-  .bn-bulk-person-search { width: 100%; padding: 6px 8px; font-size: 12px; border: 1px solid #ececea; border-radius: 6px; margin-bottom: 4px; outline: none; }
-  .bn-bulk-person-search:focus { border-color: #1a1a1a; }
-  .bn-bulk-person-list { overflow: auto; flex: 1; min-height: 0; }
-  .bn-bulk-person-list .bn-bulk-person-row { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #1a1a1a; }
-  .bn-bulk-person-list .bn-bulk-person-row:hover { background: #f5f5f3; }
   .bn-bulk-person-list .bn-bulk-person-row.active { background: #ececea; }
   .bn-bulk-person-list .bn-bulk-person-row .check { margin-left: auto; color: #1a1a1a; font-weight: 700; }
-  .bn-bulk-person-list .bn-bulk-person-row.is-clear { color: #9a9a9a; font-style: italic; }
-
   /* Override bn-cp-dropdown positioning when used inside bulk card (it's normally inline-positioned by task modal) */
   .bn-bulk-task-card .bn-cp-box { position: relative; min-width: 130px; }
   .bn-bulk-task-card .bn-cp-dropdown { position: absolute; z-index: 100000; top: calc(100% + 4px); left: 0; min-width: 180px; max-width: 260px; width: max-content; background: #fff; border: 1px solid #ececea; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); padding: 4px; max-height: 320px; overflow: auto; }
@@ -2649,8 +2438,6 @@
    { display: none !important; }
 
   /* Date row inside bulk card (pin + start + days + end + pin) */
-  .bn-bulk-date-row { grid-column: 1 / -1; }
-  .bn-bulk-date-row .field-label { display:block; margin-bottom:3px; }
   .bn-bulk-date-cells { display: grid; grid-template-columns: 28px 1fr 90px 1fr 28px; gap: 4px; align-items: center; }
   .bn-bulk-date-cells .pin { width: 26px; height: 28px; padding: 0; border: 1px solid #ececea; background: #fff; border-radius: 6px; cursor: pointer; font-size: 13px; }
   .bn-bulk-date-cells .pin:hover { background: #f5f5f3; }
@@ -2683,9 +2470,7 @@
   .bn-bulk-modal.open { display: flex; }
   .bn-bulk-modal-content { background: #fff; border-radius: 12px; max-width: 1500px; width: 100%; max-height: calc(100vh - 64px); overflow: auto; padding: 22px 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
   .bn-bulk-modal h2 { margin: 0 0 10px; font-size: 18px; font-weight: 700; }
-  .bn-bulk-hint { font-size: 13px; color: #6b6b6b; margin: 4px 0 12px; }
   .bn-bulk-hint code { background: #f5f5f3; padding: 1px 6px; border-radius: 4px; font-family: ui-monospace, monospace; }
-  .bn-bulk-paste-textarea { width: 100%; min-height: 200px; max-height: 380px; padding: 10px 12px; border: 1px solid #ececea; border-radius: 8px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; resize: vertical; }
   .bn-bulk-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid #f0efeb; }
   /* Sticky bottom action bar inside the bulk modal — always visible while scrolling */
   #bnBulkStage2 .bn-bulk-actions { position: sticky; bottom: -22px; background: #fff; z-index: 10; padding-bottom: 14px; margin-left: -24px; margin-right: -24px; padding-left: 24px; padding-right: 24px; box-shadow: 0 -2px 8px rgba(0,0,0,0.04); }
@@ -2695,7 +2480,6 @@
   .bn-bulk-field-toggles.collapsed .toggles-label { display: inline-flex; align-items: center; }
   .toggles-collapse-btn { position: absolute; top: 4px; right: 4px; background: transparent; border: 1px solid #ececea; border-radius: 6px; padding: 2px 8px; font-size: 11px; color: #6b6b6b; cursor: pointer; }
   .toggles-collapse-btn:hover { color: #1a1a1a; border-color: #1a1a1a; }
-  .bn-bulk-apply-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 12px; background: #fafaf8; border: 1px solid #ececea; border-radius: 8px; margin-bottom: 12px; font-size: 12px; }
   .bn-bulk-apply-row strong { margin-right: 4px; color: #6b6b6b; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
   .bn-bulk-apply-row select, .bn-bulk-apply-row input { padding: 4px 6px; font-size: 12px; border: 1px solid #ececea; border-radius: 6px; background: #fff; font-family: inherit; }
   .bn-bulk-apply-row .apply-btn { padding: 4px 10px; background: #1a1a1a; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
@@ -2755,9 +2539,6 @@
   .bn-bup-info { font-size: 12px; color: #6b6b6b; margin: 8px 0; }
 
   /* Tab navigation */
-  .tabs {
-    display: flex; gap: 2px; border-bottom: 1px solid #ececea; margin-bottom: 16px;
-  }
   .tab {
     appearance: none; border: none; background: transparent; cursor: pointer;
     padding: 10px 18px; font-size: 14px; font-weight: 600; color: #9a9a9a;
@@ -3213,12 +2994,6 @@
   .badge.group-badge { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-weight: 600; }
 
   /* Roadmaps page */
-  .rm-page-header {
-    display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap;
-  }
-  .rm-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;
-  }
   .rm-card {
     padding: 14px; background: #fff; border: 1px solid #ececea; border-radius: 10px; cursor: pointer;
     transition: all .12s;
@@ -3283,7 +3058,6 @@
   .bn-auth-gate .bn-auth-secondary { color: #d8d6d1; font-size: 12px; text-decoration: underline; background: none; border: none; cursor: pointer; padding: 4px 8px; }
   .bn-auth-gate .bn-auth-secondary:hover { color: #fff; }
   /* Spinner used during OAuth callback so the user knows the app is finishing the login */
-  .bn-auth-spinner { width: 32px; height: 32px; border: 3px solid #2a2a2a; border-top-color: #fff; border-radius: 50%; animation: bn-auth-spin 0.9s linear infinite; }
   @keyframes bn-auth-spin { to { transform: rotate(360deg); } }
   body.bn-locked { overflow: hidden; }
   body.bn-locked > .wrap, body.bn-locked > footer { display: none !important; }
