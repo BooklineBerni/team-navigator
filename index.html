@@ -486,6 +486,7 @@ Weekly metrics by country" spellcheck="false"></textarea>
             <select id="bnAdminAllowPerm" title="Permission applied when the user signs in" style="padding:8px 10px; border:1px solid #d0d0d0; border-radius:6px;">
               <option value="none">none</option>
               <option value="restricted_view" selected>restricted_view</option>
+              <option value="member">member</option>
               <option value="admin">admin</option>
             </select>
             <button class="btn primary" id="bnAdminAllowAddBtn" type="button">+ Add</button>
@@ -904,6 +905,9 @@ Weekly metrics by country" spellcheck="false"></textarea>
       <button class="btn danger" id="deleteBtn">Delete</button>
       <div style="display:flex; gap:8px">
         <button class="btn" onclick="closeModal()">Cancel</button>
+        <!-- Members get their own Save button that ONLY persists the slackStatus change.
+             Hidden by default — CSS reveals it for body.bn-member.bn-modal-member-edit-own. -->
+        <button class="btn primary" id="memberSaveStatusBtn" style="display:none">Save status</button>
         <button class="btn primary" id="saveBtn">Save</button>
       </div>
     </div>
@@ -2800,6 +2804,7 @@ function openModal(tid, overrides) {
     // viewable in the list but the modal stays closed. This matches the user spec:
     //   "solo me debería dejar ver tasks en expansión si estoy como proposed by o
     //    como responsable"
+    let _bnIsOwnTaskForMember = false;
     if (typeof bnIsRestrictedView === 'function' && bnIsRestrictedView()) {
       const ownId = (typeof bnFindOwnTeamId === 'function') ? bnFindOwnTeamId() : null;
       if (ownId) {
@@ -2810,12 +2815,22 @@ function openModal(tid, overrides) {
           console.info('[BN] openModal blocked — restricted user is not proposed/responsible on this task.');
           return;
         }
+        // Member can edit the status field on tasks where they are the RESPONSIBLE.
+        // Being only in proposedBy is not enough — the user spec is "owner" = responsible.
+        if (typeof bnIsMember === 'function' && bnIsMember() && isResp) {
+          _bnIsOwnTaskForMember = true;
+        }
       } else {
         // No team-id resolvable for the current viewer → safest is to block.
         console.info('[BN] openModal blocked — restricted user with no resolvable team id.');
         return;
       }
     }
+    // Body class so CSS can re-enable the status picker + show a Save button
+    // strictly for member + own task. Cleared every other code path.
+    try {
+      document.body.classList.toggle('bn-modal-member-edit-own', _bnIsOwnTaskForMember);
+    } catch (_) {}
   }
   editingId = t.id;
   const isG = !!t.isGroup;
@@ -2897,9 +2912,62 @@ function closeModal() {
   // Clear transient per-row source-chip labels (they're not persisted)
   window.__rmRowSrc = {};
   document.getElementById("modalBg").classList.remove("show");
+  // Clear the member-edit-own marker so the next modal open starts neutral.
+  try { document.body.classList.remove('bn-modal-member-edit-own'); } catch (_) {}
   editingId = null;
 }
 document.getElementById("modalBg").addEventListener("click", e => { if (e.target.id === "modalBg") closeModal(); });
+
+// Member-only Save: persists the slackStatus change on the user's OWN task and
+// pushes to the cloud. All other modal fields are untouched. The save and push
+// paths are normally blocked by the read-only guards — we temporarily set
+// window.__bnMemberStatusSave so saveStore and bnSyncPushToCloud let this one
+// through. The Supabase RPC enforces the same "caller is a member, can only
+// touch this one task's status" rule server-side (member_set_task_status).
+(function () {
+  const btn = document.getElementById('memberSaveStatusBtn');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    if (!editingId) return;
+    if (typeof bnIsMember !== 'function' || !bnIsMember()) return;
+    const t = bnTaskById(editingId);
+    if (!t) return;
+    const ownId = (typeof bnFindOwnTeamId === 'function') ? bnFindOwnTeamId() : null;
+    if (!ownId || t.responsibleId !== ownId) {
+      console.info('[BN] member save blocked — task is not owned by the member.');
+      return;
+    }
+    const newStatus = document.getElementById('f_slackStatus').value;
+    if (newStatus === t.slackStatus) { closeModal(); return; }
+    btn.disabled = true; const _orig = btn.textContent; btn.textContent = 'Saving…';
+    // Server-side RPC: the only path a member has to write into the admin's
+    // user_stores row. Falls back to a local-only update if the RPC is not
+    // deployed yet, so the UX doesn't break in dev.
+    let pushedOK = false;
+    try {
+      if (typeof bnSupabase !== 'undefined' && bnSupabase) {
+        const { error } = await bnSupabase.rpc('member_set_task_status', {
+          p_task_id: t.id, p_status: newStatus
+        });
+        if (error) console.warn('[BN] member_set_task_status RPC failed:', error.message);
+        else pushedOK = true;
+      }
+    } catch (e) { console.warn('[BN] member_set_task_status exception:', e && e.message); }
+    // Always update the local STORE so the UI reflects immediately. The cloud
+    // pull on next reload will reconcile if the RPC failed.
+    window.__bnMemberStatusSave = true;
+    try {
+      t.slackStatus = newStatus;
+      if (typeof saveStore === 'function') { try { saveStore(STORE); } catch (_) {} }
+    } finally { window.__bnMemberStatusSave = false; }
+    btn.disabled = false; btn.textContent = _orig;
+    closeModal();
+    if (typeof render === 'function') { try { render(); } catch (_) {} }
+    if (!pushedOK) {
+      alert('Status updated locally. The cloud sync needs an admin to deploy the member RPC — your change may not stick after refresh.');
+    }
+  });
+})();
 
 document.getElementById("saveBtn").addEventListener("click", () => {
   if (!editingId) return;

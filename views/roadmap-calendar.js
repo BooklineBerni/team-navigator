@@ -1167,6 +1167,15 @@ function renderRoadmapCalendar(roadmapId) {
       if (e.target.closest('.cal-group-toggle-y')) return;
       e.stopPropagation();
       const tid = node.dataset.tid;
+      // Restricted/preview users: skip the cal-event-edit-popover entirely.
+      // That popover lets users edit Start/End dates AND "Remove from roadmap" —
+      // both mutations that shouldn't be available to them. Fall through to
+      // openModal, which is already gated (only opens for own/proposed tasks
+      // and renders fully view-only).
+      if (typeof bnIsRestrictedView === 'function' && bnIsRestrictedView()) {
+        if (typeof openModal === 'function') openModal(tid);
+        return;
+      }
       const entry = (r.tasks || []).find(en => en.taskId === tid);
       if (!entry) { openModal(tid); return; }
       const task = bnTaskById(tid);

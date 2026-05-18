@@ -3207,6 +3207,42 @@
     font-weight: 600;
     margin-right: auto;
   }
+  /* =====================================================================
+     MEMBER role overrides — when a member opens THEIR OWN task, the slack
+     Status picker becomes editable and the Save button reappears (limited
+     to a status-only update). Everything else stays read-only.
+     ===================================================================== */
+  body.bn-member.bn-modal-member-edit-own .modal-bg .modal > *:not(.modal-header):not(.modal-actions):not(.bn-ro-allow) {
+    /* Inherit the parent pointer-events:none — overrides below re-enable
+       only the status field's pickers. */
+  }
+  body.bn-member.bn-modal-member-edit-own .modal-bg .bn-cp-box[data-cp-id="f_slackStatus"],
+  body.bn-member.bn-modal-member-edit-own .modal-bg .bn-cp-box[data-cp-id="f_slackStatus"] *,
+  body.bn-member.bn-modal-member-edit-own .modal-bg .bn-cp-box[data-cp-id="f_slackStatus"] .bn-cp-dropdown {
+    pointer-events: auto !important;
+  }
+  body.bn-member.bn-modal-member-edit-own .modal-bg .bn-cp-box[data-cp-id="f_slackStatus"] .bn-cp-dropdown {
+    display: none;   /* default closed; the picker JS toggles it open on click */
+  }
+  /* The field wrapping the status picker also needs pointer-events back. */
+  body.bn-member.bn-modal-member-edit-own .modal-bg .field:has(.bn-cp-box[data-cp-id="f_slackStatus"]) {
+    pointer-events: auto !important;
+  }
+  /* Re-show the Save button for members on their own task. We use a dedicated
+     id #memberSaveStatusBtn that openModal injects when applicable; the original
+     #saveBtn stays hidden (the saveBtn handler runs the full task save which a
+     member isn't allowed to do). */
+  body.bn-member.bn-modal-member-edit-own .modal-bg #memberSaveStatusBtn {
+    display: inline-flex !important;
+    pointer-events: auto !important;
+  }
+  /* Replace the "View only" pill with a clearer "Status only" pill when in
+     member-edit-own mode so the user understands what they can change. */
+  body.bn-member.bn-modal-member-edit-own .modal-bg .modal-actions::before {
+    content: '✎ You can edit the status only';
+    background: #ecfdf5;
+    color: #047857;
+  }
   /* Calendar: allow navigation, prev/next, view-mode toggles, expand/collapse.
      Block ONLY the things that mutate dates: dragging pills, resize handles,
      clicking holidays to toggle, clicking empty cells to assign dates. */
@@ -3296,15 +3332,27 @@
     -webkit-text-fill-color: #1a1a1a !important;
     background: transparent !important;
   }
+  /* Hide only the truly mutation-only affordances on a sidebar task row.
+     The group chip itself (.rmt-gp-box) STAYS visible — users still want to
+     see which group a task belongs to and what colour it has. The chip's
+     pointer-events are blocked by the parent row's rule above, so it
+     renders without being interactive. Same with the anchor pins.
+     What we DO hide: the × delete button and the × clear-group button. */
   body.bn-read-only .rm-unscheduled .rm-task-row .rm-task-del,
   body.bn-read-only .rm-archived-body .rm-task-row .rm-task-del,
-  body.bn-read-only .rm-unscheduled .rm-task-row .rmt-pin,
-  body.bn-read-only .rm-archived-body .rm-task-row .rmt-pin,
-  body.bn-read-only .rm-unscheduled .rm-task-row .rmt-gp-box,
-  body.bn-read-only .rm-archived-body .rm-task-row .rmt-gp-box,
   body.bn-read-only .rm-unscheduled .rm-task-row .gp-clear,
   body.bn-read-only .rm-archived-body .rm-task-row .gp-clear {
     display: none !important;
+  }
+  /* Anchor pins are visible (so the user sees that a date is anchored to
+     another task) but neutralised. The caret/arrow inside the group chip is
+     also kept visible — it just doesn't open the dropdown. */
+  body.bn-read-only .rm-unscheduled .rm-task-row .rmt-pin,
+  body.bn-read-only .rm-archived-body .rm-task-row .rmt-pin,
+  body.bn-read-only .rm-unscheduled .rm-task-row .rmt-gp-chip,
+  body.bn-read-only .rm-archived-body .rm-task-row .rmt-gp-chip {
+    pointer-events: none !important;
+    cursor: default !important;
   }
   /* "Apply" button in the Unscheduled header (sends pending date edits to the
      task list). Useless in read-only mode — every edit it would apply has been
