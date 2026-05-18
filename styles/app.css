@@ -3223,52 +3223,46 @@
     background: linear-gradient(135deg, #f59e0b, #d97706) !important;
     color: #fff !important;
   }
-  /* Preview-as card — appears directly under the brand in the sidebar. */
-  .preview-as-card {
+  /* Brand layout: logo + stacked (name + optional preview-as inline row). */
+  .brand-stack {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+  /* Preview-as inline row — sits flush under "Berni Navigator" without bulking up the brand. */
+  .preview-as-inline {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    margin: 0 8px 10px;
-    border-radius: 8px;
-    background: rgba(245, 158, 11, 0.08);
-    border: 1px solid rgba(245, 158, 11, 0.25);
+    gap: 5px;
+    margin-top: 2px;
+    font-size: 10px;
+    line-height: 1.1;
+    color: #94a3b8;
     pointer-events: auto;
+    white-space: nowrap;
+    overflow: hidden;
   }
-  .preview-as-card img,
-  .preview-as-card #bnPreviewAsPhoto {
-    width: 36px;
-    height: 36px;
+  .preview-as-inline img,
+  .preview-as-inline #bnPreviewAsPhoto {
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
     background: #eee;
-    font-size: 12px;
+    font-size: 8px;
   }
-  .preview-as-meta {
-    min-width: 0;
-    flex: 1;
-  }
-  .preview-as-name {
-    font-size: 13px;
+  .preview-as-inline .preview-as-name {
     font-weight: 600;
-    color: #fff;
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    /* color set inline via JS to each person's signature colour */
   }
-  .preview-as-email {
-    font-size: 11px;
-    color: #f59e0b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 1px;
+  .preview-as-inline .preview-as-sep {
+    opacity: 0.5;
   }
-  .preview-as-perm {
-    font-size: 11px;
+  .preview-as-inline .preview-as-perm {
     color: #f59e0b;
-    text-transform: lowercase;
     font-weight: 600;
-    margin-top: 1px;
   }
