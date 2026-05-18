@@ -421,6 +421,28 @@ Cada filtro (status, prio, type, taskTag, roadmap, dateStatus) tiene
 
 ---
 
+## 7b. Pulido futuro pendiente (descartado por bajo ROI ahora)
+
+Estas mejoras tienen valor real pero no las hago hasta que la app crezca:
+
+1. **Tests E2E por feature** — hoy el smoke test cubre "no peta + crear task con
+   Bulk". Faltan: filtros reducen el visible-count correctamente, mover task
+   entre roadmaps, expand/collapse group, drag-drop en el calendar. 20-30 líneas
+   de Playwright por test.
+
+2. **Memoizar `bnGetFilterState`** — devuelve objeto nuevo en cada call. Si
+   filter state no cambia, se podría cachear el snapshot.
+
+3. **Migrar 17 `onclick="..."` HTML a `addEventListener` + después IIFE** — primero
+   hay que desatar el HTML de los nombres globales, luego se puede encapsular
+   con IIFE para reducir el global namespace.
+
+4. **Bundle minify** — GH Pages ya sirve con gzip; minificar destruiría el grep,
+   así que solo vale si llegamos a un build step.
+
+5. **`app.css` split por componente** — `modals.css`, `calendar.css`, etc.
+   Cero impacto funcional, solo organización.
+
 ## 8. Deuda técnica reconocida
 
 - **`index.html` sigue grande (~7.400 líneas).** Los candidatos para

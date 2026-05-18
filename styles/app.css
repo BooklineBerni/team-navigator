@@ -3082,3 +3082,10 @@
   /* CACHED SESSION: a previous login is still valid. Force-hide the gate so the user
      sees the app shell from the very first frame (no "Continue with Google" flash). */
   html[data-bn-cached-session="1"] .bn-auth-gate { display: none !important; }
+  /* NEEDS AUTH: production deploy with no cached session. Hide the app body and show the
+     sign-in gate IMMEDIATELY (from the first frame). The pre-paint head script sets this
+     attribute; lib/supabase-auth.js removes it once auth resolves successfully. */
+  html[data-bn-needs-auth="1"] body > .wrap,
+  html[data-bn-needs-auth="1"] body > footer { display: none !important; }
+  html[data-bn-needs-auth="1"] body { background: #0a0a0a; overflow: hidden; }
+  html[data-bn-needs-auth="1"] .bn-auth-gate { display: flex !important; }
