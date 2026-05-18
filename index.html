@@ -1880,14 +1880,23 @@ function renderTeamStrip() {
     availableTeam = [...TEAM, ...(typeof EXTERNAL_TEAM !== 'undefined' ? EXTERNAL_TEAM : [])].filter(p => isTeamMember(p.id));
   } else {
     availableTeam = [...TEAM];
-    // Add anyone who owns at least one task (incl. groups) but isn't already in TEAM
+    // Add anyone who owns at least one task (incl. groups) but isn't already in TEAM.
+    // IMPORTANT: only add them if their CURRENT section is still active (team or
+    // supplementary). Someone who used to be on the team but was moved to the
+    // "Bookline" or "Disabled" section shouldn't keep showing up as a filter pill
+    // just because they have legacy tasks assigned to them.
     const _seen = new Set(availableTeam.map(p => p.id));
     const ownerIds = new Set();
     (STORE.tasks||[]).forEach(t => { if (t.responsibleId) ownerIds.add(t.responsibleId); });
     ownerIds.forEach(id => {
       if (_seen.has(id)) return;
       const p = findPerson(id);
-      if (p) { availableTeam.push(p); _seen.add(id); }
+      if (!p) return;
+      const sec = (typeof getPersonSection === 'function') ? getPersonSection(p.id) : '';
+      if (sec === 'team' || sec === 'supplementary') {
+        availableTeam.push(p);
+        _seen.add(id);
+      }
     });
   }
   const availableCount = availableTeam.length;
