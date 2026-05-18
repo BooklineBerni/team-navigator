@@ -873,20 +873,33 @@ Weekly metrics by country" spellcheck="false"></textarea>
 <script src="lib/filters.js"></script>
 <script>
 /* ===========================================================================
- * BERNI NAVIGATOR — code map (find-anchor strings → approximate line)
- *   "DEFAULT_TEAM"               — TEAM seed (line ~4010)
- *   "STORE_KEY"                  — localStorage schema + load/save (~4076)
- *   "Trash (soft-delete)"        — bnSoftDeleteTask / bnRestoreFromTrash (~4299)
- *   bulk Create-tasks UI         — moved to views/bulk-create.js (loaded after this script)
- *   bnBulkSave                   — moved to views/bulk-create.js
- *   "bnPropagateAnchorChanges"   — date propagation for anchored tasks (~10230)
- *   "effectiveDatesForTask"      — read-side anchor resolver (~10173)
- *   "renderRoadmapCalendar"      — main roadmap Gantt renderer
- *   "wireTaskDatesRow"           — modal Task dates row autoSave (~8519)
- *   "function render()"          — top-level Tasks page renderer
- *   "selectedTaskIds"            — bulk-bar selection state (~6275)
- *   "bulk-bar wiring"            — selectors that act on selection (~15129)
- *   "COLORED_PICKLIST_OPTIONS"   — Status/Priority/Type/ShareWith palette (~7166)
+ * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
+ *
+ *   Most of the app is now in separate files. See CLAUDE.md for the full map.
+ *   What stays here, roughly in order:
+ *
+ *   "STORE_KEY"                  — localStorage schema + load/save
+ *   "Trash (soft-delete)"        — bnSoftDeleteTask / bnRestoreFromTrash
+ *   "Task selection state"       — selectedTaskIds + bulk-bar
+ *   "function render()"          — central view dispatcher (calls render*Page
+ *                                  from views/*.js, guarded by typeof)
+ *   "Tag library"                — tag colors + person tag helpers
+ *   "// ---- Module-level anchor resolution"
+ *                                — effectiveDatesForTask, bnPropagateAnchorChanges,
+ *                                  date helpers. CORE — many callers everywhere.
+ *   "function parseDate"         — date utils (used by top-level migration code,
+ *                                  cannot move)
+ *   "function openModal"         — task modal opener
+ *   "function closeModal"        — task modal closer
+ *   "// ---- Task schedule"      — Start/End sync with roadmaps (sidebar)
+ *   "// ---- Holidays"           — Spanish national + Catalonia + Barcelona
+ *   "// ---- Roadmaps page"      — modal-edit of roadmap (renderRoadmapsList etc.)
+ *   "// =================== BULK: nest selected tasks under a parent"
+ *                                — bulk popovers
+ *
+ *   Boot / module-level wirings live at the bottom: filter UI listeners,
+ *   sidebar nav, search input, switchView, addEventListener for picker
+ *   triggers, bulk-bar buttons, etc.
  *
  * KEY DATA SHAPES (kept stable across versions)
  *   Task: { id, subject, responsibleId, proposedById, proposedByIds[],
@@ -905,6 +918,8 @@ Weekly metrics by country" spellcheck="false"></textarea>
  *     also reads task.startAnchor / task.endAnchor (format "task:ID:side")
  *   • durationDays is dropped when end has an explicit endSrcTaskId
  *   • saveStore(STORE) is the only writer to localStorage
+ *
+ * Lines numbers move every commit — search by the strings above instead.
  * =========================================================================== */
 // DEFAULT_TEAM, EXTERNAL_TEAM, SLACK_DIRECTORY live in data/team-directory.js
 
