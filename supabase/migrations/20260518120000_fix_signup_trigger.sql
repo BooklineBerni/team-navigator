@@ -102,9 +102,17 @@ begin
 end;
 $$;
 
--- 4) Re-bind trigger (idempotent: drops + recreates).
-drop trigger if exists on_auth_user_created on auth.users;
-drop trigger if exists restrict_signup_to_berni on auth.users;
+-- 4) Re-bind trigger (idempotent: drops + recreates). IMPORTANT: also drop
+--    `restrict_signup_trigger`, the BEFORE INSERT trigger that was installed by
+--    an earlier migration/dashboard edit and was the REAL cause of "Database
+--    error saving new user" for any user not in the allowlist (or whose
+--    allowlist row didn't match the trigger's exact comparison). We don't
+--    re-create it — the handle_new_user function now handles the per-user
+--    permission setup defensively, and the app shows a "Waiting for an admin"
+--    gate when the user has no permission row.
+drop trigger if exists on_auth_user_created      on auth.users;
+drop trigger if exists restrict_signup_trigger    on auth.users;
+drop trigger if exists restrict_signup_to_berni   on auth.users;
 drop trigger if exists restrict_signup_to_allowlist on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
