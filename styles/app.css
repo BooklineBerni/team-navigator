@@ -3306,6 +3306,15 @@
   body.bn-read-only .rm-archived-body .rm-task-row .gp-clear {
     display: none !important;
   }
+  /* "Apply" button in the Unscheduled header (sends pending date edits to the
+     task list). Useless in read-only mode — every edit it would apply has been
+     blocked above, so hide it. Same with any per-task Apply chips. */
+  body.bn-read-only .rm-unscheduled-head button,
+  body.bn-read-only .rm-unscheduled .rmt-apply-btn,
+  body.bn-read-only .rm-archived-body .rmt-apply-btn,
+  body.bn-read-only #rmHeaderApply {
+    display: none !important;
+  }
   /* Banner: prominent so the user knows why some buttons are missing. */
   body.bn-read-only #bnReadOnlyBanner {
     background: #fef3c7 !important;
