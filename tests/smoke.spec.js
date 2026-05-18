@@ -47,6 +47,7 @@ test('smoke: page loads, globals exist, views switch, modals open/close', async 
     .map(s => s.src.split('/').slice(-2).join('/') || 'inline'));
   const expected = [
     'data/team-directory.js',
+    'data/holidays.js',
     'lib/supabase-auth.js',
     'lib/permissions.js',
     'lib/filters.js',
@@ -149,7 +150,47 @@ test('smoke: page loads, globals exist, views switch, modals open/close', async 
     expect(r, `modal ${openFn}/${closeFn}`).toBe('OK');
   }
 
-  // === Step 7: no JavaScript page errors (parse/runtime exceptions) during the run. ===
+  // === Step 7: business-logic assertions — actually verify the app *works*. ===
+  // These catch regressions where the JS loads fine but the logic is broken.
+  const business = await page.evaluate(() => {
+    const out = {};
+    // a) HOLIDAYS data is loaded and a known date is recognised
+    out.holidaysLoaded = typeof HOLIDAYS === 'object' && !!HOLIDAYS['2026-01-01'];
+    // b) Filter system: include "Proposed" status → visible count ≤ total
+    const before = window.visibleTasksCount();
+    try {
+      window.cycleStatusFilter('Proposed');
+      const after = window.visibleTasksCount();
+      window.clearStatusFilter();
+      const restored = window.visibleTasksCount();
+      out.filterWorks = (after <= before) && (restored === before);
+    } catch (e) { out.filterWorks = 'err: ' + e.message; }
+    // c) BNFilters predicates respond to state
+    try {
+      const t = STORE.tasks[0];
+      if (!t) { out.predicates = 'no-tasks'; }
+      else {
+        const s1 = window.bnGetFilterState();
+        const r1 = window.BNFilters.allFiltersOK(t, s1);
+        out.predicates = typeof r1 === 'boolean';
+      }
+    } catch (e) { out.predicates = 'err: ' + e.message; }
+    // d) Selection set starts empty
+    out.selectionEmpty = (typeof selectedTaskIds === 'object') && (selectedTaskIds.size === 0);
+    // e) STORE has the expected top-level fields
+    out.storeShape = {
+      tasks: Array.isArray(STORE.tasks),
+      roadmaps: Array.isArray(STORE.roadmaps) || STORE.roadmaps === undefined,
+    };
+    return out;
+  });
+  expect(business.holidaysLoaded, 'HOLIDAYS data must include 2026-01-01').toBeTruthy();
+  expect(business.filterWorks, 'status filter must reduce count and restore').toBe(true);
+  expect(business.predicates, 'BNFilters.allFiltersOK must return boolean').toBe(true);
+  expect(business.selectionEmpty, 'selectedTaskIds must start empty').toBe(true);
+  expect(business.storeShape.tasks, 'STORE.tasks must be array').toBe(true);
+
+  // === Step 8: no JavaScript page errors (parse/runtime exceptions) during the run. ===
   // Console messages are not checked here: in CI the page can't reach Google/
   // Supabase/Slack CDNs, so the console fills up with network errors that have
   // nothing to do with our JS being correct. The test above already proves
