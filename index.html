@@ -1313,7 +1313,11 @@ try {
 rebuildTeam();
 
 function uid() { return "loc" + Math.random().toString(36).slice(2, 10); }
-function escapeHtml(s){return String(s||'').replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);}
+// Map hoisted outside escapeHtml so each call doesn't reallocate the lookup
+// object — escapeHtml is called ~325 times across the codebase, often in
+// tight render loops (taskHtml, gantt rows, etc.).
+const _BN_ESC_HTML = {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g, c => _BN_ESC_HTML[c]);}
 function initials(name){return (name||'').split(/\s+/).filter(Boolean).slice(0,2).map(s => s[0]).join("").toUpperCase();}
 // Virtual "Unassigned" pseudo-person, returned by findPerson when id === '__unassigned'.
 // Lets the profile page and other person-driven UIs treat unassigned tasks as if they had a person.
