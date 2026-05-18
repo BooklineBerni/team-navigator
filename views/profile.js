@@ -796,8 +796,11 @@ function renderProfileRoadmapCard(rm, personId) {
     const wdMon = (wd + 6) % 7;
     const isWeekend = (wdMon >= 5);
     const isToday = (d.getTime() === today.getTime());
-    const worked = isWorkedOverride(d);
-    const timeOff = isTimeOff(d);
+    // Personal mini-7-day view inside a profile's roadmap card — scope the
+    // override checks to the profile's selected person so days off marked on
+    // one person's calendar don't bleed into another person's view.
+    const worked = isWorkedOverride(d, personId);
+    const timeOff = isTimeOff(d, personId);
     const hol = holidayName(d);
     const cls = ['mini-day'];
     if (isWeekend && !worked) cls.push('weekend');

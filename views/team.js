@@ -78,8 +78,9 @@ function renderMembersPage() {
           ? '<div class="person-tags-line">' + tags.map(t => tagBadgeHtml(t, false)).join("") + '</div>'
           : '<div class="person-tags-line" style="color:#bbb">No tags</div>');
     const settings = getPersonSettings(p.id);
-    const awt = (settings.availableWeekTime != null && settings.availableWeekTime !== "")
-      ? '<div class="role" style="color:#0891b2; font-weight:600">Available: ' + settings.availableWeekTime + 'h/week</div>' : "";
+    // Hours are admin-only metadata; restricted/preview users never see them.
+    const awt = (!isRestricted && settings.availableWeekTime != null && settings.availableWeekTime !== "")
+      ? '<div class="role bn-person-hours" style="color:#0891b2; font-weight:600">Available: ' + settings.availableWeekTime + 'h/week</div>' : "";
 
     let statsHtml = '';
     let roadmapsHtml = '';

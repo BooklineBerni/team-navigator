@@ -37,6 +37,12 @@ function renderRoadmapCalendar(roadmapId) {
   const r = findRoadmap(roadmapId);
   if (!r) { cont.innerHTML = ''; return; }
   const owner = findPerson(r.responsibleId);
+  // Day-off / worked-day toggles are scoped to the roadmap owner. The function
+  // signatures of isTimeOff / isWorkedOverride / isNonWorkingDay / toggleTimeOff /
+  // toggleWorkedOverride all accept an optional personId — we pass it everywhere
+  // inside this calendar render so toggles on Berni's roadmap don't bleed into
+  // Joan's roadmap, and vice versa.
+  const personIdForOverrides = r.responsibleId || null;
 
   // Default month: roadmap start, or today
   if (!roadmapCalState.yearMonth) {
@@ -739,9 +745,9 @@ function renderRoadmapCalendar(roadmapId) {
         const isToday = dayDate.getTime() === today.getTime();
         const isWknd = isWeekendDay(dayDate);
         const holName = holidayName(dayDate);
-        const worked = isWorkedOverride(dayDate);
-        const timeOff = isTimeOff(dayDate);
-        const nonWorking = isNonWorkingDay(dayDate);
+        const worked = isWorkedOverride(dayDate, personIdForOverrides);
+        const timeOff = isTimeOff(dayDate, personIdForOverrides);
+        const nonWorking = isNonWorkingDay(dayDate, personIdForOverrides);
         if (nonWorking && !isOtherMonth) nonWorkingCols.push({ col: di, type: timeOff ? 'time-off' : 'default' });
         const cls = ['cal-day'];
         if (isOtherMonth) cls.push('other-month');
@@ -1331,15 +1337,15 @@ function renderRoadmapCalendar(roadmapId) {
       if (!d) return;
       const isWknd = isWeekendDay(d);
       const holName = holidayName(d);
-      if (isTimeOff(d)) {
+      if (isTimeOff(d, personIdForOverrides)) {
         // Already time-off → revert to working
-        toggleTimeOff(ds);
+        toggleTimeOff(ds, personIdForOverrides);
       } else if (isWknd || holName) {
         // Weekend/holiday → toggle worked override
-        toggleWorkedOverride(ds);
+        toggleWorkedOverride(ds, personIdForOverrides);
       } else {
         // Regular working day → mark as time-off
-        toggleTimeOff(ds);
+        toggleTimeOff(ds, personIdForOverrides);
       }
       renderRoadmapCalendar(roadmapId);
     });

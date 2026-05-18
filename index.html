@@ -2549,7 +2549,7 @@ function render() {
         <div class="meta">
           <div class="name">${escapeHtml(person.name)}</div>
           <div class="role">${escapeHtml(person.email || "")}</div>
-          ${(() => { const awt = getPersonSettings(person.id).availableWeekTime; return (awt != null && awt !== "") ? '<div class="role" style="color:#0891b2; font-weight:600">Available: ' + awt + 'h/week</div>' : ''; })()}
+          ${(() => { const awt = getPersonSettings(person.id).availableWeekTime; return (awt != null && awt !== "") ? '<div class="role bn-person-hours" style="color:#0891b2; font-weight:600">Available: ' + awt + 'h/week</div>' : ''; })()}
           ${tagsLine}
         </div>
       </div>
@@ -4047,25 +4047,102 @@ function holidayName(d) {
   if (custom) return custom;
   return HOLIDAYS[dateKey(d)] || null;
 }
-function isWorkedOverride(d) { return ((STORE.workedDates || []).indexOf(dateKey(d)) >= 0); }
-function isTimeOff(d) { return ((STORE.timeOffDates || []).indexOf(dateKey(d)) >= 0); }
-function toggleTimeOff(dateStr) {
-  STORE.timeOffDates = STORE.timeOffDates || [];
-  const idx = STORE.timeOffDates.indexOf(dateStr);
-  if (idx >= 0) STORE.timeOffDates.splice(idx, 1);
-  else STORE.timeOffDates.push(dateStr);
+// ===========================================================================
+// Time-off + worked-day overrides — PER PERSON.
+// ---------------------------------------------------------------------------
+// The user explicitly requested that marking a day "off" (vacation/sick) or
+// promoting a holiday/weekend to a worked day should NOT cascade across other
+// people's roadmaps. Each toggle is scoped to a specific personId — typically
+// the roadmap's `responsibleId` or, in the profile's personal 6-month gantt,
+// the profile's selected person.
+//
+// Storage shape:
+//   STORE.timeOffByPerson = { [personId]: string[] }  ← YYYY-MM-DD entries
+//   STORE.workedByPerson  = { [personId]: string[] }
+//
+// Legacy arrays STORE.timeOffDates / STORE.workedDates are migrated once into
+// the admin's bucket (Berni, "U07E6NHMLBV") so existing entries keep working
+// on his roadmaps. After migration the legacy arrays are deleted.
+// ===========================================================================
+const BN_LEGACY_OWNER_ID = "U07E6NHMLBV"; // Berni — admin who set the old global arrays
+function bnMigrateGlobalDayOverrides() {
+  if (!STORE) return;
+  let migrated = false;
+  // timeOff
+  if (Array.isArray(STORE.timeOffDates) && STORE.timeOffDates.length > 0 &&
+      !(STORE.timeOffByPerson && STORE.timeOffByPerson[BN_LEGACY_OWNER_ID])) {
+    STORE.timeOffByPerson = STORE.timeOffByPerson || {};
+    STORE.timeOffByPerson[BN_LEGACY_OWNER_ID] = STORE.timeOffDates.slice();
+    migrated = true;
+  }
+  // worked overrides
+  if (Array.isArray(STORE.workedDates) && STORE.workedDates.length > 0 &&
+      !(STORE.workedByPerson && STORE.workedByPerson[BN_LEGACY_OWNER_ID])) {
+    STORE.workedByPerson = STORE.workedByPerson || {};
+    STORE.workedByPerson[BN_LEGACY_OWNER_ID] = STORE.workedDates.slice();
+    migrated = true;
+  }
+  if (migrated) {
+    delete STORE.timeOffDates;
+    delete STORE.workedDates;
+    try { saveStore(STORE); } catch (_) {}
+    console.info('[BN] Migrated global timeOff/worked dates → per-person bucket for ' + BN_LEGACY_OWNER_ID);
+  }
+}
+try { bnMigrateGlobalDayOverrides(); } catch (_) {}
+function isWorkedOverride(d, personId) {
+  if (!personId) {
+    // Legacy fallback (mostly migrated away — kept so call-sites without a
+    // person context don't blow up).
+    return ((STORE.workedDates || []).indexOf(dateKey(d)) >= 0);
+  }
+  const arr = (STORE.workedByPerson || {})[personId];
+  return Array.isArray(arr) && arr.indexOf(dateKey(d)) >= 0;
+}
+function isTimeOff(d, personId) {
+  if (!personId) {
+    return ((STORE.timeOffDates || []).indexOf(dateKey(d)) >= 0);
+  }
+  const arr = (STORE.timeOffByPerson || {})[personId];
+  return Array.isArray(arr) && arr.indexOf(dateKey(d)) >= 0;
+}
+function toggleTimeOff(dateStr, personId) {
+  if (personId) {
+    STORE.timeOffByPerson = STORE.timeOffByPerson || {};
+    STORE.timeOffByPerson[personId] = STORE.timeOffByPerson[personId] || [];
+    const arr = STORE.timeOffByPerson[personId];
+    const idx = arr.indexOf(dateStr);
+    if (idx >= 0) arr.splice(idx, 1);
+    else arr.push(dateStr);
+  } else {
+    // Legacy global fallback — only reachable from call-sites that don't have
+    // a roadmap context (none currently expected, but defensive).
+    STORE.timeOffDates = STORE.timeOffDates || [];
+    const idx = STORE.timeOffDates.indexOf(dateStr);
+    if (idx >= 0) STORE.timeOffDates.splice(idx, 1);
+    else STORE.timeOffDates.push(dateStr);
+  }
   saveStore(STORE);
 }
-function isNonWorkingDay(d) {
-  if (isTimeOff(d)) return true; // time-off always non-working
-  if (isWorkedOverride(d)) return false;
+function isNonWorkingDay(d, personId) {
+  if (isTimeOff(d, personId)) return true; // time-off always non-working
+  if (isWorkedOverride(d, personId)) return false;
   return isWeekendDay(d) || !!holidayName(d);
 }
-function toggleWorkedOverride(dateStr) {
-  STORE.workedDates = STORE.workedDates || [];
-  const idx = STORE.workedDates.indexOf(dateStr);
-  if (idx >= 0) STORE.workedDates.splice(idx, 1);
-  else STORE.workedDates.push(dateStr);
+function toggleWorkedOverride(dateStr, personId) {
+  if (personId) {
+    STORE.workedByPerson = STORE.workedByPerson || {};
+    STORE.workedByPerson[personId] = STORE.workedByPerson[personId] || [];
+    const arr = STORE.workedByPerson[personId];
+    const idx = arr.indexOf(dateStr);
+    if (idx >= 0) arr.splice(idx, 1);
+    else arr.push(dateStr);
+  } else {
+    STORE.workedDates = STORE.workedDates || [];
+    const idx = STORE.workedDates.indexOf(dateStr);
+    if (idx >= 0) STORE.workedDates.splice(idx, 1);
+    else STORE.workedDates.push(dateStr);
+  }
   saveStore(STORE);
 }
 

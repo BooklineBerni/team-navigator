@@ -3241,6 +3241,17 @@
   body.bn-read-only [data-section="disabled"] {
     display: none !important;
   }
+  /* PRIVACY: hide every "Available: Xh/week" line and every person-tag chip across
+     all views when in restricted/preview mode. The user explicitly asked for hours
+     and person tags to NEVER appear to restricted users — not on the Tasks page
+     (per-person columns), the Profile page (tags row), or anywhere else. */
+  body.bn-read-only .bn-person-hours,
+  body.bn-read-only .person-tags-line,
+  body.bn-read-only .profile-header .tags-row,
+  body.bn-read-only [class*="hours-line"],
+  body.bn-read-only [data-bn-person-hours] {
+    display: none !important;
+  }
   /* Banner: prominent so the user knows why some buttons are missing. */
   body.bn-read-only #bnReadOnlyBanner {
     background: #fef3c7 !important;
