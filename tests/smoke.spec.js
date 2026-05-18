@@ -97,7 +97,7 @@ test('smoke: page loads, globals exist, views switch, modals open/close', async 
     bnLoadRequests: typeof window.bnLoadRequests,
     bnOpenDatePicker: typeof window.bnOpenDatePicker,
     openTaskTagManager: typeof window.openTaskTagManager,
-    openPersonModal: typeof window.openPersonModal,
+    // openPersonModal removed in dead-code sweep (no callers)
     openAddMember: typeof window.openAddMember,
     openFileModal: typeof window.openFileModal,
     // Recently extracted libs:
