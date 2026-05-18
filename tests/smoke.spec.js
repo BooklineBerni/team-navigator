@@ -268,7 +268,44 @@ test('smoke: page loads, globals exist, views switch, modals open/close', async 
   expect(business.datePicker,           'date parse/format roundtrip').toBe(true);
   expect(business.holidayLookup,        'holidayName(2026-01-01) === "Año Nuevo"').toBe(true);
 
-  // === Step 8: no JavaScript page errors (parse/runtime exceptions) during the run. ===
+  // === Step 8: end-to-end — bulk-create a task and verify it lands in STORE. ===
+  // This is the most expensive assertion: it actually exercises the modal +
+  // STORE.tasks.push + render() path the way a user would. Catches regressions
+  // where the modal renders fine but Save doesn't persist.
+  const e2eBulk = await page.evaluate(() => {
+    try {
+      const before = STORE.tasks.length;
+      window.bnBulkOpenModal();
+      // Stage 1: type a subject into the first row's subject input
+      const firstSubj = document.querySelector('#bnBulkTableBody input[data-f="subject"]');
+      if (!firstSubj) return 'no-subject-input';
+      const SUBJECT = '__SMOKE_TEST_TASK__ ' + Date.now();
+      firstSubj.value = SUBJECT;
+      firstSubj.dispatchEvent(new Event('input', { bubbles: true }));
+      // Stage 1 → Stage 2
+      window.bnBulkGoToStage2();
+      // Stage 2 → Save (which calls bnBulkSave and closes the modal)
+      window.bnBulkSave();
+      const after = STORE.tasks.length;
+      const lastTask = STORE.tasks[STORE.tasks.length - 1];
+      // Cleanup: remove the test task so reruns don't pollute STORE
+      if (lastTask && lastTask.subject === SUBJECT) {
+        const idx = STORE.tasks.findIndex(t => t.id === lastTask.id);
+        if (idx >= 0) STORE.tasks.splice(idx, 1);
+        saveStore(STORE);
+      }
+      return {
+        added: after === before + 1,
+        subjectMatches: lastTask && lastTask.subject === SUBJECT,
+        idAssigned: !!(lastTask && lastTask.id),
+      };
+    } catch (e) { return 'err: ' + e.message; }
+  });
+  expect(e2eBulk.added, 'bulk-create added exactly one task').toBe(true);
+  expect(e2eBulk.subjectMatches, 'new task has the typed subject').toBe(true);
+  expect(e2eBulk.idAssigned, 'new task got an id').toBe(true);
+
+  // === Step 9: no JavaScript page errors (parse/runtime exceptions) during the run. ===
   // Console messages are not checked here: in CI the page can't reach Google/
   // Supabase/Slack CDNs, so the console fills up with network errors that have
   // nothing to do with our JS being correct. The test above already proves
