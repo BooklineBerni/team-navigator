@@ -20,7 +20,15 @@
   (function() {
     try {
       // Case 1: OAuth callback.
-      if (location.hash && location.hash.indexOf('access_token=') !== -1) {
+      //   • Implicit flow → tokens in the hash (`#access_token=...`)
+      //   • PKCE flow     → auth code in the query string (`?code=...`)
+      // We default to implicit flow in lib/supabase-auth.js, but we still recognise the
+      // query-string form so that any in-flight PKCE callbacks (older deploys, browser
+      // tabs that were redirected before the implicit-flow rollout) show the "Entrando…"
+      // overlay instead of flashing the sign-in form.
+      var hasHashToken = !!(location.hash && location.hash.indexOf('access_token=') !== -1);
+      var hasQueryCode = /[?&]code=/.test(location.search || '');
+      if (hasHashToken || hasQueryCode) {
         document.documentElement.setAttribute('data-bn-oauth-callback', '1');
         return;
       }
