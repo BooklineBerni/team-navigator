@@ -191,10 +191,10 @@
   }
   .badge { display: inline-flex; padding: 1px 6px; border-radius: 999px; font-size: 9.5px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap; }
   .badge.prio-Critical  { background: #fee4e2; color: #b42318; }
-  .badge.prio-Alta      { background: #fef0c7; color: #b54708; }
-  .badge.prio-Media     { background: #d1fadf; color: #027a48; }
-  .badge.prio-Baja      { background: #eaecf0; color: #475467; }
-  .badge.prio-MuyBaja   { background: #f2f4f7; color: #98a2b3; }
+  .badge.prio-High      { background: #fef0c7; color: #b54708; }
+  .badge.prio-Medium    { background: #d1fadf; color: #027a48; }
+  .badge.prio-Low       { background: #dbeafe; color: #1d4ed8; }
+  .badge.prio-VeryLow   { background: #1e3a8a; color: #ffffff; }
   .badge.type-Project        { background: #f4ebff; color: #6941c6; }
   .badge.type-Responsability { background: #e0eaff; color: #3538cd; }
   .badge.type-Request        { background: #ecfdf3; color: #027a48; }
@@ -2518,9 +2518,10 @@
   /* Colored select styling — match task modal CSS conventions */
   .bn-bulk-task-card select.bnf-colored { font-weight: 600; }
   .bn-bulk-task-card select.bnf-colored[data-cv="Critical"], .bn-bulk-task-card select.bnf-colored[data-cv="ERROR"] { background: #fee4e2; color: #b42318; border-color: #fecaca; }
-  .bn-bulk-task-card select.bnf-colored[data-cv="Alta"]                                                          { background: #fee4e2; color: #b91c1c; border-color: #fca5a5; }
-  .bn-bulk-task-card select.bnf-colored[data-cv="Media"]                                                         { background: #fef0c7; color: #92400e; border-color: #fde68a; }
-  .bn-bulk-task-card select.bnf-colored[data-cv="Baja"], .bn-bulk-task-card select.bnf-colored[data-cv="Muy Baja"] { background: #ecfdf3; color: #027a48; border-color: #a7f3d0; }
+  .bn-bulk-task-card select.bnf-colored[data-cv="High"]                                                          { background: #fee4e2; color: #b91c1c; border-color: #fca5a5; }
+  .bn-bulk-task-card select.bnf-colored[data-cv="Medium"]                                                         { background: #fef0c7; color: #92400e; border-color: #fde68a; }
+  .bn-bulk-task-card select.bnf-colored[data-cv="Low"]      { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+  .bn-bulk-task-card select.bnf-colored[data-cv="Very Low"] { background: #1e3a8a; color: #ffffff; border-color: #1e3a8a; }
   .bn-bulk-task-card select.bnf-colored[data-cv="Waiting"]                                                       { background: #fef3c7; color: #92400e; border-color: #fde68a; }
   .bn-bulk-task-card select.bnf-colored[data-cv="Proposed"]                                                      { background: #dbeafe; color: #1e3a8a; border-color: #93c5fd; }
   .bn-bulk-task-card select.bnf-colored[data-cv="In Progress"]                                                   { background: #ffedd5; color: #9a3412; border-color: #fdba74; }
@@ -2797,15 +2798,15 @@
   select.f-colored-prio { font-weight: 600; }
   select.f-colored-prio[data-value=""]         { background: #fff;    color: #1a1a1a; border-color: #d8d6d1; }
   select.f-colored-prio[data-value="Critical"] { background: #fee4e2; color: #b42318; border-color: #fecaca; }
-  select.f-colored-prio[data-value="Alta"]     { background: #fef0c7; color: #b54708; border-color: #fde68a; }
-  select.f-colored-prio[data-value="Media"]    { background: #d1fadf; color: #027a48; border-color: #a7f3d0; }
-  select.f-colored-prio[data-value="Baja"]     { background: #eaecf0; color: #475467; border-color: #d8d6d1; }
-  select.f-colored-prio[data-value="Muy Baja"] { background: #f2f4f7; color: #98a2b3; border-color: #e2e4e7; }
+  select.f-colored-prio[data-value="High"]     { background: #fef0c7; color: #b54708; border-color: #fde68a; }
+  select.f-colored-prio[data-value="Medium"]    { background: #d1fadf; color: #027a48; border-color: #a7f3d0; }
+  select.f-colored-prio[data-value="Low"]      { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+  select.f-colored-prio[data-value="Very Low"] { background: #1e3a8a; color: #ffffff; border-color: #1e3a8a; }
   select.f-colored-prio option[value="Critical"] { background: #fee4e2; color: #b42318; }
-  select.f-colored-prio option[value="Alta"]     { background: #fef0c7; color: #b54708; }
-  select.f-colored-prio option[value="Media"]    { background: #d1fadf; color: #027a48; }
-  select.f-colored-prio option[value="Baja"]     { background: #eaecf0; color: #475467; }
-  select.f-colored-prio option[value="Muy Baja"] { background: #f2f4f7; color: #98a2b3; }
+  select.f-colored-prio option[value="High"]     { background: #fef0c7; color: #b54708; }
+  select.f-colored-prio option[value="Medium"]    { background: #d1fadf; color: #027a48; }
+  select.f-colored-prio option[value="Low"]      { background: #dbeafe; color: #1d4ed8; }
+  select.f-colored-prio option[value="Very Low"] { background: #1e3a8a; color: #ffffff; }
   /* Type select */
   select.f-colored-type { font-weight: 600; }
   select.f-colored-type[data-value=""]              { background: #fff;    color: #1a1a1a; border-color: #d8d6d1; }

@@ -166,8 +166,8 @@ function renderHomePage() {
     }).join("");
 
   // Activity by priority
-  const priorities = ["Critical", "Alta", "Media", "Baja", "Muy Baja"];
-  const prioColors = { "Critical": "#ef4444", "Alta": "#f59e0b", "Media": "#10b981", "Baja": "#94a3b8", "Muy Baja": "#64748b" };
+  const priorities = ["Critical", "High", "Medium", "Low", "Very Low"];
+  const prioColors = { "Critical": "#ef4444", "High": "#f59e0b", "Medium": "#10b981", "Low": "#3b82f6", "Very Low": "#1e3a8a" };
   document.getElementById("dashByPriority").innerHTML = priorities.map(p => {
     const n = tasks.filter(t => t.priority === p).length;
     return '<div class="activity-card" style="--c:' + prioColors[p] + '">' +

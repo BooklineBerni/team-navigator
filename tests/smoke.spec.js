@@ -233,18 +233,18 @@ test('smoke: page loads, globals exist, views switch, modals open/close', async 
         return { inc: new Set(s.prioInclude), exc: new Set(s.prioExclude) };
       };
       const s0 = cap();
-      window.cyclePrioFilter('Alta');
+      window.cyclePrioFilter('High');
       const s1 = cap();
-      window.cyclePrioFilter('Alta');
+      window.cyclePrioFilter('High');
       const s2 = cap();
-      window.cyclePrioFilter('Alta');
+      window.cyclePrioFilter('High');
       const s3 = cap();
       window.clearPrioFilter();   // leave state clean
       out.tristate = {
         startEmpty: s0.inc.size === 0 && s0.exc.size === 0,
-        include:    s1.inc.has('Alta'),
-        exclude:    s2.exc.has('Alta'),
-        backToOff:  !s3.inc.has('Alta') && !s3.exc.has('Alta'),
+        include:    s1.inc.has('High'),
+        exclude:    s2.exc.has('High'),
+        backToOff:  !s3.inc.has('High') && !s3.exc.has('High'),
       };
     } catch (e) { out.tristate = 'err: ' + e.message; }
     // k) Permissions: bnIsValidEmail accepts/rejects correctly
