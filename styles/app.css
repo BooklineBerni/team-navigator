@@ -2121,6 +2121,11 @@
   .bn-hours-field { width: 64px; flex-shrink: 0; }
   .bn-hours-field input { padding: 8px 6px; text-align: right; }
   .bn-hours-field label { white-space: nowrap; }
+  /* Admin-only timing date fields next to Task dates. Narrow but wide enough to fit
+     the native date control. Match the visual rhythm of .bn-hours-field. */
+  .bn-started-field { width: 140px; flex-shrink: 0; }
+  .bn-started-field input { padding: 8px 6px; }
+  .bn-started-field label { white-space: nowrap; }
   .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
   .field label { font-size: 11px; color: #6b6b6b; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; }
   .field input, .field select, .field textarea { border: 1px solid #d8d6d1; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; background: #fff; }
@@ -3307,7 +3312,9 @@
   }
   /* Admin-only fields (Started / Ended timing dates). Hidden for restricted/preview/member. */
   body.bn-read-only .bn-admin-only,
-  body.bn-read-only #f_adminStartedEndedRow {
+  body.bn-read-only .bn-started-field,
+  body.bn-read-only #f_startedDateField,
+  body.bn-read-only #f_endedDateField {
     display: none !important;
   }
   /* Roadmap calendar header: hide the Edit + Delete buttons in restricted view.
