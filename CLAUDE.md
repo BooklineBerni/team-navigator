@@ -1,4 +1,4 @@
-# Berni Navigator — guía para Claude (o cualquiera que toque el código)
+# Team Navigator — guía para Claude (o cualquiera que toque el código)
 
 Este documento existe para que la próxima sesión (probablemente Claude otra
 vez) entienda la estructura sin tener que redescubrirla. Si vas a tocar
@@ -8,13 +8,13 @@ algo, **léelo entero antes**.
 
 ## 1. Qué es esta app
 
-Berni Navigator es una app de **gestión de tareas y roadmaps** para el equipo
+Team Navigator es una app de **gestión de tareas y roadmaps** para el equipo
 de Bookline. Single-page, sin build step, deploy estático a GitHub Pages.
 Auth con Google vía Supabase. Datos persistidos en `localStorage` + sync a
 `user_stores` de Supabase (un row por usuario).
 
-- **Repo:** `BooklineBerni/berni-navigator` (privado)
-- **URL pública:** `https://booklineberni.github.io/berni-navigator/`
+- **Repo:** `BooklineBerni/team-navigator` (privado)
+- **URL pública:** `https://booklineberni.github.io/team-navigator/`
 - **Admin email:** `bernat@bookline.ai` (hard-coded fallback)
 - **Permisos:** admin / restricted_view / none (tabla `user_permissions`)
 
@@ -244,7 +244,7 @@ patrón. No metas todos los `let`s en window — saturarías el namespace.
 
 ```bash
 # 1. Clone fresco (o reutiliza /tmp/berni-deploy)
-git clone https://github.com/BooklineBerni/berni-navigator.git /tmp/berni-deploy
+git clone https://github.com/BooklineBerni/team-navigator.git /tmp/berni-deploy
 
 # 2. Copia index.html + archivos nuevos
 cp /Users/bernibookline/Downloads/index.html /tmp/berni-deploy/index.html
@@ -518,7 +518,7 @@ git log --oneline -- views/profile.js
 
 ## 11. Convenciones de naming
 
-- `bn` prefix: helpers de Berni Navigator que pueden colisionar con cosas
+- `bn` prefix: helpers de Team Navigator que pueden colisionar con cosas
   estándar (ej. `bnParseDate` no choca con la `Date.parse` nativa).
 - `BN_` prefix: constantes globales (BN_SUPABASE_URL, BN_DP, BN_AUTH_REQUIRED).
 - `render*Page` / `renderFlatTasks` / `renderTeamStrip`: funciones que

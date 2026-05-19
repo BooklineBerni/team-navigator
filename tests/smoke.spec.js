@@ -1,7 +1,7 @@
 // =============================================================================
 // tests/smoke.spec.js
 // ---------------------------------------------------------------------------
-// Playwright smoke test for Berni Navigator.
+// Playwright smoke test for Team Navigator.
 //
 // What it verifies (intentionally minimal — anything more than this becomes
 // a maintenance burden for a tool with no real testing infrastructure):

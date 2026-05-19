@@ -1,10 +1,10 @@
-# Berni Navigator
+# Team Navigator
 
 Task & roadmap manager for the Bookline team. Static single-page app deployed
 to GitHub Pages, no build step. Auth via Google + Supabase. Data persisted to
 `localStorage` with cloud sync to a per-user Supabase row.
 
-- **Live:** https://booklineberni.github.io/berni-navigator/
+- **Live:** https://booklineberni.github.io/team-navigator/
 - **Admin:** `bernat@bookline.ai`
 - **Stack:** vanilla JS + classic `<script>` tags, Supabase (auth + Postgres),
   Playwright for the smoke test, GitHub Actions for CI + Supabase migrations.

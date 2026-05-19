@@ -1,8 +1,8 @@
 {
-  "name": "berni-navigator",
+  "name": "team-navigator",
   "private": true,
   "version": "0.0.0",
-  "description": "Berni Navigator — task & roadmap manager (static HTML/JS, no build step). Tests use Playwright.",
+  "description": "Team Navigator — task & roadmap manager (static HTML/JS, no build step). Tests use Playwright.",
   "scripts": {
     "test": "playwright test",
     "test:install": "playwright install chromium --with-deps",

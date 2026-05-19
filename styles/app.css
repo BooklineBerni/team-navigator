@@ -1,7 +1,7 @@
 /* =============================================================================
    styles/app.css
    ---------------------------------------------------------------------------
-   All UI styles for Berni Navigator. Loaded via <link> from index.html.
+   All UI styles for Team Navigator. Loaded via <link> from index.html.
    Sections are roughly grouped: theme, layout, sidebar, top-nav, cards,
    filters, modals, calendars, bulk create, auth gate, admin, etc.
    Future split: when convenient, this file can be broken into per-view
