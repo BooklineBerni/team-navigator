@@ -113,8 +113,18 @@ function renderSubtasksInModal(t) {
   function _positionSugg() {
     const r = searchInp.getBoundingClientRect();
     sugg.style.left = r.left + 'px';
-    sugg.style.top  = (r.bottom + 4) + 'px';
     sugg.style.width = r.width + 'px';
+    // Place below first so we can measure actual rendered height.
+    sugg.style.top  = (r.bottom + 4) + 'px';
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const sH = sugg.offsetHeight || 240;
+    const spaceBelow = vh - r.bottom - 8;
+    const spaceAbove = r.top - 8;
+    // Flip up only when it doesn't fit below AND there's more room above.
+    if (sH > spaceBelow && spaceAbove > spaceBelow) {
+      const top = Math.max(8, r.top - sH - 4);
+      sugg.style.top = top + 'px';
+    }
   }
   // Wire search input
   searchInp.value = '';

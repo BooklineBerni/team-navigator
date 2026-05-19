@@ -3214,6 +3214,16 @@
   body.bn-read-only .modal-bg .bn-cp-pop {
     display: none !important;
   }
+  /* Re-enable click on roadmap name links inside the read-only task modal so
+     the user can jump to the roadmap. The parent .field has pointer-events:none,
+     so we need pointer-events:auto on the link itself. */
+  body.bn-read-only .modal-bg .rm-modal-link {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+  }
+  body.bn-read-only .modal-bg .rm-modal-link:hover span {
+    text-decoration: underline;
+  }
   /* "View only" pill — anchored to the bottom of the modal, replaces the empty
      space left where Save/Delete used to sit. Only shown to restricted/preview users. */
   body.bn-read-only .modal-bg .modal-actions::before {
