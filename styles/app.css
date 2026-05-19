@@ -3189,9 +3189,13 @@
   body.bn-read-only .modal-bg .bn-cp-dropdown {
     pointer-events: none !important;
   }
+  /* Force-close any popovers that were left visually open before going read-only.
+     We intentionally do NOT touch .bn-cp-dropdown here — its display is controlled
+     by the picker's JS (set to "block" when the user clicks the chip). Forcing
+     display:none would prevent the member-edit-own override below from ever
+     letting the status picker open. */
   body.bn-read-only .modal-bg .cp-popover,
-  body.bn-read-only .modal-bg .bn-cp-pop,
-  body.bn-read-only .modal-bg .bn-cp-dropdown {
+  body.bn-read-only .modal-bg .bn-cp-pop {
     display: none !important;
   }
   /* "View only" pill — anchored to the bottom of the modal, replaces the empty
@@ -3216,17 +3220,16 @@
     /* Inherit the parent pointer-events:none — overrides below re-enable
        only the status field's pickers. */
   }
+  /* Re-enable pointer-events on the entire status picker subtree. Selector lists
+     the chip, the dropdown wrapper, every descendant, and the parent `.field`
+     so the chain isn't blocked by the parent's pointer-events:none. */
+  body.bn-member.bn-modal-member-edit-own .modal-bg .field:has(.bn-cp-box[data-cp-id="f_slackStatus"]),
   body.bn-member.bn-modal-member-edit-own .modal-bg .bn-cp-box[data-cp-id="f_slackStatus"],
   body.bn-member.bn-modal-member-edit-own .modal-bg .bn-cp-box[data-cp-id="f_slackStatus"] *,
+  body.bn-member.bn-modal-member-edit-own .modal-bg .bn-cp-box[data-cp-id="f_slackStatus"] .bn-cp-chip,
   body.bn-member.bn-modal-member-edit-own .modal-bg .bn-cp-box[data-cp-id="f_slackStatus"] .bn-cp-dropdown {
     pointer-events: auto !important;
-  }
-  body.bn-member.bn-modal-member-edit-own .modal-bg .bn-cp-box[data-cp-id="f_slackStatus"] .bn-cp-dropdown {
-    display: none;   /* default closed; the picker JS toggles it open on click */
-  }
-  /* The field wrapping the status picker also needs pointer-events back. */
-  body.bn-member.bn-modal-member-edit-own .modal-bg .field:has(.bn-cp-box[data-cp-id="f_slackStatus"]) {
-    pointer-events: auto !important;
+    cursor: pointer !important;
   }
   /* Re-show the Save button for members on their own task. We use a dedicated
      id #memberSaveStatusBtn that openModal injects when applicable; the original
