@@ -6,7 +6,7 @@
 <title>Berni Navigator</title>
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260520a">
+<link rel="stylesheet" href="styles/app.css?v=bn20260520b">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -873,17 +873,6 @@ Weekly metrics by country" spellcheck="false"></textarea>
           <span id="f_taskDatesFeedback" class="bn-quick-apply-feedback" style="display:none"></span>
         </div>
       </div>
-      <!-- Admin-only Started / Ended dates. These are NOT the same as Start/End above:
-           Start/End are the scheduled task dates (when work was planned), Started/Ended
-           are the actual dates when the task transitioned to In Progress and to
-           Completed/Discarded. They auto-fill once on the matching status transition
-           (only when empty), and stay editable manually. CSS hides the row for any
-           non-admin viewer (body.bn-read-only) so members and restricted users never
-           see these timing fields. -->
-      <div class="field-row-2 f_taskOnlyRow bn-admin-only" id="f_adminStartedEndedRow">
-        <div class="field"><label title="Date the task first transitioned to In Progress (auto-filled, editable)">Started</label><input type="date" id="f_startedDate"></div>
-        <div class="field"><label title="Date the task moved to Completed or Discarded (auto-filled, editable)">Ended</label><input type="date" id="f_endedDate"></div>
-      </div>
       <div class="field f_taskOnlyRow bn-hours-field">
         <label title="Dedicated hours">Ded. h.</label><input type="number" id="f_dedicatedHours" step="0.5" min="0">
       </div>
@@ -891,33 +880,48 @@ Weekly metrics by country" spellcheck="false"></textarea>
         <label title="Estimated hours">Est. h.</label><input type="number" id="f_estimatedHours" step="0.5" min="0">
       </div>
     </div>
-    <div class="field" id="f_groupRow" style="display:none">
-      <label>Group (optional)</label>
-      <div id="f_groupBox" class="group-picker-box">
-        <div id="f_groupChip" class="group-picker-chip" tabindex="0">
-          <span class="gp-empty">— No group —</span>
-          <span class="gp-caret">▾</span>
-        </div>
-        <div id="f_groupDropdown" class="group-picker-dropdown" style="display:none">
-          <input type="text" id="f_groupInput" class="group-picker-search" placeholder="Search a group…" autocomplete="off">
-          <div id="f_groupList" class="group-picker-list"></div>
-        </div>
-        <input type="hidden" id="f_groupId" value="">
-      </div>
+    <!-- Admin-only Started / Ended dates. Distinct from Start/End above (those are the
+         scheduled task dates); Started/Ended log the actual transitions to In Progress
+         and to Completed/Discarded. Autofill once per transition, manually editable.
+         Hidden for non-admins via body.bn-read-only. Placed right above the
+         Subtasks/Group row so admins see the timing block together. -->
+    <div class="field-row-2 f_taskOnlyRow bn-admin-only" id="f_adminStartedEndedRow">
+      <div class="field"><label title="Date the task first transitioned to In Progress (auto-filled, editable)">Started</label><input type="date" id="f_startedDate"></div>
+      <div class="field"><label title="Date the task moved to Completed or Discarded (auto-filled, editable)">Ended</label><input type="date" id="f_endedDate"></div>
     </div>
-    <div class="field" id="f_subtasksField">
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none">
-        <input type="checkbox" id="f_isGroup" style="width:16px; height:16px; cursor:pointer">
-        <span>Subtasks — this task contains other tasks</span>
-      </label>
-      <div id="f_subtasksPanel" style="display:none; margin-top:8px">
-        <div id="f_subtasksList" style="margin-bottom:8px"></div>
-        <div class="subtask-picker">
-          <span class="subtask-picker-icon">🔍</span>
-          <input type="text" id="f_subtasksSearch" placeholder="Search tasks to nest…" autocomplete="off">
-          <div id="f_subtasksSuggestions" class="subtask-suggestions" style="display:none"></div>
+    <!-- Subtasks (left) + Group (right) share a single row. Mutually exclusive in
+         practice (a task is either a group or it belongs to one), so visually one
+         side is empty depending on state — Group hides when the Subtasks checkbox
+         is on (applyGroupModeToModal), Subtasks panel hides when off. -->
+    <div class="field-row-2" id="f_subtasksGroupRow">
+      <div class="field" id="f_subtasksField">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none">
+          <input type="checkbox" id="f_isGroup" style="width:16px; height:16px; cursor:pointer">
+          <span>Subtasks — this task contains other tasks</span>
+        </label>
+        <div id="f_subtasksPanel" style="display:none; margin-top:8px">
+          <div id="f_subtasksList" style="margin-bottom:8px"></div>
+          <div class="subtask-picker">
+            <span class="subtask-picker-icon">🔍</span>
+            <input type="text" id="f_subtasksSearch" placeholder="Search tasks to nest…" autocomplete="off">
+            <div id="f_subtasksSuggestions" class="subtask-suggestions" style="display:none"></div>
+          </div>
+          <div style="font-size:11px; color:#6b6b6b; margin-top:6px">Type to find an existing task. Picking it nests it under this one. Click × on a row to detach.</div>
         </div>
-        <div style="font-size:11px; color:#6b6b6b; margin-top:6px">Type to find an existing task. Picking it nests it under this one. Click × on a row to detach.</div>
+      </div>
+      <div class="field" id="f_groupRow" style="display:none">
+        <label>Group (optional)</label>
+        <div id="f_groupBox" class="group-picker-box">
+          <div id="f_groupChip" class="group-picker-chip" tabindex="0">
+            <span class="gp-empty">— No group —</span>
+            <span class="gp-caret">▾</span>
+          </div>
+          <div id="f_groupDropdown" class="group-picker-dropdown" style="display:none">
+            <input type="text" id="f_groupInput" class="group-picker-search" placeholder="Search a group…" autocomplete="off">
+            <div id="f_groupList" class="group-picker-list"></div>
+          </div>
+          <input type="hidden" id="f_groupId" value="">
+        </div>
       </div>
     </div>
     <div class="modal-actions">
@@ -934,15 +938,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260520a"></script>
+<script src="data/team-directory.js?v=bn20260520b"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260520a"></script>
+<script src="data/holidays.js?v=bn20260520b"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260520a"></script>
+<script src="lib/supabase-auth.js?v=bn20260520b"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260520a"></script>
+<script src="lib/permissions.js?v=bn20260520b"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260520a"></script>
+<script src="lib/filters.js?v=bn20260520b"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -6125,45 +6129,45 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260520a"></script>
+<script src="views/bulk-create.js?v=bn20260520b"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260520a"></script>
+<script src="lib/bulk-popovers.js?v=bn20260520b"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260520a"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260520b"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260520a"></script>
+<script src="views/home.js?v=bn20260520b"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260520a"></script>
-<script src="views/files.js?v=bn20260520a"></script>
+<script src="lib/files-integration.js?v=bn20260520b"></script>
+<script src="views/files.js?v=bn20260520b"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260520a"></script>
-<script src="views/requests.js?v=bn20260520a"></script>
+<script src="lib/requests-feature.js?v=bn20260520b"></script>
+<script src="views/requests.js?v=bn20260520b"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260520a"></script>
+<script src="views/tasks.js?v=bn20260520b"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260520a"></script>
+<script src="views/team.js?v=bn20260520b"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260520a"></script>
+<script src="views/profile.js?v=bn20260520b"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260520a"></script>
-<script src="views/roadmaps.js?v=bn20260520a"></script>
+<script src="views/roadmap-calendar.js?v=bn20260520b"></script>
+<script src="views/roadmaps.js?v=bn20260520b"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260520a"></script>
+<script src="lib/date-picker.js?v=bn20260520b"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260520a"></script>
+<script src="lib/trash.js?v=bn20260520b"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260520a"></script>
+<script src="lib/backup.js?v=bn20260520b"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260520a"></script>
+<script src="lib/pickers.js?v=bn20260520b"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260520a"></script>
-<script src="views/modals/add-member.js?v=bn20260520a"></script>
-<script src="views/modals/tag-manager.js?v=bn20260520a"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260520a"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260520a"></script>
+<script src="views/modals/person-tags.js?v=bn20260520b"></script>
+<script src="views/modals/add-member.js?v=bn20260520b"></script>
+<script src="views/modals/tag-manager.js?v=bn20260520b"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260520b"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260520b"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
