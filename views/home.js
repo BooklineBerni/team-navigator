@@ -57,25 +57,34 @@ function renderHomePage() {
       hint: 'Waiting + Archived + (empty)',
       count: tasks.filter(t => t.slackStatus === 'Waiting' || t.slackStatus === 'Archived' || !t.slackStatus).length },
   ];
+  // KPI hero row
+  const _pct = (n) => total > 0 ? Math.round((n / total) * 100) : 0;
+  const _set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const _setBar = (id, pct) => { const el = document.getElementById(id); if (el) el.style.width = pct + '%'; };
+  _set('kpiTotal', total);
+  _set('kpiDoing',  buckets4[1].count);  _set('kpiDoingPct',  _pct(buckets4[1].count) + '%'); _setBar('kpiDoingFill',  _pct(buckets4[1].count));
+  _set('kpiTodo',   buckets4[2].count);  _set('kpiTodoPct',   _pct(buckets4[2].count) + '%'); _setBar('kpiTodoFill',   _pct(buckets4[2].count));
+  _set('kpiSolved', buckets4[0].count);  _set('kpiSolvedPct', _pct(buckets4[0].count) + '%'); _setBar('kpiSolvedFill', _pct(buckets4[0].count));
+
   const arcsG  = document.getElementById('dashBucketArcs');
   const legend = document.getElementById('dashBucketLegend');
   const totalEl = document.getElementById('dashTotalValue');
   if (totalEl) totalEl.textContent = total;
   if (arcsG) {
-    const R = 80;
+    const R = 86;
     const C = 2 * Math.PI * R;
     let cursor = 0; // cumulative length consumed
     arcsG.innerHTML = buckets4.map(b => {
       if (b.count <= 0 || total <= 0) return '';
       const frac = b.count / total;
       const arcLen = frac * C;
-      // Tiny visual gap between segments — only when there are 2+ non-empty segments
-      const gap = 2;
+      // Slightly larger gap between segments for a more modern, "pill"-style look
+      const gap = 3;
       const dashArray = Math.max(0, arcLen - gap) + ' ' + (C - Math.max(0, arcLen - gap));
       const dashOffset = -cursor;
       cursor += arcLen;
-      return '<circle class="donut-bucket-arc" cx="100" cy="100" r="' + R + '" fill="none" ' +
-        'stroke="' + b.color + '" stroke-width="22" ' +
+      return '<circle class="donut-bucket-arc" cx="110" cy="110" r="' + R + '" fill="none" ' +
+        'stroke="' + b.color + '" stroke-width="18" stroke-linecap="round" ' +
         'stroke-dasharray="' + dashArray + '" ' +
         'stroke-dashoffset="' + dashOffset + '">' +
         '<title>' + escapeHtml(b.label) + ' — ' + b.count + ' (' + escapeHtml(b.hint) + ')</title>' +
@@ -94,7 +103,7 @@ function renderHomePage() {
     }).join('');
   }
 
-  // Pipeline bars in the user-defined order, with the new colors
+  // Pipeline by status — horizontal rows with mini progress bars (modern, info-dense).
   const buckets = [
     { key: "",             label: "(empty)",      color: "#cbd5e1", count: tasks.filter(t => !t.slackStatus).length },
     { key: "Waiting",      label: "Waiting",      color: "#60a5fa", count: tasks.filter(t => t.slackStatus === "Waiting").length },
@@ -107,60 +116,74 @@ function renderHomePage() {
     { key: "Discarded",    label: "Discarded",    color: "#9a9a9a", count: discarded }
   ];
   const maxCount = Math.max(1, ...buckets.map(b => b.count));
-  const barsCont = document.getElementById("dashPipelineBars");
-  barsCont.innerHTML = buckets.map(b => {
-    const h = b.count > 0 ? Math.max(8, Math.round((b.count / maxCount) * 160)) : 4;
-    return '<div class="pipeline-bar-col">' +
-      '<div class="pipeline-bar-amount">' + b.count + '</div>' +
-      '<div class="pipeline-bar" style="height:' + h + 'px; background:' + b.color + '"></div>' +
-      '<div class="pipeline-bar-label">' + b.label + '</div>' +
+  const rowsCont = document.getElementById("dashPipelineRows");
+  if (rowsCont) {
+    rowsCont.innerHTML = buckets.map(b => {
+      const pct  = total > 0 ? Math.round((b.count / total) * 100) : 0;
+      const fill = b.count > 0 ? Math.max(2, Math.round((b.count / maxCount) * 100)) : 0;
+      return '<div class="pipeline-row" title="' + escapeHtml(b.label) + ' — ' + b.count + ' tasks (' + pct + '%)">' +
+        '<span class="pr-dot" style="background:' + b.color + '"></span>' +
+        '<span class="pr-name">' + escapeHtml(b.label) + '</span>' +
+        '<div class="pr-bar"><div class="pr-fill" style="width:' + fill + '%; background:' + b.color + '"></div></div>' +
+        '<span class="pr-num">' + b.count + '</span>' +
+        '<span class="pr-pct">' + pct + '%</span>' +
       '</div>';
-  }).join("");
+    }).join("");
+  }
 
-  // Top contributors: top 5 people by task count — excluding deactivated members
+  // Top contributors: top 6 people by task count — excluding deactivated members
   const counts = TEAM
     .filter(p => !isDeactivated(p.id))
     .map(p => ({ p, n: tasks.filter(t => t.responsibleId === p.id).length }))
     .filter(x => x.n > 0)
     .sort((a, b) => b.n - a.n)
     .slice(0, 6);
+  const contribMax = counts[0] ? counts[0].n : 1;
   document.getElementById("dashTopContributors").innerHTML = counts.length === 0
     ? '<div style="color:#6b6b6b; font-size:13px">No task assignments yet.</div>'
-    : counts.map(({p, n}) => {
-      const open = tasks.filter(t => t.responsibleId === p.id && openStatuses.indexOf(t.slackStatus) >= 0).length;
-      return '<div style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:#faf9f7; border:1px solid #ececea; border-radius:10px; min-width:200px">' +
-        '<span class="avatar" style="width:36px; height:36px; flex-shrink:0; background:' + p.color + '; font-size:13px">' +
+    : counts.map(({p, n}, i) => {
+      const open  = tasks.filter(t => t.responsibleId === p.id && openStatuses.indexOf(t.slackStatus) >= 0).length;
+      const done  = tasks.filter(t => t.responsibleId === p.id && (t.slackStatus === 'Completed' || t.slackStatus === 'Discarded')).length;
+      const fill  = Math.max(4, Math.round((n / contribMax) * 100));
+      return '<div class="contrib-card" data-rank="' + (i + 1) + '">' +
+        '<span class="contrib-rank">#' + (i + 1) + '</span>' +
+        '<span class="avatar contrib-av" style="background:' + p.color + '">' +
           '<img src="' + p.photo + '" alt="" onerror="this.remove()">' +
           '<span class="ini">' + initials(p.name) + '</span>' +
         '</span>' +
-        '<div style="flex:1; min-width:0">' +
-          '<div style="font-weight:600; font-size:13px; color:#1a1a1a">' + escapeHtml(p.displayName) + '</div>' +
-          '<div style="font-size:11px; color:#6b6b6b">' + n + ' total · ' + open + ' open</div>' +
+        '<div class="contrib-body">' +
+          '<div class="contrib-name">' + escapeHtml(p.displayName) + '</div>' +
+          '<div class="contrib-stats">' +
+            '<span class="contrib-total">' + n + '</span>' +
+            '<span class="contrib-sep">·</span>' +
+            '<span class="contrib-open">' + open + ' open</span>' +
+            '<span class="contrib-sep">·</span>' +
+            '<span class="contrib-done">' + done + ' done</span>' +
+          '</div>' +
+          '<div class="contrib-bar"><div class="contrib-fill" style="width:' + fill + '%; background:' + p.color + '"></div></div>' +
         '</div>' +
         '</div>';
     }).join("");
 
   // Activity by priority
   const priorities = ["Critical", "Alta", "Media", "Baja", "Muy Baja"];
-  const prioColors = { "Critical": "#f87171", "Alta": "#fbbf24", "Media": "#34d399", "Baja": "#94a3b8", "Muy Baja": "#64748b" };
+  const prioColors = { "Critical": "#ef4444", "Alta": "#f59e0b", "Media": "#10b981", "Baja": "#94a3b8", "Muy Baja": "#64748b" };
   document.getElementById("dashByPriority").innerHTML = priorities.map(p => {
     const n = tasks.filter(t => t.priority === p).length;
-    return '<div class="activity-stat">' +
-      '<div style="width:8px; height:30px; background:' + prioColors[p] + '; border-radius:4px"></div>' +
-      '<div class="value">' + n + '</div>' +
-      '<div class="label">' + p + '</div>' +
+    return '<div class="activity-card" style="--c:' + prioColors[p] + '">' +
+      '<div class="activity-card-value">' + n + '</div>' +
+      '<div class="activity-card-label">' + p + '</div>' +
       '</div>';
   }).join("");
 
   // Activity by type
   const types = ["Project", "Responsability", "Request", "ERROR", "Infinite"];
-  const typeColors = { "Project": "#a78bfa", "Responsability": "#60a5fa", "Request": "#34d399", "ERROR": "#f87171", "Infinite": "#fbbf24" };
+  const typeColors = { "Project": "#8b5cf6", "Responsability": "#3b82f6", "Request": "#10b981", "ERROR": "#ef4444", "Infinite": "#f59e0b" };
   document.getElementById("dashByType").innerHTML = types.map(t => {
     const n = tasks.filter(x => x.type === t).length;
-    return '<div class="activity-stat">' +
-      '<div style="width:8px; height:30px; background:' + typeColors[t] + '; border-radius:4px"></div>' +
-      '<div class="value">' + n + '</div>' +
-      '<div class="label">' + t + '</div>' +
+    return '<div class="activity-card" style="--c:' + typeColors[t] + '">' +
+      '<div class="activity-card-value">' + n + '</div>' +
+      '<div class="activity-card-label">' + t + '</div>' +
       '</div>';
   }).join("");
 }

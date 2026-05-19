@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Navigator</title>
-<link rel="icon" type="image/gif" href="logo.gif?v=bn20260520o">
+<link rel="icon" type="image/gif" href="logo.gif?v=bn20260520p">
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260520o">
+<link rel="stylesheet" href="styles/app.css?v=bn20260520p">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -118,7 +118,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand" id="bnBrand" title="">
-        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260520o" alt="" referrerpolicy="no-referrer"></div>
+        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260520p" alt="" referrerpolicy="no-referrer"></div>
         <div class="brand-stack">
           <div class="brand-name" id="bnBrandName">Team Navigator</div>
           <!-- Permission line — shown ONLY during preview. -->
@@ -144,32 +144,56 @@
   </div>
 
   <section id="view-home" class="view-section" style="display:none">
-      <h1 class="home-greeting" id="homeGreeting" style="margin: 0 0 24px;">¡Hola! <span style="display:inline-block; transform: rotate(15deg)">👋</span></h1>
+      <h1 class="home-greeting" id="homeGreeting" style="margin: 0 0 20px;">¡Hola! <span style="display:inline-block; transform: rotate(15deg)">👋</span></h1>
+
+      <!-- KPI hero row: 4 at-a-glance metrics -->
+      <div class="kpi-grid" id="dashKpiGrid">
+        <div class="kpi-card" data-bucket="total">
+          <div class="kpi-label">Total tasks</div>
+          <div class="kpi-value" id="kpiTotal">0</div>
+          <div class="kpi-meta"><span class="kpi-bar"><span style="width:100%; background:#1a1a1a"></span></span></div>
+        </div>
+        <div class="kpi-card" data-bucket="doing">
+          <div class="kpi-label">In progress</div>
+          <div class="kpi-value" id="kpiDoing">0</div>
+          <div class="kpi-meta"><span class="kpi-bar"><span id="kpiDoingFill" style="width:0%; background:#f97316"></span></span><span class="kpi-pct" id="kpiDoingPct">0%</span></div>
+        </div>
+        <div class="kpi-card" data-bucket="todo">
+          <div class="kpi-label">To do</div>
+          <div class="kpi-value" id="kpiTodo">0</div>
+          <div class="kpi-meta"><span class="kpi-bar"><span id="kpiTodoFill" style="width:0%; background:#1d4ed8"></span></span><span class="kpi-pct" id="kpiTodoPct">0%</span></div>
+        </div>
+        <div class="kpi-card" data-bucket="solved">
+          <div class="kpi-label">Solved</div>
+          <div class="kpi-value" id="kpiSolved">0</div>
+          <div class="kpi-meta"><span class="kpi-bar"><span id="kpiSolvedFill" style="width:0%; background:#16a34a"></span></span><span class="kpi-pct" id="kpiSolvedPct">0%</span></div>
+        </div>
+      </div>
 
       <div class="dashboard-grid">
         <!-- Donut card: 4-bucket task breakdown (Solved / Doing / To do / Idle) -->
         <div class="dashboard-card donut-card">
           <div class="donut-label">Task breakdown</div>
           <div class="donut-wrap">
-            <svg class="donut-svg" viewBox="0 0 200 200">
+            <svg class="donut-svg" viewBox="0 0 220 220">
               <!-- Track ring -->
-              <circle cx="100" cy="100" r="80" fill="none" stroke="#f0efeb" stroke-width="22"/>
+              <circle cx="110" cy="110" r="86" fill="none" stroke="#f0efeb" stroke-width="18"/>
               <!-- Four arcs, each rotated and dash-sized at render time -->
-              <g id="dashBucketArcs" transform="rotate(-90 100 100)"></g>
-              <text id="dashTotalValue" class="donut-text" x="100" y="96" text-anchor="middle" dominant-baseline="middle">0</text>
-              <text id="dashTotalSub" class="donut-sub" x="100" y="120" text-anchor="middle">tasks</text>
+              <g id="dashBucketArcs" transform="rotate(-90 110 110)"></g>
+              <text id="dashTotalValue" class="donut-text" x="110" y="104" text-anchor="middle" dominant-baseline="middle">0</text>
+              <text id="dashTotalSub" class="donut-sub" x="110" y="130" text-anchor="middle">tasks</text>
             </svg>
           </div>
           <div class="donut-legend" id="dashBucketLegend"></div>
         </div>
 
-        <!-- Pipeline by status -->
+        <!-- Pipeline by status (horizontal rows) -->
         <div class="dashboard-card">
           <h3>
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Pipeline by status
           </h3>
-          <div class="pipeline-bars" id="dashPipelineBars"></div>
+          <div class="pipeline-rows" id="dashPipelineRows"></div>
         </div>
       </div>
 
@@ -179,7 +203,7 @@
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>
             Top contributors
           </h3>
-          <div id="dashTopContributors" style="display:flex; gap:14px; flex-wrap:wrap"></div>
+          <div id="dashTopContributors" class="dash-contrib-grid"></div>
         </div>
       </div>
 
@@ -940,15 +964,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260520o"></script>
+<script src="data/team-directory.js?v=bn20260520p"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260520o"></script>
+<script src="data/holidays.js?v=bn20260520p"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260520o"></script>
+<script src="lib/supabase-auth.js?v=bn20260520p"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260520o"></script>
+<script src="lib/permissions.js?v=bn20260520p"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260520o"></script>
+<script src="lib/filters.js?v=bn20260520p"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -6131,45 +6155,45 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260520o"></script>
+<script src="views/bulk-create.js?v=bn20260520p"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260520o"></script>
+<script src="lib/bulk-popovers.js?v=bn20260520p"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260520o"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260520p"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260520o"></script>
+<script src="views/home.js?v=bn20260520p"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260520o"></script>
-<script src="views/files.js?v=bn20260520o"></script>
+<script src="lib/files-integration.js?v=bn20260520p"></script>
+<script src="views/files.js?v=bn20260520p"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260520o"></script>
-<script src="views/requests.js?v=bn20260520o"></script>
+<script src="lib/requests-feature.js?v=bn20260520p"></script>
+<script src="views/requests.js?v=bn20260520p"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260520o"></script>
+<script src="views/tasks.js?v=bn20260520p"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260520o"></script>
+<script src="views/team.js?v=bn20260520p"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260520o"></script>
+<script src="views/profile.js?v=bn20260520p"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260520o"></script>
-<script src="views/roadmaps.js?v=bn20260520o"></script>
+<script src="views/roadmap-calendar.js?v=bn20260520p"></script>
+<script src="views/roadmaps.js?v=bn20260520p"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260520o"></script>
+<script src="lib/date-picker.js?v=bn20260520p"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260520o"></script>
+<script src="lib/trash.js?v=bn20260520p"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260520o"></script>
+<script src="lib/backup.js?v=bn20260520p"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260520o"></script>
+<script src="lib/pickers.js?v=bn20260520p"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260520o"></script>
-<script src="views/modals/add-member.js?v=bn20260520o"></script>
-<script src="views/modals/tag-manager.js?v=bn20260520o"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260520o"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260520o"></script>
+<script src="views/modals/person-tags.js?v=bn20260520p"></script>
+<script src="views/modals/add-member.js?v=bn20260520p"></script>
+<script src="views/modals/tag-manager.js?v=bn20260520p"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260520p"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260520p"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
