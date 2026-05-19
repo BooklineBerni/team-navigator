@@ -107,15 +107,26 @@ function renderSubtasksInModal(t) {
       });
     }
   }
+  // Positions the suggestions popover with viewport coordinates so it overlays
+  // the modal instead of pushing its content down. Called each time the popover
+  // opens (oninput/onfocus) and on window scroll/resize while it's visible.
+  function _positionSugg() {
+    const r = searchInp.getBoundingClientRect();
+    sugg.style.left = r.left + 'px';
+    sugg.style.top  = (r.bottom + 4) + 'px';
+    sugg.style.width = r.width + 'px';
+  }
   // Wire search input
   searchInp.value = '';
   searchInp.oninput = () => {
     renderSuggestions(searchInp.value);
     sugg.style.display = '';
+    _positionSugg();
   };
   searchInp.onfocus = () => {
     renderSuggestions(searchInp.value);
     sugg.style.display = '';
+    _positionSugg();
   };
   searchInp.onblur = () => {
     setTimeout(() => { sugg.style.display = 'none'; }, 120);
@@ -127,5 +138,13 @@ function renderSubtasksInModal(t) {
       searchInp.blur();
     }
   };
+  // Reposition the popover while open so it stays glued to the input on scroll
+  // (modal can scroll vertically) or viewport resize.
+  if (!searchInp._bnReposWired) {
+    const repos = () => { if (sugg.style.display !== 'none') _positionSugg(); };
+    window.addEventListener('scroll', repos, true);
+    window.addEventListener('resize', repos);
+    searchInp._bnReposWired = true;
+  }
 }
 

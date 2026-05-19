@@ -458,12 +458,14 @@
   }
   #f_subtasksSearch:focus { border-color: #1a1a1a; background: #fff; box-shadow: 0 0 0 3px rgba(26,26,26,0.06); }
   .subtask-suggestions {
-    position: absolute; left: 0; right: 0; top: 100%;
+    /* Fixed overlay positioned by JS based on the search input's bounding rect.
+       Same reason as .group-picker-dropdown — keep the modal height stable. */
+    position: fixed; top: 0; left: 0; width: auto;
     margin-top: 4px;
     background: #fff; border: 1px solid #e6e3da; border-radius: 10px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.14);
     max-height: 240px; overflow-y: auto;
-    z-index: 60;
+    z-index: 10000;
     padding: 4px;
   }
   .subtask-suggestion {
@@ -2755,9 +2757,12 @@
   .group-picker-chip[data-status="Archived"]      { background: #f5efe6; border-color: #d6c5a8; color: #78350f; }
   .group-picker-chip[data-status="Discarded"]     { background: #f1f5f9; border-color: #d8d6d1; color: #64748b; }
   .group-picker-dropdown {
-    position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px;
+    /* Fixed so the popover overlays on top of the modal instead of pushing
+       its content down (which made the modal grow taller). JS sets top/left/width
+       inline based on the chip's bounding rect every time the dropdown opens. */
+    position: fixed; top: 0; left: 0; width: auto; margin-top: 4px;
     background: #fff; border: 1px solid #d8d6d1; border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.10); z-index: 100;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10); z-index: 10000;
     max-height: 280px; display: flex; flex-direction: column; overflow: hidden;
   }
   .group-picker-search { border: none; outline: none; padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #ececec; background: #fafafa; }
