@@ -2128,6 +2128,9 @@
   .bn-started-field { width: 108px; flex-shrink: 0; }
   .bn-started-field input { padding: 6px 4px; font-size: 12px; }
   .bn-started-field label { white-space: nowrap; font-size: 11px; }
+  /* Responsible field locked to the same width as the Status column above (Status
+     lives in field-row-3 → 3 equal columns), so the two rows align visually. */
+  .bn-resp-field { width: calc((100% - 24px) / 3); flex-shrink: 0; }
   .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
   .field label { font-size: 11px; color: #6b6b6b; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; }
   .field input, .field select, .field textarea { border: 1px solid #d8d6d1; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; background: #fff; }
