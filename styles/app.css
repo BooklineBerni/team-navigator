@@ -2276,7 +2276,8 @@
   .activity-stat .label { font-size: 11px; color: #6b6b6b; text-align: center; }
   /* Sidebar polish for icons + brand */
   .sidebar .brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 14px; border-bottom: 1px solid #f0efeb; margin-bottom: 8px; }
-  .sidebar .brand-logo { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #1a1a1a, #6b6b6b); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 14px; }
+  .sidebar .brand-logo { width: 32px; height: 32px; border-radius: 8px; background: #f0efeb; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 14px; overflow: hidden; flex-shrink: 0; }
+  .sidebar .brand-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .sidebar .brand-name { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; color: #1a1a1a; }
   .sidebar h1 { display: none; }
   .sidebar .sub { display: none; }
