@@ -2121,11 +2121,13 @@
   .bn-hours-field { width: 64px; flex-shrink: 0; }
   .bn-hours-field input { padding: 8px 6px; text-align: right; }
   .bn-hours-field label { white-space: nowrap; }
-  /* Admin-only timing date fields next to Task dates. Narrow but wide enough to fit
-     the native date control. Match the visual rhythm of .bn-hours-field. */
-  .bn-started-field { width: 140px; flex-shrink: 0; }
-  .bn-started-field input { padding: 8px 6px; }
-  .bn-started-field label { white-space: nowrap; }
+  /* Admin-only timing date fields next to Task dates. Kept compact so Task Dates
+     keeps its original width (the start/days/end triplet needs ~270px of horizontal
+     room). Native date inputs need ~100px to render the dd/mm/yyyy + calendar icon
+     without truncation. */
+  .bn-started-field { width: 108px; flex-shrink: 0; }
+  .bn-started-field input { padding: 6px 4px; font-size: 12px; }
+  .bn-started-field label { white-space: nowrap; font-size: 11px; }
   .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
   .field label { font-size: 11px; color: #6b6b6b; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; }
   .field input, .field select, .field textarea { border: 1px solid #d8d6d1; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; background: #fff; }
