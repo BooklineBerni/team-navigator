@@ -7,7 +7,31 @@
 // central render() dispatcher) keep working unchanged.
 // =============================================================================
 
+// Returns the display name (first name) for the currently logged-in user.
+// Honors preview-as (admin previewing as another user). Falls back to
+// capitalizing the email prefix when the email isn't in TEAM.
+function _bnHomeUserDisplayName() {
+  let email = '';
+  if (typeof bnPreviewAsEmail !== 'undefined' && bnPreviewAsEmail) email = bnPreviewAsEmail;
+  else if (typeof bnSupabaseUser !== 'undefined' && bnSupabaseUser && bnSupabaseUser.email) email = bnSupabaseUser.email;
+  email = (email || '').toLowerCase();
+  if (!email) return '';
+  const list = (typeof TEAM !== 'undefined' ? TEAM : []).concat(typeof EXTERNAL_TEAM !== 'undefined' ? EXTERNAL_TEAM : []);
+  const m = list.find(p => (p.email || '').toLowerCase() === email);
+  if (m) return m.displayName || (m.name || '').split(' ')[0] || '';
+  const pfx = email.split('@')[0].split('.')[0];
+  return pfx.charAt(0).toUpperCase() + pfx.slice(1);
+}
+
 function renderHomePage() {
+  // Personalised greeting — runs every time Home is rendered so it stays in
+  // sync with auth state / preview-as.
+  const greetEl = document.getElementById('homeGreeting');
+  if (greetEl) {
+    const name = _bnHomeUserDisplayName();
+    const wave = '<span style="display:inline-block; transform: rotate(15deg)">👋</span>';
+    greetEl.innerHTML = (name ? '¡Hola, ' + escapeHtml(name) + '! ' : '¡Hola! ') + wave;
+  }
   const tasks = STORE.tasks;
   const total = tasks.length;
   // "Open" = any status that's not a terminal state (Completed/Archived/Discarded) and not empty
