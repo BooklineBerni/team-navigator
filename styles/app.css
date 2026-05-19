@@ -2127,6 +2127,7 @@
   .field textarea { resize: vertical; min-height: 80px; }
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .field-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .modal-actions {
     display: flex; gap: 8px; justify-content: space-between;
     margin: 16px -24px -24px;
