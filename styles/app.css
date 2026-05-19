@@ -3304,6 +3304,11 @@
   body.bn-read-only [data-f="estimatedHours"] {
     display: none !important;
   }
+  /* Admin-only fields (Started / Ended timing dates). Hidden for restricted/preview/member. */
+  body.bn-read-only .bn-admin-only,
+  body.bn-read-only #f_adminStartedEndedRow {
+    display: none !important;
+  }
   /* Roadmap calendar header: hide the Edit + Delete buttons in restricted view.
      They're already non-functional (openRoadmapEdit is blocked) but cleaner to
      hide them entirely so the affordance never appears. */

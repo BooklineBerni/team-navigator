@@ -6,7 +6,7 @@
 <title>Berni Navigator</title>
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260519m">
+<link rel="stylesheet" href="styles/app.css?v=bn20260520a">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -873,6 +873,17 @@ Weekly metrics by country" spellcheck="false"></textarea>
           <span id="f_taskDatesFeedback" class="bn-quick-apply-feedback" style="display:none"></span>
         </div>
       </div>
+      <!-- Admin-only Started / Ended dates. These are NOT the same as Start/End above:
+           Start/End are the scheduled task dates (when work was planned), Started/Ended
+           are the actual dates when the task transitioned to In Progress and to
+           Completed/Discarded. They auto-fill once on the matching status transition
+           (only when empty), and stay editable manually. CSS hides the row for any
+           non-admin viewer (body.bn-read-only) so members and restricted users never
+           see these timing fields. -->
+      <div class="field-row-2 f_taskOnlyRow bn-admin-only" id="f_adminStartedEndedRow">
+        <div class="field"><label title="Date the task first transitioned to In Progress (auto-filled, editable)">Started</label><input type="date" id="f_startedDate"></div>
+        <div class="field"><label title="Date the task moved to Completed or Discarded (auto-filled, editable)">Ended</label><input type="date" id="f_endedDate"></div>
+      </div>
       <div class="field f_taskOnlyRow bn-hours-field">
         <label title="Dedicated hours">Ded. h.</label><input type="number" id="f_dedicatedHours" step="0.5" min="0">
       </div>
@@ -923,15 +934,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260519m"></script>
+<script src="data/team-directory.js?v=bn20260520a"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260519m"></script>
+<script src="data/holidays.js?v=bn20260520a"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260519m"></script>
+<script src="lib/supabase-auth.js?v=bn20260520a"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260519m"></script>
+<script src="lib/permissions.js?v=bn20260520a"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260519m"></script>
+<script src="lib/filters.js?v=bn20260520a"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -2870,6 +2881,10 @@ function openModal(tid, overrides) {
   if (propInp) propInp.value = '';
   const propDd = document.getElementById('f_proposedDropdown');
   if (propDd) propDd.style.display = 'none';
+  // Admin-only "Started / Ended" timing dates. Always populated (they're hidden by
+  // CSS for non-admins), so we don't gate the assignments on permission here.
+  { const sEl = document.getElementById('f_startedDate'); if (sEl) sEl.value = t.startedDate || ''; }
+  { const eEl = document.getElementById('f_endedDate');   if (eEl) eEl.value = t.endedDate   || ''; }
   document.getElementById("f_dedicatedHours").value = (t.dedicatedHours === 0 || t.dedicatedHours) ? t.dedicatedHours : "";
   document.getElementById("f_estimatedHours").value = (t.estimatedHours === 0 || t.estimatedHours) ? t.estimatedHours : "";
   setColoredPicker('f_shareWith', t.shareWith || '');
@@ -2965,7 +2980,18 @@ document.getElementById("modalBg").addEventListener("click", e => { if (e.target
     // pull on next reload will reconcile if the RPC failed.
     window.__bnMemberStatusSave = true;
     try {
+      const _prev = t.slackStatus || '';
       t.slackStatus = newStatus;
+      // Mirror the server-side autofill so the local STORE reflects the same
+      // started/ended values the RPC will write into the admin's master store.
+      const _today = (function(){ const d = new Date(); const pad = n => String(n).padStart(2,'0'); return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); })();
+      if (newStatus === 'In Progress' && _prev !== 'In Progress' && !t.startedDate) {
+        t.startedDate = _today;
+      }
+      if ((newStatus === 'Completed' || newStatus === 'Discarded') &&
+          _prev !== newStatus && !t.endedDate) {
+        t.endedDate = _today;
+      }
       if (typeof saveStore === 'function') { try { saveStore(STORE); } catch (_) {} }
     } finally { window.__bnMemberStatusSave = false; }
     btn.disabled = false; btn.textContent = _orig;
@@ -3001,6 +3027,9 @@ document.getElementById("saveBtn").addEventListener("click", () => {
   let t = bnTaskById(editingId);
   if (!t && newCarry) { t = newCarry; delete t._isNew; STORE.tasks.push(t); }
   if (!t) return;
+  // Capture the previous status BEFORE we overwrite it; the autofill rules for the
+  // admin-only Started / Ended timing fields only fire on a transition.
+  const _prevStatusForTiming = t.slackStatus || '';
   t.subject = subject;
   t.isGroup = isGroup;
   // Groups keep all their own task fields now — same save path as regular tasks.
@@ -3017,6 +3046,30 @@ document.getElementById("saveBtn").addEventListener("click", () => {
     const est = document.getElementById("f_estimatedHours").value;
     t.dedicatedHours = ded === "" ? "" : (parseFloat(ded) || 0);
     t.estimatedHours = est === "" ? "" : (parseFloat(est) || 0);
+    // Started / Ended (admin-only timing dates). We trust whatever the admin typed
+    // in the inputs (manual override always wins), then apply auto-fill rules for
+    // transitions where the field was still empty:
+    //   – New status === 'In Progress'         AND startedDate empty → set to today
+    //   – New status in {Completed, Discarded} AND endedDate   empty → set to today
+    // These rules only fire on a TRANSITION (prev !== new), so re-saving an already-
+    // In-Progress task with the same status doesn't shift the started date.
+    {
+      const sIn = document.getElementById('f_startedDate');
+      const eIn = document.getElementById('f_endedDate');
+      if (sIn) t.startedDate = sIn.value || '';
+      if (eIn) t.endedDate   = eIn.value || '';
+      const _today = (function(){ const d = new Date(); const pad = n => String(n).padStart(2,'0'); return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); })();
+      const _newStatus = t.slackStatus || '';
+      if (_newStatus === 'In Progress' && _prevStatusForTiming !== 'In Progress' && !t.startedDate) {
+        t.startedDate = _today;
+        if (sIn) sIn.value = _today;
+      }
+      if ((_newStatus === 'Completed' || _newStatus === 'Discarded') &&
+          _prevStatusForTiming !== _newStatus && !t.endedDate) {
+        t.endedDate = _today;
+        if (eIn) eIn.value = _today;
+      }
+    }
     t.shareWith = document.getElementById("f_shareWith").value;
     // Completion is now derived from status — no separate completed/sharing booleans.
     // Persist the manual Start/End so it pre-fills new roadmap entries and the picker shows it.
@@ -6072,45 +6125,45 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260519m"></script>
+<script src="views/bulk-create.js?v=bn20260520a"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260519m"></script>
+<script src="lib/bulk-popovers.js?v=bn20260520a"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260519m"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260520a"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260519m"></script>
+<script src="views/home.js?v=bn20260520a"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260519m"></script>
-<script src="views/files.js?v=bn20260519m"></script>
+<script src="lib/files-integration.js?v=bn20260520a"></script>
+<script src="views/files.js?v=bn20260520a"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260519m"></script>
-<script src="views/requests.js?v=bn20260519m"></script>
+<script src="lib/requests-feature.js?v=bn20260520a"></script>
+<script src="views/requests.js?v=bn20260520a"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260519m"></script>
+<script src="views/tasks.js?v=bn20260520a"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260519m"></script>
+<script src="views/team.js?v=bn20260520a"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260519m"></script>
+<script src="views/profile.js?v=bn20260520a"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260519m"></script>
-<script src="views/roadmaps.js?v=bn20260519m"></script>
+<script src="views/roadmap-calendar.js?v=bn20260520a"></script>
+<script src="views/roadmaps.js?v=bn20260520a"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260519m"></script>
+<script src="lib/date-picker.js?v=bn20260520a"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260519m"></script>
+<script src="lib/trash.js?v=bn20260520a"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260519m"></script>
+<script src="lib/backup.js?v=bn20260520a"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260519m"></script>
+<script src="lib/pickers.js?v=bn20260520a"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260519m"></script>
-<script src="views/modals/add-member.js?v=bn20260519m"></script>
-<script src="views/modals/tag-manager.js?v=bn20260519m"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260519m"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260519m"></script>
+<script src="views/modals/person-tags.js?v=bn20260520a"></script>
+<script src="views/modals/add-member.js?v=bn20260520a"></script>
+<script src="views/modals/tag-manager.js?v=bn20260520a"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260520a"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260520a"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
