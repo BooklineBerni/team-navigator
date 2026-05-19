@@ -497,9 +497,17 @@ Weekly metrics by country" spellcheck="false"></textarea>
 
         <!-- Permissions column -->
         <div>
-          <h3 style="margin:0 0 8px; font-size:15px;">Per-user permissions</h3>
+          <!-- Header row: title on the left, Apply button on the right.
+               The Apply button stays hidden until the admin stages a change in any
+               of the picklists below — it then becomes a primary button and shows
+               how many pending changes will be committed. Clicking it batches all
+               pending RPC calls in one go (no per-row confirm popup). -->
+          <div style="display:flex; align-items:center; justify-content:space-between; margin:0 0 8px;">
+            <h3 style="margin:0; font-size:15px;">Per-user permissions</h3>
+            <button class="btn primary" id="bnAdminPermsApplyBtn" type="button" style="display:none">Apply <span id="bnAdminPermsApplyCount"></span></button>
+          </div>
           <div style="font-size:12.5px; color:#6b6b6b; margin-bottom:12px;">
-            <strong>none</strong>: no access · <strong>restricted_view</strong>: sees only own + redacted shared tasks · <strong>admin</strong>: full access.
+            <strong>none</strong>: no access · <strong>restricted_view</strong>: read-only view · <strong>member</strong>: read-only + can edit status of own tasks · <strong>admin</strong>: full access.
           </div>
           <div id="bnAdminPermsList" style="border:1px solid #ececec; border-radius:8px; overflow:hidden;"></div>
         </div>
