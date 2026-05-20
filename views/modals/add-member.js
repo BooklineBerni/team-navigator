@@ -13,11 +13,78 @@
 function openAddMember() {
   document.getElementById("memberSearchInput").value = "";
   document.getElementById("memberSearchResults").innerHTML = '<div style="color:#9a9a9a; font-size:12px; padding:12px; text-align:center">Start typing to search the Bookline directory...</div>';
+  // Reset custom fields
+  ['customMemberName','customMemberDisplayName','customMemberEmail','customMemberPhoto'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const errEl = document.getElementById('customMemberError'); if (errEl) errEl.style.display = 'none';
+  // Default to Slack mode
+  _setAddMemberMode('slack');
   document.getElementById("addMemberBg").classList.add("show");
   setTimeout(() => document.getElementById("memberSearchInput").focus(), 50);
 }
 function closeAddMember() {
   document.getElementById("addMemberBg").classList.remove("show");
+}
+// Switch between "search Bookline Slack" and "create custom" modes.
+function _setAddMemberMode(mode) {
+  const slackPanel  = document.getElementById('addMemberSlackMode');
+  const customPanel = document.getElementById('addMemberCustomMode');
+  const createBtn   = document.getElementById('customMemberCreateBtn');
+  const toggle      = document.getElementById('addMemberModeToggle');
+  if (!slackPanel || !customPanel) return;
+  const isCustom = (mode === 'custom');
+  slackPanel.style.display  = isCustom ? 'none' : '';
+  customPanel.style.display = isCustom ? '' : 'none';
+  if (createBtn) createBtn.style.display = isCustom ? '' : 'none';
+  if (toggle) toggle.querySelectorAll('button[data-mode]').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  if (isCustom) {
+    setTimeout(() => { const n = document.getElementById('customMemberName'); if (n) n.focus(); }, 30);
+  }
+}
+// Generate a unique id for a custom member (no Slack U-prefix collision).
+function _bnNewCustomMemberId() {
+  const base = 'cust_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+  return base;
+}
+function _bnCreateCustomMember() {
+  const errEl = document.getElementById('customMemberError');
+  const showErr = (msg) => { if (errEl) { errEl.textContent = msg; errEl.style.display = ''; } };
+  const name = (document.getElementById('customMemberName').value || '').trim();
+  if (!name) { showErr('Name is required.'); return; }
+  const email = (document.getElementById('customMemberEmail').value || '').trim();
+  const photo = (document.getElementById('customMemberPhoto').value || '').trim();
+  const displayInput = (document.getElementById('customMemberDisplayName').value || '').trim();
+  const displayName = displayInput || (name.split(/\s+/)[0] || name);
+  // Reject duplicates by email (if provided) or by name
+  const all = (typeof TEAM !== 'undefined' ? TEAM : []).concat(
+    typeof EXTERNAL_TEAM !== 'undefined' ? EXTERNAL_TEAM : []
+  );
+  if (email && all.some(p => (p.email || '').toLowerCase() === email.toLowerCase())) {
+    showErr('A member with that email already exists.'); return;
+  }
+  if (!email && all.some(p => (p.name || '').toLowerCase() === name.toLowerCase())) {
+    showErr('A member with that exact name already exists. Add an email to disambiguate, or rename.'); return;
+  }
+  const id = _bnNewCustomMemberId();
+  const member = {
+    id, name, displayName,
+    email,
+    role: 'External',
+    photo,
+    color: pickColorForNewMember(),
+    defaultTags: [],
+    isCustom: true
+  };
+  STORE.customMembers = STORE.customMembers || [];
+  STORE.customMembers.push(member);
+  saveStore(STORE);
+  rebuildTeam();
+  populateUserSelects();
+  closeAddMember();
+  render();
 }
 
 
@@ -97,4 +164,26 @@ if (teamAddMemberBtnEl) teamAddMemberBtnEl.addEventListener("click", openAddMemb
 
 
 document.getElementById("addMemberBg").addEventListener("click", e => { if (e.target.id === "addMemberBg") closeAddMember(); });
+
+// Wire the Slack / Custom mode toggle.
+(function wireAddMemberModeToggle(){
+  const toggle = document.getElementById('addMemberModeToggle');
+  if (!toggle) return;
+  toggle.querySelectorAll('button[data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => _setAddMemberMode(btn.dataset.mode));
+  });
+})();
+
+// Wire the Create custom member button + Enter-to-submit in the form.
+(function wireCreateCustomMember(){
+  const btn = document.getElementById('customMemberCreateBtn');
+  if (btn) btn.addEventListener('click', _bnCreateCustomMember);
+  ['customMemberName','customMemberDisplayName','customMemberEmail','customMemberPhoto'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); _bnCreateCustomMember(); }
+    });
+  });
+})();
 
