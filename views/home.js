@@ -138,13 +138,15 @@ function renderHomePage() {
     .filter(x => x.n > 0)
     .sort((a, b) => b.n - a.n)
     .slice(0, 6);
-  const contribMax = counts[0] ? counts[0].n : 1;
+  // Bar shows each contributor's share of the team-wide open pile
+  // (this person's open ÷ total open across the whole team).
+  const teamOpen = tasks.filter(t => openStatuses.indexOf(t.slackStatus) >= 0).length;
   document.getElementById("dashTopContributors").innerHTML = counts.length === 0
     ? '<div style="color:#6b6b6b; font-size:13px">No task assignments yet.</div>'
     : counts.map(({p, n}, i) => {
       const open  = tasks.filter(t => t.responsibleId === p.id && openStatuses.indexOf(t.slackStatus) >= 0).length;
       const done  = tasks.filter(t => t.responsibleId === p.id && (t.slackStatus === 'Completed' || t.slackStatus === 'Discarded')).length;
-      const fill  = Math.max(4, Math.round((n / contribMax) * 100));
+      const fill  = teamOpen > 0 ? Math.max(open > 0 ? 2 : 0, Math.round((open / teamOpen) * 100)) : 0;
       return '<div class="contrib-card" data-rank="' + (i + 1) + '">' +
         '<span class="contrib-rank">#' + (i + 1) + '</span>' +
         '<span class="avatar contrib-av" style="background:' + p.color + '">' +
