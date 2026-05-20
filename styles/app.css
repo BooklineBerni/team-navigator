@@ -656,15 +656,17 @@
   }
   .cal-year-label .cal-group-toggle-y:hover { background: #fff5dc; color: #92400e; border-color: #d6b962; }
   .cal-year-label .cal-group-toggle-y.expanded { transform: rotate(90deg); }
-  .cal-year-label { display: flex; align-items: center; gap: 0; }
-  .cal-year-label .folder-emoji { margin-right: 4px; flex-shrink: 0; }
+  /* Block layout (not flex). Flex was vertically clamping the text span
+     to the parent's height even with align-items:center, so 3-line wrap
+     never visually expanded the row. With block layout the parent grows
+     with the wrapped content, and align-items:stretch on the grid row
+     lets the timeline track match. */
+  .cal-year-label { display: block; }
+  .cal-year-label .cal-group-toggle-y { float: left; margin-right: 4px; }
+  .cal-year-label .folder-emoji { float: left; margin-right: 4px; }
   .cal-year-label .cal-year-label-text {
-    flex: 1 1 auto; min-width: 0;
-    /* Pure max-height clamp (Chrome was normalizing -webkit-box to flow-root
-       on flex children, which silently disabled line-clamp). max-height of
-       ~3.6em with overflow:hidden truncates to 3 visible lines reliably. */
-    word-break: break-word; overflow-wrap: break-word;
     display: block;
+    word-break: break-word; overflow-wrap: break-word;
     line-height: 1.2;
     max-height: 3.6em;
     overflow: hidden;
