@@ -133,11 +133,16 @@ function renderProfilePage() {
   const personTags = getTagsFor(person.id);
   const tagLib = getTagLibrary();
   // For the virtual Unassigned profile, "their" tasks are those without any responsibleId
-  // AND with at least one proposer — orphan tasks nobody proposed are hidden so the view
-  // stays useful.
-  const _bnHasProposer = (t) => (Array.isArray(t.proposedByIds) && t.proposedByIds.length > 0) || !!t.proposedById;
+  // AND where the CURRENT (or previewed-as) user is among the proposers. Tasks no one
+  // proposed, or proposed by someone other than the current user, are hidden.
+  const _bnMyPid = (typeof bnCurrentPersonId === 'function') ? bnCurrentPersonId() : '';
+  const _bnIsMyProposal = (t) => {
+    if (!_bnMyPid) return false;
+    if (Array.isArray(t.proposedByIds)) return t.proposedByIds.includes(_bnMyPid);
+    return t.proposedById === _bnMyPid;
+  };
   const personTasks = person.isUnassigned
-    ? STORE.tasks.filter(t => !t.responsibleId && _bnHasProposer(t))
+    ? STORE.tasks.filter(t => !t.responsibleId && _bnIsMyProposal(t))
     : STORE.tasks.filter(t => t.responsibleId === person.id);
   const counts = {
     total:        personTasks.length,

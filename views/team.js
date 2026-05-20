@@ -40,9 +40,30 @@ function renderMembersPage() {
     // Groups count as tasks too.
     return (STORE.tasks || []).some(t => t.responsibleId === pid);
   }
-  // Team: ONLY people whose explicit section is "team"
-  const teamActive = pool.filter(p => getPersonSection(p.id) === "team" && matchesQuery(p));
-  const supplementary = pool.filter(p => getPersonSection(p.id) === "supplementary" && matchesQuery(p));
+  // Build the set of people who live inside a custom group. They're rendered
+  // as chips under the group's card, not as their own card. Also build a
+  // lookup so we can determine the "effective section" of group members —
+  // adding someone to a group that lives in Team puts them in Team too.
+  const groupMemberIdsSet = new Set();
+  const groupOf = new Map(); // memberId → group person id
+  ((STORE && STORE.customMembers) || []).forEach(m => {
+    if (m && m.isPeopleGroup && Array.isArray(m.memberIds)) {
+      m.memberIds.forEach(id => { groupMemberIdsSet.add(id); groupOf.set(id, m.id); });
+    }
+  });
+  // Effective section for placement: if the person is in a group, use the
+  // group's section. Otherwise their own explicit section.
+  function effectiveSection(pid) {
+    const grpId = groupOf.get(pid);
+    if (grpId) return getPersonSection(grpId) || '';
+    return getPersonSection(pid);
+  }
+  // The classify pass uses effectiveSection so members follow their group,
+  // but the actual rendering filters them out (they get nested under the
+  // group's card via memberCardHtml).
+  // Team: ONLY people whose effective section is "team"
+  const teamActive    = pool.filter(p => effectiveSection(p.id) === "team" && matchesQuery(p) && !groupMemberIdsSet.has(p.id));
+  const supplementary = pool.filter(p => effectiveSection(p.id) === "supplementary" && matchesQuery(p) && !groupMemberIdsSet.has(p.id));
   const proposerIds = getAllProposerIds();
   // Bookline: section is empty AND (has proposals OR owns tasks)
   const bookline = [];
@@ -51,7 +72,8 @@ function renderMembersPage() {
   // have no activity yet — typically users auto-promoted from SLACK_DIRECTORY.
   const booklineNoTasks = [];
   for (const p of pool) {
-    if (getPersonSection(p.id) !== "") continue;
+    if (groupMemberIdsSet.has(p.id)) continue;
+    if (effectiveSection(p.id) !== "") continue;
     if (!matchesQuery(p)) continue;
     if (proposerIds.has(p.id) || ownsTasks(p.id)) bookline.push(p);
     else booklineNoTasks.push(p);
@@ -60,7 +82,7 @@ function renderMembersPage() {
   booklineNoTasks.sort((a, b) => (a.name||'').localeCompare(b.name||''));
   supplementary.sort((a, b) => (a.name||'').localeCompare(b.name||''));
   // Disabled: everyone whose section is "disabled"
-  const disabled = pool.filter(p => getPersonSection(p.id) === "disabled" && matchesQuery(p));
+  const disabled = pool.filter(p => effectiveSection(p.id) === "disabled" && matchesQuery(p) && !groupMemberIdsSet.has(p.id));
 
   // Sort team using existing sort
   const teamSorted = sortPersons(teamActive.map(p => p.id), STORE.tasks).map(id => findPerson(id)).filter(Boolean);
@@ -132,10 +154,38 @@ function renderMembersPage() {
       ? '<button type="button" class="member-edit-btn" data-edit-uid="' + escapeHtml(p.id) + '" title="Edit this custom member">✎</button>'
       : '';
 
+    // If this is a "people group", build a small chip list of its members to
+    // render INSIDE the card. The members themselves are filtered out of the
+    // section lists above so they only appear here.
+    const groupRecord = (STORE && Array.isArray(STORE.customMembers))
+      ? STORE.customMembers.find(m => m.id === p.id && m.isPeopleGroup)
+      : null;
+    let groupMembersHtml = '';
+    if (groupRecord) {
+      const memberIds = Array.isArray(groupRecord.memberIds) ? groupRecord.memberIds : [];
+      const members = memberIds.map(id => findPerson(id)).filter(Boolean);
+      groupMembersHtml = '<div class="member-group-chips" data-group-uid="' + escapeHtml(p.id) + '">';
+      if (members.length === 0) {
+        groupMembersHtml += '<span class="member-group-empty">No members yet</span>';
+      } else {
+        groupMembersHtml += members.map(mm =>
+          '<span class="member-group-chip" data-go-profile="' + escapeHtml(mm.id) + '" title="Open ' + escapeHtml(mm.displayName || mm.name || '') + '">' +
+            '<span class="av-mini" style="background:' + (mm.color || '#9a9a9a') + '">' +
+              (mm.photo ? '<img src="' + escapeHtml(mm.photo) + '" alt="" onerror="this.remove()">' : '') +
+              '<span class="ini">' + escapeHtml(initials(mm.name || '')) + '</span>' +
+            '</span>' +
+            '<span>' + escapeHtml(mm.displayName || mm.name || '') + '</span>' +
+          '</span>'
+        ).join('');
+      }
+      groupMembersHtml += '</div>';
+    }
+
     const cls = 'member-card' +
       (isDeactivated(p.id) ? ' deactivated' : '') +
       (mode === 'bookline' ? ' member-bookline' : '') +
-      (isCustomPerson ? ' member-custom' : '');
+      (isCustomPerson ? ' member-custom' : '') +
+      (groupRecord ? ' member-people-group' : '');
     return '<div class="' + cls + '" data-uid="' + p.id + '">' +
       '<div class="person-row">' +
         '<span class="avatar" style="background:' + (p.color || '#9a9a9a') + '">' +
@@ -151,6 +201,7 @@ function renderMembersPage() {
       '</div>' +
       tagsHtml +
       roadmapsHtml +
+      groupMembersHtml +
       '<div class="stats" style="margin-top:auto; padding-top:6px; border-top:1px solid #f0efeb">' + statsHtml + '</div>' +
     '</div>';
   }
@@ -257,6 +308,17 @@ function renderMembersPage() {
           selectedRoadmapTimelineId = rmId;
           localStorage.setItem("bookline-selectedRoadmap", rmId);
           switchView("roadmaps");
+        }
+        return;
+      }
+      // Group-member chip → navigate to that person's profile.
+      const memberChip = e.target.closest('[data-go-profile]');
+      if (memberChip) {
+        e.stopPropagation();
+        const uid = memberChip.dataset.goProfile;
+        if (uid) {
+          setProfilePerson(uid);
+          switchView("profile");
         }
         return;
       }

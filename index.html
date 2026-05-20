@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Navigator</title>
-<link rel="icon" type="image/gif" href="logo.gif?v=bn20260520z">
+<link rel="icon" type="image/gif" href="logo.gif?v=bn20260521a">
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260520z">
+<link rel="stylesheet" href="styles/app.css?v=bn20260521a">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -115,7 +115,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand" id="bnBrand" title="">
-        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260520z" alt="" referrerpolicy="no-referrer"></div>
+        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260521a" alt="" referrerpolicy="no-referrer"></div>
         <div class="brand-stack">
           <div class="brand-name" id="bnBrandName">Team Navigator</div>
           <!-- Permission line — shown ONLY during preview. -->
@@ -1005,15 +1005,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260520z"></script>
+<script src="data/team-directory.js?v=bn20260521a"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260520z"></script>
+<script src="data/holidays.js?v=bn20260521a"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260520z"></script>
+<script src="lib/supabase-auth.js?v=bn20260521a"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260520z"></script>
+<script src="lib/permissions.js?v=bn20260521a"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260520z"></script>
+<script src="lib/filters.js?v=bn20260521a"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -1523,6 +1523,19 @@ function findPersonByEmail(email) {
          })()) ||
          null;
 }
+// Person id of the currently logged-in user (or the user we're previewing-as).
+// Used to scope "personal" views like the Unassigned bucket — we only count
+// tasks the current user is a proposer for.
+function bnCurrentPersonId() {
+  let email = '';
+  try {
+    if (typeof bnPreviewAsEmail !== 'undefined' && bnPreviewAsEmail) email = bnPreviewAsEmail;
+    else if (typeof bnSupabaseUser !== 'undefined' && bnSupabaseUser && bnSupabaseUser.email) email = bnSupabaseUser.email;
+  } catch (_) {}
+  if (!email) return '';
+  const p = findPersonByEmail(email);
+  return p ? p.id : '';
+}
 function allPeopleForPicker() {
   // Active team first, then external (alphabetical within each group), excluding deactivated.
   const active = (TEAM || []).filter(p => !isDeactivated(p.id));
@@ -1684,8 +1697,11 @@ function getPersonSection(personId) {
     if (tags.includes("desactivado") || tags.includes("disabled")) result = "disabled";
     // Legacy: explicit team boolean
     else if (typeof s.team === 'boolean') result = s.team ? "team" : "";
-    // Default: TEAM array members are team; everyone else is empty (Bookline)
-    else if (TEAM.find(p => p.id === personId)) result = "team";
+    // Default: TEAM array members are team — but ONLY if they came from
+    // DEFAULT_TEAM (the hardcoded Bookline roster). Custom-added or
+    // Slack-imported members default to "" (Bookline) so they don't auto-
+    // promote into the Team section just because rebuildTeam() put them in.
+    else if (DEFAULT_TEAM.some(p => p.id === personId)) result = "team";
     else result = "";
   }
   if (!_bnSectionByIdCache) _bnSectionByIdCache = new Map();
@@ -1981,7 +1997,9 @@ const TYPE_FILTER_ITEMS = [
 const SHARE_WITH_FILTER_ITEMS = [
   { key: "Private",   label: "Private",   bg: "#fee2e2", color: "#b91c1c" },
   { key: "Team",      label: "Team",      bg: "#cffafe", color: "#0e7490" },
-  { key: "Everyone",  label: "Everyone",  bg: "#475569", color: "#ffffff" }
+  // Everyone here uses a lighter slate so the pill doesn't blend in with the
+  // global "active/selected" dark state used by the tristate component.
+  { key: "Everyone",  label: "Everyone",  bg: "#e2e8f0", color: "#334155" }
 ];
 
 function renderTeamStrip() {
@@ -2095,7 +2113,9 @@ const PRIORITIES = [
   { key: "High",     label: "High",     bg: "#fef0c7", color: "#b54708" },
   { key: "Medium",   label: "Medium",   bg: "#d1fadf", color: "#027a48" },
   { key: "Low",      label: "Low",      bg: "#dbeafe", color: "#1d4ed8" },
-  { key: "Very Low", label: "Very Low", bg: "#1e3a8a", color: "#ffffff" }
+  // Lighter tone in the filter pill so it doesn't read as "selected" (which
+  // also uses dark navy). The modal picker keeps the saturated dark blue.
+  { key: "Very Low", label: "Very Low", bg: "#bfdbfe", color: "#1e3a8a" }
 ];
 
 function countTasksForPersonContextual(personId) {
@@ -2743,10 +2763,16 @@ function render() {
   // (insertBefore the first child) so it sits above the team people cards.
   if (typeof getShowUnassigned === 'function' ? getShowUnassigned() : (localStorage.getItem('bookline-showUnassigned') === '1')) {
     // Groups ARE tasks too — count them as Unassigned when they have no responsibleId.
-    // Hide rows with no proposer either — those are "orphan" tasks nobody owns. The
-    // user wants Unassigned to only show stuff that at least someone proposed.
-    const _hasProposer = (t) => (Array.isArray(t.proposedByIds) && t.proposedByIds.length > 0) || !!t.proposedById;
-    const unassignedAll = allTasks.filter(t => !t.responsibleId && _hasProposer(t));
+    // Only show tasks where the CURRENT user (or the previewed-as user) is among the
+    // proposers. This keeps the Unassigned bucket personal — "stuff I proposed that
+    // hasn't been assigned to anyone yet".
+    const _myPid = (typeof bnCurrentPersonId === 'function') ? bnCurrentPersonId() : '';
+    const _isMyProposal = (t) => {
+      if (!_myPid) return false;
+      if (Array.isArray(t.proposedByIds)) return t.proposedByIds.includes(_myPid);
+      return t.proposedById === _myPid;
+    };
+    const unassignedAll = allTasks.filter(t => !t.responsibleId && _isMyProposal(t));
     {
       const unassignedVisible = unassignedAll.filter(t => taskMatchesFilters(t, { allowGroups: true }));
       // Skip the Unassigned card when task-level filters are active and nothing matches.
@@ -6241,45 +6267,45 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260520z"></script>
+<script src="views/bulk-create.js?v=bn20260521a"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260520z"></script>
+<script src="lib/bulk-popovers.js?v=bn20260521a"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260520z"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260521a"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260520z"></script>
+<script src="views/home.js?v=bn20260521a"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260520z"></script>
-<script src="views/files.js?v=bn20260520z"></script>
+<script src="lib/files-integration.js?v=bn20260521a"></script>
+<script src="views/files.js?v=bn20260521a"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260520z"></script>
-<script src="views/requests.js?v=bn20260520z"></script>
+<script src="lib/requests-feature.js?v=bn20260521a"></script>
+<script src="views/requests.js?v=bn20260521a"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260520z"></script>
+<script src="views/tasks.js?v=bn20260521a"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260520z"></script>
+<script src="views/team.js?v=bn20260521a"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260520z"></script>
+<script src="views/profile.js?v=bn20260521a"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260520z"></script>
-<script src="views/roadmaps.js?v=bn20260520z"></script>
+<script src="views/roadmap-calendar.js?v=bn20260521a"></script>
+<script src="views/roadmaps.js?v=bn20260521a"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260520z"></script>
+<script src="lib/date-picker.js?v=bn20260521a"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260520z"></script>
+<script src="lib/trash.js?v=bn20260521a"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260520z"></script>
+<script src="lib/backup.js?v=bn20260521a"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260520z"></script>
+<script src="lib/pickers.js?v=bn20260521a"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260520z"></script>
-<script src="views/modals/add-member.js?v=bn20260520z"></script>
-<script src="views/modals/tag-manager.js?v=bn20260520z"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260520z"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260520z"></script>
+<script src="views/modals/person-tags.js?v=bn20260521a"></script>
+<script src="views/modals/add-member.js?v=bn20260521a"></script>
+<script src="views/modals/tag-manager.js?v=bn20260521a"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260521a"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260521a"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
