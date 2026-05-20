@@ -65,20 +65,25 @@ function renderMembersPage() {
   const teamActive    = pool.filter(p => effectiveSection(p.id) === "team" && matchesQuery(p) && !groupMemberIdsSet.has(p.id));
   const supplementary = pool.filter(p => effectiveSection(p.id) === "supplementary" && matchesQuery(p) && !groupMemberIdsSet.has(p.id));
   const proposerIds = getAllProposerIds();
-  // Bookline: section is empty AND (has proposals OR owns tasks)
+  // Bookline: section is empty AND has at least one PROPOSED-BY task.
+  //   - Owning tasks via responsibleId doesn't count toward "With tasks" here —
+  //     this page categorizes Bookline people by what THEY have proposed.
+  //     (Jaime Amor was landing in With Tasks because he was responsible on
+  //     a task he hadn't proposed; that's now the No-Tasks section.)
   const bookline = [];
-  // Bookline · Sin tasks: section is empty AND NOT in proposerIds AND NOT ownsTasks.
-  // These are people who exist in the directory (TEAM/EXTERNAL/customMembers) but
-  // have no activity yet — typically users auto-promoted from SLACK_DIRECTORY.
+  // Bookline · Sin tasks: section is empty AND NOT in proposerIds.
   const booklineNoTasks = [];
   for (const p of pool) {
     if (groupMemberIdsSet.has(p.id)) continue;
     if (effectiveSection(p.id) !== "") continue;
     if (!matchesQuery(p)) continue;
-    if (proposerIds.has(p.id) || ownsTasks(p.id)) bookline.push(p);
+    if (proposerIds.has(p.id)) bookline.push(p);
     else booklineNoTasks.push(p);
   }
-  bookline.sort((a, b) => countProposerTasks(b.id) - countProposerTasks(a.id) || (a.name||'').localeCompare(b.name||''));
+  // Both bookline subgroups: alphabetical by name. (Was previously sorted
+  // by proposer task count desc for the With Tasks group, but the user
+  // asked for a stable alphabetical order across both subgroups.)
+  bookline.sort((a, b) => (a.name||'').localeCompare(b.name||''));
   booklineNoTasks.sort((a, b) => (a.name||'').localeCompare(b.name||''));
   supplementary.sort((a, b) => (a.name||'').localeCompare(b.name||''));
   // Disabled: everyone whose section is "disabled"
