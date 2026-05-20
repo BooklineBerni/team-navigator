@@ -654,16 +654,22 @@
   .cal-year-label .cal-group-toggle-y:hover { background: #fff5dc; color: #92400e; border-color: #d6b962; }
   .cal-year-label .cal-group-toggle-y.expanded { transform: rotate(90deg); }
   .cal-year-label { display: flex; align-items: center; gap: 0; }
-  .cal-year-label .folder-emoji { margin-right: 4px; }
+  .cal-year-label .folder-emoji { margin-right: 4px; flex-shrink: 0; }
   .cal-year-label .cal-year-label-text {
-    flex: 1; min-width: 0;
-    /* Wrap to 3 lines so longer names like "Diferenciar entre inbound llamada
-       y Demo creating account in CRM" aren't cut mid-word. Falls back to
-       ellipsis only if it overflows even 3 lines. */
+    flex: 1 1 auto; min-width: 0;
+    /* Wrap up to 3 lines via line-clamp. Chrome turns display:-webkit-box on
+       a flex child into "flow-root" unless we also expose it as a block via
+       display:block first — the cascade keeps the -webkit-box token alive
+       and line-clamp actually applies. Also set max-height as a fallback so
+       even browsers that drop -webkit-box still cap at ~3 lines. */
     word-break: break-word; overflow-wrap: break-word;
-    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    display: block;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
     overflow: hidden;
     line-height: 1.2;
+    max-height: calc(1.2em * 3 + 2px);
   }
   /* Side toggle (collapse Unscheduled/Archived sidebar) */
   .cal-side-toggle {
