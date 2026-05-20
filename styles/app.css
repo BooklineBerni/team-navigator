@@ -610,11 +610,11 @@
   .cal-year-row:first-child { border-top: none; }
   .cal-year-row.is-child { font-size: 12px; }
   .cal-year-label {
-    padding: 4px 8px; font-size: 12.5px; line-height: 1.25; color: #1a1a1a;
-    /* Allow long names to wrap to 2 lines instead of being cut off mid-word.
-       Still ellipsis if even 2 lines aren't enough. */
+    padding: 4px 8px; font-size: 11.5px; line-height: 1.2; color: #1a1a1a;
+    /* Allow long names up to 3 lines before falling back to ellipsis.
+       Slightly smaller font keeps the column from feeling crowded. */
     word-break: break-word; overflow-wrap: break-word;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
     overflow: hidden;
     border-right: 1px solid #ececea;
   }
@@ -657,12 +657,13 @@
   .cal-year-label .folder-emoji { margin-right: 4px; }
   .cal-year-label .cal-year-label-text {
     flex: 1; min-width: 0;
-    /* Wrap to 2 lines so longer task / group names aren't cut mid-word.
-       Falls back to ellipsis if it overflows even the 2-line clamp. */
+    /* Wrap to 3 lines so longer names like "Diferenciar entre inbound llamada
+       y Demo creating account in CRM" aren't cut mid-word. Falls back to
+       ellipsis only if it overflows even 3 lines. */
     word-break: break-word; overflow-wrap: break-word;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
     overflow: hidden;
-    line-height: 1.25;
+    line-height: 1.2;
   }
   /* Side toggle (collapse Unscheduled/Archived sidebar) */
   .cal-side-toggle {
