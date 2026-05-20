@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Navigator</title>
-<link rel="icon" type="image/gif" href="logo.gif?v=bn20260520v">
+<link rel="icon" type="image/gif" href="logo.gif?v=bn20260520w">
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260520v">
+<link rel="stylesheet" href="styles/app.css?v=bn20260520w">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -118,7 +118,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand" id="bnBrand" title="">
-        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260520v" alt="" referrerpolicy="no-referrer"></div>
+        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260520w" alt="" referrerpolicy="no-referrer"></div>
         <div class="brand-stack">
           <div class="brand-name" id="bnBrandName">Team Navigator</div>
           <!-- Permission line — shown ONLY during preview. -->
@@ -260,6 +260,7 @@
           <div id="statusFilterContainer" class="filter-group"></div>
           <div id="prioFilterContainer" class="filter-group"></div>
           <div id="typeFilterContainer" class="filter-group"></div>
+          <div id="shareWithFilterContainer" class="filter-group"></div>
         </div>
 
         <div class="filters" id="tagFilterBar" style="margin-bottom:8px"></div>
@@ -1001,15 +1002,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260520v"></script>
+<script src="data/team-directory.js?v=bn20260520w"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260520v"></script>
+<script src="data/holidays.js?v=bn20260520w"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260520v"></script>
+<script src="lib/supabase-auth.js?v=bn20260520w"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260520v"></script>
+<script src="lib/permissions.js?v=bn20260520w"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260520v"></script>
+<script src="lib/filters.js?v=bn20260520w"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -1267,7 +1268,7 @@ window.bnApplyDeploySeed = function(forceOverwrite) {
     return false;
   }
 };
-let statusInclude = new Set(), statusExclude = new Set(), prioInclude = new Set(), prioExclude = new Set(), personInclude = new Set(), personExclude = new Set(), tagInclude = new Set(), tagExclude = new Set(), taskTagInclude = new Set(), taskTagExclude = new Set(), roadmapInclude = new Set(), roadmapExclude = new Set(), dateStatusInclude = new Set(), dateStatusExclude = new Set(), typeInclude = new Set(), typeExclude = new Set(), sortMembers = "default", sortTasks = "default", searchQuery = "", editingId = null;
+let statusInclude = new Set(), statusExclude = new Set(), prioInclude = new Set(), prioExclude = new Set(), personInclude = new Set(), personExclude = new Set(), tagInclude = new Set(), tagExclude = new Set(), taskTagInclude = new Set(), taskTagExclude = new Set(), roadmapInclude = new Set(), roadmapExclude = new Set(), dateStatusInclude = new Set(), dateStatusExclude = new Set(), typeInclude = new Set(), typeExclude = new Set(), shareWithInclude = new Set(), shareWithExclude = new Set(), sortMembers = "default", sortTasks = "default", searchQuery = "", editingId = null;
 // Backwards-compat shim — older code still references currentPersonIds.
 // Treat it as the include set so existing reads "just work".
 const currentPersonIds = personInclude;
@@ -1291,6 +1292,8 @@ function saveFilterState() {
     dateStatusExclude: [...dateStatusExclude],
     typeInclude: [...typeInclude],
     typeExclude: [...typeExclude],
+    shareWithInclude: [...shareWithInclude],
+    shareWithExclude: [...shareWithExclude],
     currentPersonIds: [...currentPersonIds],
     sortMembers, sortTasks, searchQuery
   };
@@ -1315,6 +1318,8 @@ function loadFilterState() {
     dateStatusExclude = new Set(s.dateStatusExclude || []);
     typeInclude = new Set(s.typeInclude || []);
     typeExclude = new Set(s.typeExclude || []);
+    shareWithInclude = new Set(s.shareWithInclude || []);
+    shareWithExclude = new Set(s.shareWithExclude || []);
     currentPersonIds = new Set(s.currentPersonIds || []);
     sortMembers = s.sortMembers || "default";
     sortTasks = s.sortTasks || "default";
@@ -1852,6 +1857,7 @@ function bnGetFilterState() {
     statusInclude, statusExclude,
     prioInclude, prioExclude,
     typeInclude, typeExclude,
+    shareWithInclude, shareWithExclude,
     taskTagInclude, taskTagExclude,
     roadmapInclude, roadmapExclude,
     dateStatusInclude, dateStatusExclude
@@ -1946,6 +1952,13 @@ function cyclePrioFilter(name) {
   else prioExclude.delete(name);
 }
 function clearPrioFilter() { prioInclude.clear(); prioExclude.clear(); }
+function cycleShareWithFilter(name) {
+  if (!shareWithInclude.has(name) && !shareWithExclude.has(name)) shareWithInclude.add(name);
+  else if (shareWithInclude.has(name)) { shareWithInclude.delete(name); shareWithExclude.add(name); }
+  else shareWithExclude.delete(name);
+  saveFilterState();
+}
+function clearShareWithFilter() { shareWithInclude.clear(); shareWithExclude.clear(); saveFilterState(); }
 function cycleTypeFilter(name) {
   if (!typeInclude.has(name) && !typeExclude.has(name)) typeInclude.add(name);
   else if (typeInclude.has(name)) { typeInclude.delete(name); typeExclude.add(name); }
@@ -1960,6 +1973,13 @@ const TYPE_FILTER_ITEMS = [
   { key: "ERROR",          label: "ERROR",          bg: "#fee2e2", color: "#991b1b" },
   { key: "Infinite",       label: "Infinite",       bg: "#fef3c7", color: "#92400e" },
   { key: "__none",         label: "(none)",         bg: "#f3f4f6", color: "#6b7280" }
+];
+
+const SHARE_WITH_FILTER_ITEMS = [
+  { key: "Private",   label: "Private",   bg: "#fee2e2", color: "#b91c1c" },
+  { key: "Team",      label: "Team",      bg: "#cffafe", color: "#0e7490" },
+  { key: "Everyone",  label: "Everyone",  bg: "#1a1a1a", color: "#ffffff" },
+  { key: "__none",    label: "(empty)",   bg: "#f3f4f6", color: "#6b7280" }
 ];
 
 function renderTeamStrip() {
@@ -2094,6 +2114,7 @@ const BN_DIM_TO_SKIP = {
   status:     'status',
   priority:   'prio',
   type:       'type',
+  shareWith:  'shareWith',
   taskTag:    'taskTag',
   roadmap:    'roadmap',
   dateStatus: 'dateStatus',
@@ -2113,6 +2134,7 @@ function countTasksMatchingExcept(dim, optKey) {
     if (dim === "status")     return optKey === "__all" || t.slackStatus === optKey;
     if (dim === "priority")   return optKey === "__all" || (t.priority || "__none") === optKey;
     if (dim === "type")       return optKey === "__all" || (t.type || "__none") === optKey;
+    if (dim === "shareWith")  return optKey === "__all" || (t.shareWith || "__none") === optKey;
     if (dim === "taskTag") {
       if (optKey === "__all") return true;
       const tt = Array.isArray(t.taskTags) ? t.taskTags : [];
@@ -2210,6 +2232,23 @@ function renderTypeFilter() {
     b.addEventListener("click", () => {
       if (b.dataset.key === "__all") clearTypeFilter();
       else cycleTypeFilter(b.dataset.key);
+      render();
+    });
+  });
+}
+
+function renderShareWithFilter() {
+  const cont = document.getElementById("shareWithFilterContainer");
+  if (!cont) return;
+  const anyActive = shareWithInclude.size > 0 || shareWithExclude.size > 0;
+  let h = '<span class="label" style="margin-left:8px">Share:</span>';
+  h += '<button class="pill ' + (!anyActive ? 'active' : '') + '" data-key="__all">All' + countBadgePair(visibleTasksCount(), STORE.tasks.length) + '</button>';
+  SHARE_WITH_FILTER_ITEMS.forEach(item => { h += tristatePillHtml(item, shareWithInclude, shareWithExclude, countTasksMatchingExcept("shareWith", item.key)); });
+  cont.innerHTML = h;
+  cont.querySelectorAll("button[data-key]").forEach(b => {
+    b.addEventListener("click", () => {
+      if (b.dataset.key === "__all") clearShareWithFilter();
+      else cycleShareWithFilter(b.dataset.key);
       render();
     });
   });
@@ -2534,6 +2573,7 @@ function render() {
   renderStatusFilter();
   renderPrioFilter();
   renderTypeFilter();
+  renderShareWithFilter();
   renderTeamStrip();
   renderTagFilter();
   renderTaskTagFilter();
@@ -2579,6 +2619,9 @@ function render() {
   function _anyTaskLevelFilterActive() {
     return (statusInclude.size > 0 || statusExclude.size > 0 ||
             prioInclude.size > 0 || prioExclude.size > 0 ||
+            (typeof typeInclude !== 'undefined' && typeInclude.size > 0) ||
+            (typeof typeExclude !== 'undefined' && typeExclude.size > 0) ||
+            shareWithInclude.size > 0 || shareWithExclude.size > 0 ||
             taskTagInclude.size > 0 || taskTagExclude.size > 0 ||
             roadmapInclude.size > 0 || roadmapExclude.size > 0 ||
             (typeof dateStatusInclude !== 'undefined' && dateStatusInclude.size > 0) ||
@@ -5000,6 +5043,7 @@ document.getElementById("resetFiltersBtn").addEventListener("click", () => {
   statusInclude.clear(); statusExclude.clear();
   prioInclude.clear(); prioExclude.clear();
   typeInclude.clear(); typeExclude.clear();
+  shareWithInclude.clear(); shareWithExclude.clear();
   tagInclude.clear(); tagExclude.clear();
   taskTagInclude.clear(); taskTagExclude.clear();
   roadmapInclude.clear(); roadmapExclude.clear();
@@ -6192,45 +6236,45 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260520v"></script>
+<script src="views/bulk-create.js?v=bn20260520w"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260520v"></script>
+<script src="lib/bulk-popovers.js?v=bn20260520w"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260520v"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260520w"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260520v"></script>
+<script src="views/home.js?v=bn20260520w"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260520v"></script>
-<script src="views/files.js?v=bn20260520v"></script>
+<script src="lib/files-integration.js?v=bn20260520w"></script>
+<script src="views/files.js?v=bn20260520w"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260520v"></script>
-<script src="views/requests.js?v=bn20260520v"></script>
+<script src="lib/requests-feature.js?v=bn20260520w"></script>
+<script src="views/requests.js?v=bn20260520w"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260520v"></script>
+<script src="views/tasks.js?v=bn20260520w"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260520v"></script>
+<script src="views/team.js?v=bn20260520w"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260520v"></script>
+<script src="views/profile.js?v=bn20260520w"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260520v"></script>
-<script src="views/roadmaps.js?v=bn20260520v"></script>
+<script src="views/roadmap-calendar.js?v=bn20260520w"></script>
+<script src="views/roadmaps.js?v=bn20260520w"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260520v"></script>
+<script src="lib/date-picker.js?v=bn20260520w"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260520v"></script>
+<script src="lib/trash.js?v=bn20260520w"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260520v"></script>
+<script src="lib/backup.js?v=bn20260520w"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260520v"></script>
+<script src="lib/pickers.js?v=bn20260520w"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260520v"></script>
-<script src="views/modals/add-member.js?v=bn20260520v"></script>
-<script src="views/modals/tag-manager.js?v=bn20260520v"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260520v"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260520v"></script>
+<script src="views/modals/person-tags.js?v=bn20260520w"></script>
+<script src="views/modals/add-member.js?v=bn20260520w"></script>
+<script src="views/modals/tag-manager.js?v=bn20260520w"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260520w"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260520w"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
