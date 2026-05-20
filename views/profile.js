@@ -132,9 +132,12 @@ function renderProfilePage() {
   const settings = getPersonSettings(person.id);
   const personTags = getTagsFor(person.id);
   const tagLib = getTagLibrary();
-  // For the virtual Unassigned profile, "their" tasks are those without any responsibleId.
+  // For the virtual Unassigned profile, "their" tasks are those without any responsibleId
+  // AND with at least one proposer — orphan tasks nobody proposed are hidden so the view
+  // stays useful.
+  const _bnHasProposer = (t) => (Array.isArray(t.proposedByIds) && t.proposedByIds.length > 0) || !!t.proposedById;
   const personTasks = person.isUnassigned
-    ? STORE.tasks.filter(t => !t.responsibleId)
+    ? STORE.tasks.filter(t => !t.responsibleId && _bnHasProposer(t))
     : STORE.tasks.filter(t => t.responsibleId === person.id);
   const counts = {
     total:        personTasks.length,
@@ -204,10 +207,50 @@ function renderProfilePage() {
     }
     html += '</div>';
   }
+  // ===== Members section — only for custom members marked as "group of people" =====
+  const _grpRecord = (STORE && Array.isArray(STORE.customMembers))
+    ? STORE.customMembers.find(m => m.id === person.id && m.isPeopleGroup)
+    : null;
+  if (_grpRecord) {
+    const memberIds = Array.isArray(_grpRecord.memberIds) ? _grpRecord.memberIds : [];
+    const members = memberIds.map(id => findPerson(id)).filter(Boolean);
+    html += '<div class="profile-group-members" style="margin-top:16px; padding-top:12px; border-top:1px solid #f0efeb">';
+    html += '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">' +
+      '<strong style="font-size:13px; color:#1a1a1a; text-transform:uppercase; letter-spacing:0.05em">Members</strong>' +
+      '<span style="color:#9a9a9a; font-size:12px">(' + members.length + ')</span>';
+    if (!isRestricted) {
+      html += '<button class="btn" id="profileGroupAddBtn" style="margin-left:auto; font-size:12px; padding:4px 10px">+ Add member</button>';
+    }
+    html += '</div>';
+    html += '<div id="profileGroupMembersList" style="display:flex; flex-wrap:wrap; gap:8px">';
+    if (members.length === 0) {
+      html += '<span style="color:#9a9a9a; font-size:12px">No members yet — click "+ Add member" to populate the group.</span>';
+    } else {
+      members.forEach(m => {
+        html += '<div class="pgm-chip" style="display:inline-flex; align-items:center; gap:6px; padding:4px 8px 4px 4px; background:#faf9f7; border:1px solid #ececea; border-radius:999px; font-size:12px">' +
+          '<span class="av-mini" style="width:22px; height:22px; border-radius:50%; background:' + (m.color || '#9a9a9a') + '; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:9px">' +
+            (m.photo ? '<img src="' + escapeHtml(m.photo) + '" alt="" style="width:100%; height:100%; object-fit:cover" onerror="this.remove()">' : '') +
+            '<span>' + escapeHtml(initials(m.name || '')) + '</span>' +
+          '</span>' +
+          '<span>' + escapeHtml(m.displayName || m.name || '') + '</span>' +
+          (isRestricted ? '' :
+            '<button type="button" class="pgm-remove" data-remove-uid="' + escapeHtml(m.id) + '" title="Remove from group" style="appearance:none; border:none; background:transparent; cursor:pointer; color:#6b6b6b; font-size:14px; padding:0 2px; line-height:1">×</button>') +
+        '</div>';
+      });
+    }
+    html += '</div></div>';
+  }
   html += '</div>';
   // Actions (Edit / Done button) — hidden for restricted_view (they can't edit anything).
   html += '<div class="actions">';
   if (!isRestricted) {
+    // Custom members get an extra "Edit details" button that opens the Add Member modal in edit mode
+    // (so you can rename / change email / mark as group / etc.).
+    const isCustomPerson = !!(person.isCustom) ||
+      ((STORE && Array.isArray(STORE.customMembers)) ? STORE.customMembers.some(m => m.id === person.id && m.isCustom) : false);
+    if (isCustomPerson) {
+      html += '<button class="btn" id="profileEditCustomBtn">✎ Edit details</button>';
+    }
     if (profileEditMode) {
       html += '<button class="btn primary" id="profileEditToggleBtn">Done</button>';
     } else {
@@ -741,6 +784,93 @@ function wireProfileHeader(person) {
       renderProfilePage();
     });
   }
+  const editCustomBtn = document.getElementById("profileEditCustomBtn");
+  if (editCustomBtn) {
+    editCustomBtn.addEventListener("click", () => {
+      const pid = (typeof profilePersonId !== 'undefined') ? profilePersonId : null;
+      if (pid && typeof openEditCustomMember === 'function') openEditCustomMember(pid);
+    });
+  }
+  // Group-members "+ Add" affordance — opens a small picker popover at the click point.
+  const addMemberToGroupBtn = document.getElementById('profileGroupAddBtn');
+  if (addMemberToGroupBtn) {
+    addMemberToGroupBtn.addEventListener('click', _bnOpenGroupMemberPicker);
+  }
+  document.querySelectorAll('#profileGroupMembersList .pgm-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pid = (typeof profilePersonId !== 'undefined') ? profilePersonId : null;
+      const rid = btn.dataset.removeUid;
+      if (!pid || !rid) return;
+      const grp = (STORE.customMembers || []).find(m => m.id === pid);
+      if (!grp || !Array.isArray(grp.memberIds)) return;
+      grp.memberIds = grp.memberIds.filter(x => x !== rid);
+      try { saveStore(STORE); rebuildTeam(); } catch(_) {}
+      renderProfilePage();
+    });
+  });
+}
+
+// Build a small dropdown anchored to the "+ Add member" button to pick a person.
+function _bnOpenGroupMemberPicker() {
+  const pid = (typeof profilePersonId !== 'undefined') ? profilePersonId : null;
+  if (!pid) return;
+  const grp = (STORE.customMembers || []).find(m => m.id === pid);
+  if (!grp || !grp.isPeopleGroup) return;
+  // Remove any existing popover
+  const existing = document.getElementById('pgmPickerPopover');
+  if (existing) existing.remove();
+  const btn = document.getElementById('profileGroupAddBtn');
+  if (!btn) return;
+  const r = btn.getBoundingClientRect();
+  const all = (typeof TEAM !== 'undefined' ? TEAM : []).slice()
+    .filter(p => p && p.id !== pid && !(grp.memberIds || []).includes(p.id))
+    .sort((a, b) => (a.displayName || a.name || '').localeCompare(b.displayName || b.name || ''));
+  const pop = document.createElement('div');
+  pop.id = 'pgmPickerPopover';
+  pop.className = 'pgm-picker-popover';
+  pop.style.cssText = 'position:fixed; left:' + r.left + 'px; top:' + (r.bottom + 6) + 'px; min-width:260px; max-height:360px; overflow-y:auto; background:#fff; border:1px solid #d8d6d1; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.12); z-index:10000; padding:6px 0';
+  pop.innerHTML = '<input id="pgmPickerSearch" placeholder="Search people…" autocomplete="off" style="margin:6px 8px; width:calc(100% - 16px); padding:6px 8px; border:1px solid #ececea; border-radius:6px; font-size:13px"/>' +
+    '<div id="pgmPickerList">' + all.map(p =>
+      '<div class="pgm-row" data-pid="' + escapeHtml(p.id) + '" style="display:flex; align-items:center; gap:8px; padding:6px 10px; cursor:pointer">' +
+        '<span class="av-mini" style="width:24px; height:24px; border-radius:50%; background:' + (p.color || '#9a9a9a') + '; overflow:hidden; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:10px">' +
+          (p.photo ? '<img src="' + escapeHtml(p.photo) + '" alt="" style="width:100%; height:100%; object-fit:cover" onerror="this.remove()">' : '') +
+          '<span>' + escapeHtml(initials(p.name || '')) + '</span>' +
+        '</span>' +
+        '<div style="min-width:0; flex:1"><div style="font-size:13px; color:#1a1a1a">' + escapeHtml(p.displayName || p.name || '') + '</div>' +
+        (p.email ? '<div style="font-size:11px; color:#9a9a9a">' + escapeHtml(p.email) + '</div>' : '') + '</div>' +
+      '</div>'
+    ).join('') + '</div>';
+  document.body.appendChild(pop);
+  const search = pop.querySelector('#pgmPickerSearch');
+  search.focus();
+  search.addEventListener('input', () => {
+    const q = search.value.trim().toLowerCase();
+    pop.querySelectorAll('.pgm-row').forEach(row => {
+      const matches = !q || row.textContent.toLowerCase().includes(q);
+      row.style.display = matches ? '' : 'none';
+    });
+  });
+  pop.querySelectorAll('.pgm-row').forEach(row => {
+    row.addEventListener('mouseenter', () => { row.style.background = '#faf9f7'; });
+    row.addEventListener('mouseleave', () => { row.style.background = ''; });
+    row.addEventListener('click', () => {
+      const memberId = row.dataset.pid;
+      grp.memberIds = Array.isArray(grp.memberIds) ? grp.memberIds : [];
+      if (!grp.memberIds.includes(memberId)) grp.memberIds.push(memberId);
+      try { saveStore(STORE); rebuildTeam(); } catch(_) {}
+      pop.remove();
+      renderProfilePage();
+    });
+  });
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', function _close(e) {
+      if (!pop.contains(e.target) && e.target !== btn) {
+        pop.remove();
+        document.removeEventListener('click', _close);
+      }
+    });
+  }, 50);
 }
 
 function renderProfileRoadmapCard(rm, personId) {

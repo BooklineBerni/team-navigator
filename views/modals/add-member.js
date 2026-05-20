@@ -23,6 +23,8 @@ function openAddMember(opts) {
   ['customMemberName','customMemberDisplayName','customMemberEmail','customMemberPhoto'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  const grpChk = document.getElementById('customMemberIsGroup');
+  if (grpChk) grpChk.checked = false;
   const errEl = document.getElementById('customMemberError'); if (errEl) errEl.style.display = 'none';
   // Prefill name if caller passed one (used by the picker's inline "+ Create" affordance).
   if (opts.prefillName) {
@@ -51,6 +53,8 @@ function openEditCustomMember(memberId) {
   document.getElementById('customMemberDisplayName').value = m.displayName || '';
   document.getElementById('customMemberEmail').value       = m.email || '';
   document.getElementById('customMemberPhoto').value       = m.photo || '';
+  const grpChk = document.getElementById('customMemberIsGroup');
+  if (grpChk) grpChk.checked = !!m.isPeopleGroup;
   const errEl = document.getElementById('customMemberError'); if (errEl) errEl.style.display = 'none';
   _setAddMemberMode('custom');
   _bnUpdateModalLabelsForMode('edit');
@@ -114,6 +118,7 @@ function _bnCreateCustomMember() {
   if (!email && all.some(p => p.id !== editingId && (p.name || '').toLowerCase() === name.toLowerCase())) {
     showErr('A member with that exact name already exists. Add an email to disambiguate, or rename.'); return;
   }
+  const isGroup = !!(document.getElementById('customMemberIsGroup') && document.getElementById('customMemberIsGroup').checked);
   STORE.customMembers = STORE.customMembers || [];
   if (editingId) {
     // EDIT mode — patch the existing custom member in place.
@@ -123,6 +128,8 @@ function _bnCreateCustomMember() {
     m.displayName = displayName;
     m.email = email;
     m.photo = photo;
+    m.isPeopleGroup = isGroup;
+    if (isGroup && !Array.isArray(m.memberIds)) m.memberIds = [];
     // Keep id, color, role, defaultTags, isCustom untouched.
   } else {
     // CREATE mode
@@ -130,11 +137,13 @@ function _bnCreateCustomMember() {
     STORE.customMembers.push({
       id, name, displayName,
       email,
-      role: 'External',
+      role: isGroup ? 'Group' : 'External',
       photo,
       color: pickColorForNewMember(),
       defaultTags: [],
-      isCustom: true
+      isCustom: true,
+      isPeopleGroup: isGroup,
+      memberIds: isGroup ? [] : undefined
     });
   }
   saveStore(STORE);
