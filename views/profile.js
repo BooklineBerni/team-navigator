@@ -827,32 +827,62 @@ function _bnOpenGroupMemberPicker() {
   const btn = document.getElementById('profileGroupAddBtn');
   if (!btn) return;
   const r = btn.getBoundingClientRect();
-  const all = (typeof TEAM !== 'undefined' ? TEAM : []).slice()
-    .filter(p => p && p.id !== pid && !(grp.memberIds || []).includes(p.id))
-    .sort((a, b) => (a.displayName || a.name || '').localeCompare(b.displayName || b.name || ''));
+  // Build the full directory: TEAM (which already includes customMembers) +
+  // EXTERNAL_TEAM + every Bookline Slack user. Slack-only entries get a flag
+  // so we can show a small "Bookline" tag and pull the photo URL straight
+  // from the directory.
+  const seen = new Set();
+  const all = [];
+  function pushPerson(p, opts) {
+    if (!p || seen.has(p.id) || p.id === pid) return;
+    if ((grp.memberIds || []).includes(p.id)) return;
+    seen.add(p.id);
+    all.push(Object.assign({}, p, opts || {}));
+  }
+  (typeof TEAM !== 'undefined' ? TEAM : []).forEach(p => pushPerson(p));
+  (typeof EXTERNAL_TEAM !== 'undefined' ? EXTERNAL_TEAM : []).forEach(p => pushPerson(p));
+  (typeof SLACK_DIRECTORY !== 'undefined' ? SLACK_DIRECTORY : []).forEach(u => {
+    // SLACK_DIRECTORY entries don't have displayName/color, derive defaults.
+    const derivedColor = '#' + (parseInt((u.id || '').slice(-6), 36) & 0xAAAAAA).toString(16).padStart(6, '0').slice(0, 6);
+    pushPerson({
+      id: u.id,
+      name: u.name,
+      displayName: (u.name || '').split(/\s+/)[0] || u.name,
+      email: u.email || '',
+      photo: u.photo || '',
+      color: derivedColor,
+      _slackOnly: true
+    });
+  });
+  all.sort((a, b) => (a.displayName || a.name || '').localeCompare(b.displayName || b.name || ''));
   const pop = document.createElement('div');
   pop.id = 'pgmPickerPopover';
   pop.className = 'pgm-picker-popover';
   pop.style.cssText = 'position:fixed; left:' + r.left + 'px; top:' + (r.bottom + 6) + 'px; min-width:260px; max-height:360px; overflow-y:auto; background:#fff; border:1px solid #d8d6d1; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.12); z-index:10000; padding:6px 0';
   pop.innerHTML = '<input id="pgmPickerSearch" placeholder="Search people…" autocomplete="off" style="margin:6px 8px; width:calc(100% - 16px); padding:6px 8px; border:1px solid #ececea; border-radius:6px; font-size:13px"/>' +
-    '<div id="pgmPickerList">' + all.map(p =>
-      '<div class="pgm-row" data-pid="' + escapeHtml(p.id) + '" style="display:flex; align-items:center; gap:8px; padding:6px 10px; cursor:pointer">' +
-        '<span class="av-mini" style="width:24px; height:24px; border-radius:50%; background:' + (p.color || '#9a9a9a') + '; overflow:hidden; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:10px">' +
-          (p.photo ? '<img src="' + escapeHtml(p.photo) + '" alt="" style="width:100%; height:100%; object-fit:cover" onerror="this.remove()">' : '') +
+    '<div id="pgmPickerList" style="max-height:260px; overflow-y:auto">' + all.map(p => {
+      const photoImg = p.photo
+        ? '<img src="' + escapeHtml(p.photo) + '" alt="" referrerpolicy="no-referrer" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:50%" onerror="this.remove()">'
+        : '';
+      const tag = p._slackOnly ? '<span style="font-size:10px; color:#6b7280; background:#f3f4f6; padding:2px 6px; border-radius:999px; flex-shrink:0">Bookline</span>' : '';
+      return '<div class="pgm-row" data-pid="' + escapeHtml(p.id) + '" data-name="' + escapeHtml((p.name || '') + ' ' + (p.displayName || '') + ' ' + (p.email || '')) + '" style="display:flex; align-items:center; gap:8px; padding:6px 10px; cursor:pointer">' +
+        '<span class="av-mini" style="position:relative; width:26px; height:26px; border-radius:50%; background:' + (p.color || '#9a9a9a') + '; overflow:hidden; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:10px">' +
           '<span>' + escapeHtml(initials(p.name || '')) + '</span>' +
+          photoImg +
         '</span>' +
-        '<div style="min-width:0; flex:1"><div style="font-size:13px; color:#1a1a1a">' + escapeHtml(p.displayName || p.name || '') + '</div>' +
-        (p.email ? '<div style="font-size:11px; color:#9a9a9a">' + escapeHtml(p.email) + '</div>' : '') + '</div>' +
-      '</div>'
-    ).join('') + '</div>';
+        '<div style="min-width:0; flex:1"><div style="font-size:13px; color:#1a1a1a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">' + escapeHtml(p.displayName || p.name || '') + '</div>' +
+        (p.email ? '<div style="font-size:11px; color:#9a9a9a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">' + escapeHtml(p.email) + '</div>' : '') + '</div>' +
+        tag +
+      '</div>';
+    }).join('') + '</div>';
   document.body.appendChild(pop);
   const search = pop.querySelector('#pgmPickerSearch');
   search.focus();
   search.addEventListener('input', () => {
     const q = search.value.trim().toLowerCase();
     pop.querySelectorAll('.pgm-row').forEach(row => {
-      const matches = !q || row.textContent.toLowerCase().includes(q);
-      row.style.display = matches ? '' : 'none';
+      const hay = (row.dataset.name || row.textContent || '').toLowerCase();
+      row.style.display = (!q || hay.includes(q)) ? '' : 'none';
     });
   });
   pop.querySelectorAll('.pgm-row').forEach(row => {

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Navigator</title>
-<link rel="icon" type="image/gif" href="logo.gif?v=bn20260521a">
+<link rel="icon" type="image/gif" href="logo.gif?v=bn20260521b">
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260521a">
+<link rel="stylesheet" href="styles/app.css?v=bn20260521b">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -115,7 +115,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand" id="bnBrand" title="">
-        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260521a" alt="" referrerpolicy="no-referrer"></div>
+        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260521b" alt="" referrerpolicy="no-referrer"></div>
         <div class="brand-stack">
           <div class="brand-name" id="bnBrandName">Team Navigator</div>
           <!-- Permission line — shown ONLY during preview. -->
@@ -1005,15 +1005,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260521a"></script>
+<script src="data/team-directory.js?v=bn20260521b"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260521a"></script>
+<script src="data/holidays.js?v=bn20260521b"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260521a"></script>
+<script src="lib/supabase-auth.js?v=bn20260521b"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260521a"></script>
+<script src="lib/permissions.js?v=bn20260521b"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260521a"></script>
+<script src="lib/filters.js?v=bn20260521b"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -1997,9 +1997,9 @@ const TYPE_FILTER_ITEMS = [
 const SHARE_WITH_FILTER_ITEMS = [
   { key: "Private",   label: "Private",   bg: "#fee2e2", color: "#b91c1c" },
   { key: "Team",      label: "Team",      bg: "#cffafe", color: "#0e7490" },
-  // Everyone here uses a lighter slate so the pill doesn't blend in with the
-  // global "active/selected" dark state used by the tristate component.
-  { key: "Everyone",  label: "Everyone",  bg: "#e2e8f0", color: "#334155" }
+  // Neutral gray — distinct from the dark "selected" state without picking
+  // up a blue/slate tone. Modal picker keeps the full black.
+  { key: "Everyone",  label: "Everyone",  bg: "#e5e7eb", color: "#374151" }
 ];
 
 function renderTeamStrip() {
@@ -2112,10 +2112,10 @@ const PRIORITIES = [
   { key: "Critical", label: "Critical", bg: "#fee4e2", color: "#b42318" },
   { key: "High",     label: "High",     bg: "#fef0c7", color: "#b54708" },
   { key: "Medium",   label: "Medium",   bg: "#d1fadf", color: "#027a48" },
-  { key: "Low",      label: "Low",      bg: "#dbeafe", color: "#1d4ed8" },
-  // Lighter tone in the filter pill so it doesn't read as "selected" (which
-  // also uses dark navy). The modal picker keeps the saturated dark blue.
-  { key: "Very Low", label: "Very Low", bg: "#bfdbfe", color: "#1e3a8a" }
+  // Low mirrors the Waiting status (light sky blue).
+  { key: "Low",      label: "Low",      bg: "#e0f2fe", color: "#0369a1" },
+  // Very Low mirrors the Proposed status (light indigo with deep navy text).
+  { key: "Very Low", label: "Very Low", bg: "#c7d2fe", color: "#1e3a8a" }
 ];
 
 function countTasksForPersonContextual(personId) {
@@ -5807,7 +5807,7 @@ function renderRmAddPanel() {
   if (matches.length === 0) {
     list.innerHTML = '<div style="color:#9a9a9a; font-size:12px; padding:14px; text-align:center">No matching tasks (or all already assigned).</div>';
   } else {
-    const prioColors = { 'Critical':'#fee4e2;color:#b42318','High':'#fef0c7;color:#b54708','Medium':'#d1fadf;color:#027a48','Low':'#dbeafe;color:#1d4ed8','Very Low':'#1e3a8a;color:#ffffff' };
+    const prioColors = { 'Critical':'#fee4e2;color:#b42318','High':'#fef0c7;color:#b54708','Medium':'#d1fadf;color:#027a48','Low':'#e0f2fe;color:#0369a1','Very Low':'#c7d2fe;color:#1e3a8a' };
     list.innerHTML = matches.slice(0, 200).map(t => {
       const p = findPerson(t.responsibleId);
       const sel = rmAddSelectedIds.has(t.id);
@@ -6267,45 +6267,45 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260521a"></script>
+<script src="views/bulk-create.js?v=bn20260521b"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260521a"></script>
+<script src="lib/bulk-popovers.js?v=bn20260521b"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260521a"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260521b"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260521a"></script>
+<script src="views/home.js?v=bn20260521b"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260521a"></script>
-<script src="views/files.js?v=bn20260521a"></script>
+<script src="lib/files-integration.js?v=bn20260521b"></script>
+<script src="views/files.js?v=bn20260521b"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260521a"></script>
-<script src="views/requests.js?v=bn20260521a"></script>
+<script src="lib/requests-feature.js?v=bn20260521b"></script>
+<script src="views/requests.js?v=bn20260521b"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260521a"></script>
+<script src="views/tasks.js?v=bn20260521b"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260521a"></script>
+<script src="views/team.js?v=bn20260521b"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260521a"></script>
+<script src="views/profile.js?v=bn20260521b"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260521a"></script>
-<script src="views/roadmaps.js?v=bn20260521a"></script>
+<script src="views/roadmap-calendar.js?v=bn20260521b"></script>
+<script src="views/roadmaps.js?v=bn20260521b"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260521a"></script>
+<script src="lib/date-picker.js?v=bn20260521b"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260521a"></script>
+<script src="lib/trash.js?v=bn20260521b"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260521a"></script>
+<script src="lib/backup.js?v=bn20260521b"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260521a"></script>
+<script src="lib/pickers.js?v=bn20260521b"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260521a"></script>
-<script src="views/modals/add-member.js?v=bn20260521a"></script>
-<script src="views/modals/tag-manager.js?v=bn20260521a"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260521a"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260521a"></script>
+<script src="views/modals/person-tags.js?v=bn20260521b"></script>
+<script src="views/modals/add-member.js?v=bn20260521b"></script>
+<script src="views/modals/tag-manager.js?v=bn20260521b"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260521b"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260521b"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
