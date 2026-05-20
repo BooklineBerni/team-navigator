@@ -132,17 +132,20 @@ function renderProfilePage() {
   const settings = getPersonSettings(person.id);
   const personTags = getTagsFor(person.id);
   const tagLib = getTagLibrary();
-  // For the virtual Unassigned profile, "their" tasks are those without any responsibleId
-  // AND where the CURRENT (or previewed-as) user is among the proposers. Tasks no one
-  // proposed, or proposed by someone other than the current user, are hidden.
+  // For the virtual Unassigned profile, "their" tasks are those without any responsibleId.
+  // Admins (NOT in preview-as) see ALL unassigned tasks. Members/restricted users (and
+  // admins previewing-as someone) only see tasks they themselves proposed.
+  const _bnIsAdminLive = (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'admin') &&
+                        !(typeof bnPreviewAsEmail !== 'undefined' && bnPreviewAsEmail);
   const _bnMyPid = (typeof bnCurrentPersonId === 'function') ? bnCurrentPersonId() : '';
-  const _bnIsMyProposal = (t) => {
+  const _bnUnassignedVisible = (t) => {
+    if (_bnIsAdminLive) return true;
     if (!_bnMyPid) return false;
     if (Array.isArray(t.proposedByIds)) return t.proposedByIds.includes(_bnMyPid);
     return t.proposedById === _bnMyPid;
   };
   const personTasks = person.isUnassigned
-    ? STORE.tasks.filter(t => !t.responsibleId && _bnIsMyProposal(t))
+    ? STORE.tasks.filter(t => !t.responsibleId && _bnUnassignedVisible(t))
     : STORE.tasks.filter(t => t.responsibleId === person.id);
   const counts = {
     total:        personTasks.length,
