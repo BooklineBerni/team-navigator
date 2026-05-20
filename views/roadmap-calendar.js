@@ -578,7 +578,12 @@ function renderRoadmapCalendar(roadmapId) {
           '<div class="cal-year-label" title="' + escapeHtml(ev.task.subject) + '" style="padding-left:' + (8 + row.depth * 14) + 'px">' +
             labelChev +
             (row.depth ? '· ' : (isG ? '<span class="folder-emoji">📁</span> ' : '')) +
-            '<span class="cal-year-label-text">' + escapeHtml(labelText.slice(0,42)) + (labelText.length>42?'…':'') + '</span>' +
+            // Render the FULL label text — the CSS .cal-year-label-text has
+            // max-height: 3.6em + overflow: hidden, so long names wrap to ~3
+            // lines instead of being truncated at 42 chars by JS (which used
+            // to leave names like "Diferenciar entre inbound llamada y Demo c…"
+            // visibly clipped even when there was vertical room to grow).
+            '<span class="cal-year-label-text">' + escapeHtml(labelText) + '</span>' +
           '</div>' +
           '<div class="cal-year-track">' +
             '<div class="cal-event cal-year-bar' + (isG ? ' cal-event-group' : '') + '" data-tid="' + ev.task.id + '" title="' + escapeHtml(ev.task.subject + ' — ' + (ev.entry.startDate||'?') + ' → ' + (ev.entry.endDate||'?')) + '" style="left:' + leftPct + '%; width:' + widthPct + '%; ' + barStyle + '">' +
