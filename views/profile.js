@@ -235,10 +235,13 @@ function renderProfilePage() {
       html += '<span style="color:#9a9a9a; font-size:12px">No members yet — click "+ Add member" to populate the group.</span>';
     } else {
       members.forEach(m => {
+        // Photo positioned absolute over the initials so a loaded image fully
+        // covers the letters (instead of sitting next to them and overlapping).
+        // If <img> errors out (onerror), it removes itself and the initials show.
         html += '<div class="pgm-chip" style="display:inline-flex; align-items:center; gap:6px; padding:4px 8px 4px 4px; background:#faf9f7; border:1px solid #ececea; border-radius:999px; font-size:12px">' +
-          '<span class="av-mini" style="width:22px; height:22px; border-radius:50%; background:' + (m.color || '#9a9a9a') + '; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:9px">' +
-            (m.photo ? '<img src="' + escapeHtml(m.photo) + '" alt="" style="width:100%; height:100%; object-fit:cover" onerror="this.remove()">' : '') +
-            '<span>' + escapeHtml(initials(m.name || '')) + '</span>' +
+          '<span class="av-mini" style="position:relative; width:22px; height:22px; border-radius:50%; background:' + (m.color || '#9a9a9a') + '; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:9px">' +
+            '<span style="position:relative; z-index:0">' + escapeHtml(initials(m.name || '')) + '</span>' +
+            (m.photo ? '<img src="' + escapeHtml(m.photo) + '" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:1" onerror="this.remove()">' : '') +
           '</span>' +
           '<span>' + escapeHtml(m.displayName || m.name || '') + '</span>' +
           (isRestricted ? '' :
