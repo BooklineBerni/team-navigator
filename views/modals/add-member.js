@@ -10,7 +10,13 @@
 // =============================================================================
 
 // ---------- Add Member modal ----------
-function openAddMember() {
+// Tracks "edit mode": when set, the Create button becomes Save and updates
+// the existing custom member in-place instead of creating a new one.
+let _bnEditingCustomMemberId = null;
+
+function openAddMember(opts) {
+  opts = opts || {};
+  _bnEditingCustomMemberId = null;
   document.getElementById("memberSearchInput").value = "";
   document.getElementById("memberSearchResults").innerHTML = '<div style="color:#9a9a9a; font-size:12px; padding:12px; text-align:center">Start typing to search the Bookline directory...</div>';
   // Reset custom fields
@@ -18,13 +24,52 @@ function openAddMember() {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const errEl = document.getElementById('customMemberError'); if (errEl) errEl.style.display = 'none';
-  // Default to Slack mode
-  _setAddMemberMode('slack');
+  // Prefill name if caller passed one (used by the picker's inline "+ Create" affordance).
+  if (opts.prefillName) {
+    const nm = document.getElementById('customMemberName');
+    if (nm) nm.value = opts.prefillName;
+  }
+  // Default to Custom mode when prefilled or explicitly requested; else Slack search.
+  const mode = (opts.mode === 'custom' || opts.prefillName) ? 'custom' : 'slack';
+  _setAddMemberMode(mode);
+  // Reset title + button labels for create.
+  _bnUpdateModalLabelsForMode('create');
   document.getElementById("addMemberBg").classList.add("show");
-  setTimeout(() => document.getElementById("memberSearchInput").focus(), 50);
+  if (mode === 'slack') {
+    setTimeout(() => document.getElementById("memberSearchInput").focus(), 50);
+  } else {
+    setTimeout(() => { const n = document.getElementById('customMemberName'); if (n) n.focus(); }, 50);
+  }
+}
+// Open the modal in edit mode for an existing custom member.
+function openEditCustomMember(memberId) {
+  const m = ((STORE && STORE.customMembers) || []).find(x => x.id === memberId);
+  if (!m) return;
+  // Fresh open then populate fields
+  _bnEditingCustomMemberId = memberId;
+  document.getElementById('customMemberName').value        = m.name || '';
+  document.getElementById('customMemberDisplayName').value = m.displayName || '';
+  document.getElementById('customMemberEmail').value       = m.email || '';
+  document.getElementById('customMemberPhoto').value       = m.photo || '';
+  const errEl = document.getElementById('customMemberError'); if (errEl) errEl.style.display = 'none';
+  _setAddMemberMode('custom');
+  _bnUpdateModalLabelsForMode('edit');
+  document.getElementById("addMemberBg").classList.add("show");
+  setTimeout(() => { const n = document.getElementById('customMemberName'); n && n.focus(); n && n.select(); }, 50);
 }
 function closeAddMember() {
+  _bnEditingCustomMemberId = null;
   document.getElementById("addMemberBg").classList.remove("show");
+}
+// Update modal title + submit button label for create-vs-edit.
+function _bnUpdateModalLabelsForMode(mode) {
+  const isEdit = (mode === 'edit');
+  const h2 = document.querySelector('#addMemberBg h2');
+  if (h2) h2.textContent = isEdit ? 'Edit member' : 'Add member';
+  const toggle = document.getElementById('addMemberModeToggle');
+  if (toggle) toggle.style.display = isEdit ? 'none' : '';
+  const submitBtn = document.getElementById('customMemberCreateBtn');
+  if (submitBtn) submitBtn.textContent = isEdit ? 'Save changes' : 'Create member';
 }
 // Switch between "search Bookline Slack" and "create custom" modes.
 function _setAddMemberMode(mode) {
@@ -58,28 +103,40 @@ function _bnCreateCustomMember() {
   const photo = (document.getElementById('customMemberPhoto').value || '').trim();
   const displayInput = (document.getElementById('customMemberDisplayName').value || '').trim();
   const displayName = displayInput || (name.split(/\s+/)[0] || name);
-  // Reject duplicates by email (if provided) or by name
+  const editingId = _bnEditingCustomMemberId;
+  // Duplicate check: ignore the member we're currently editing
   const all = (typeof TEAM !== 'undefined' ? TEAM : []).concat(
     typeof EXTERNAL_TEAM !== 'undefined' ? EXTERNAL_TEAM : []
   );
-  if (email && all.some(p => (p.email || '').toLowerCase() === email.toLowerCase())) {
+  if (email && all.some(p => p.id !== editingId && (p.email || '').toLowerCase() === email.toLowerCase())) {
     showErr('A member with that email already exists.'); return;
   }
-  if (!email && all.some(p => (p.name || '').toLowerCase() === name.toLowerCase())) {
+  if (!email && all.some(p => p.id !== editingId && (p.name || '').toLowerCase() === name.toLowerCase())) {
     showErr('A member with that exact name already exists. Add an email to disambiguate, or rename.'); return;
   }
-  const id = _bnNewCustomMemberId();
-  const member = {
-    id, name, displayName,
-    email,
-    role: 'External',
-    photo,
-    color: pickColorForNewMember(),
-    defaultTags: [],
-    isCustom: true
-  };
   STORE.customMembers = STORE.customMembers || [];
-  STORE.customMembers.push(member);
+  if (editingId) {
+    // EDIT mode — patch the existing custom member in place.
+    const m = STORE.customMembers.find(x => x.id === editingId);
+    if (!m) { showErr('Could not find the member to edit.'); return; }
+    m.name = name;
+    m.displayName = displayName;
+    m.email = email;
+    m.photo = photo;
+    // Keep id, color, role, defaultTags, isCustom untouched.
+  } else {
+    // CREATE mode
+    const id = _bnNewCustomMemberId();
+    STORE.customMembers.push({
+      id, name, displayName,
+      email,
+      role: 'External',
+      photo,
+      color: pickColorForNewMember(),
+      defaultTags: [],
+      isCustom: true
+    });
+  }
   saveStore(STORE);
   rebuildTeam();
   populateUserSelects();

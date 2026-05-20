@@ -124,9 +124,18 @@ function renderMembersPage() {
       if (counts.discarded > 0)    statsHtml += '<span class="stat" title="Discarded"><span class="dot discarded"></span>' + counts.discarded + '</span>';
     }
 
+    // Custom members can be fully edited (name/email/photo). Slack-imported
+    // members cannot — their data comes from Slack and is read-only here.
+    const isCustomPerson = !!(p.isCustom) ||
+      ((STORE && Array.isArray(STORE.customMembers)) ? STORE.customMembers.some(m => m.id === p.id && m.isCustom) : false);
+    const editBtn = isCustomPerson
+      ? '<button type="button" class="member-edit-btn" data-edit-uid="' + escapeHtml(p.id) + '" title="Edit this custom member">✎</button>'
+      : '';
+
     const cls = 'member-card' +
       (isDeactivated(p.id) ? ' deactivated' : '') +
-      (mode === 'bookline' ? ' member-bookline' : '');
+      (mode === 'bookline' ? ' member-bookline' : '') +
+      (isCustomPerson ? ' member-custom' : '');
     return '<div class="' + cls + '" data-uid="' + p.id + '">' +
       '<div class="person-row">' +
         '<span class="avatar" style="background:' + (p.color || '#9a9a9a') + '">' +
@@ -138,6 +147,7 @@ function renderMembersPage() {
           '<div class="email">' + escapeHtml(p.email || "") + '</div>' +
           awt +
         '</div>' +
+        editBtn +
       '</div>' +
       tagsHtml +
       roadmapsHtml +
@@ -231,6 +241,14 @@ function renderMembersPage() {
 
   document.querySelectorAll("#membersGrid .member-card").forEach(node => {
     node.addEventListener("click", e => {
+      // Edit button on custom members — open Add Member modal in edit mode.
+      const editBtn = e.target.closest('.member-edit-btn');
+      if (editBtn) {
+        e.stopPropagation();
+        const uid = editBtn.dataset.editUid;
+        if (uid && typeof openEditCustomMember === 'function') openEditCustomMember(uid);
+        return;
+      }
       const badge = e.target.closest('.rm-mini-badge');
       if (badge) {
         e.stopPropagation();
