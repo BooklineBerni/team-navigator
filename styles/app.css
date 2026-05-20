@@ -627,14 +627,20 @@
     position: relative; height: 28px;
   }
   .cal-year-bar {
-    position: absolute; top: 4px; height: 20px;
+    /* Vertically centered within the track so bars stay aligned even when
+       a row above/below grows for a wrapped label. (Previously `top:4px`
+       made the bar hug the top of tall rows, so adjacent rows looked
+       visually disconnected — see "Database Treatment" vs "Address".) */
+    position: absolute; top: 50%; transform: translateY(-50%); height: 20px;
     border-radius: 5px; padding: 0 6px;
     font-size: 11px; line-height: 20px; font-weight: 600;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.10);
     transition: transform .12s, box-shadow .12s;
   }
-  .cal-year-bar:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.18); z-index: 5; }
+  /* Hover transform must compose with the centering translate, otherwise it
+     wipes out vertical alignment on hover. */
+  .cal-year-bar:hover { transform: translateY(calc(-50% - 1px)); box-shadow: 0 3px 8px rgba(0,0,0,0.18); z-index: 5; }
   .cal-year-bar.cal-event-group { font-weight: 700; line-height: 18px; padding: 0 8px; }
   .cal-year-label .cal-group-toggle-y,
   .cal-year-bar .cal-group-toggle-y {
