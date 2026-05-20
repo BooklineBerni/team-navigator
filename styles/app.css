@@ -604,19 +604,22 @@
   .cal-year-rows { position: relative; z-index: 2; }
   .cal-year-row {
     display: grid; grid-template-columns: 220px 1fr;
-    align-items: center; min-height: 28px;
+    /* Stretch so the track matches the row height when the label wraps to
+       2-3 lines. Keeps timeline pills aligned with their row regardless of
+       how tall a label grows. */
+    align-items: stretch; min-height: 28px;
     border-top: 1px solid #f3f1ed;
   }
   .cal-year-row:first-child { border-top: none; }
   .cal-year-row.is-child { font-size: 12px; }
   .cal-year-label {
     padding: 4px 8px; font-size: 11.5px; line-height: 1.2; color: #1a1a1a;
-    /* Allow long names up to 3 lines before falling back to ellipsis.
-       Slightly smaller font keeps the column from feeling crowded. */
     word-break: break-word; overflow-wrap: break-word;
-    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
-    overflow: hidden;
     border-right: 1px solid #ececea;
+    /* No clamp here — rely on max-height on .cal-year-label-text to cap
+       at 3 lines. Keeping overflow:visible lets the inner element show its
+       full clamped content rather than being re-clipped by the flex item. */
+    overflow: visible;
   }
   .cal-year-row.is-group .cal-year-label { font-weight: 700; color: #92400e; }
   .cal-year-row.is-child .cal-year-label { color: #555; font-weight: 500; }
@@ -657,19 +660,14 @@
   .cal-year-label .folder-emoji { margin-right: 4px; flex-shrink: 0; }
   .cal-year-label .cal-year-label-text {
     flex: 1 1 auto; min-width: 0;
-    /* Wrap up to 3 lines via line-clamp. Chrome turns display:-webkit-box on
-       a flex child into "flow-root" unless we also expose it as a block via
-       display:block first — the cascade keeps the -webkit-box token alive
-       and line-clamp actually applies. Also set max-height as a fallback so
-       even browsers that drop -webkit-box still cap at ~3 lines. */
+    /* Pure max-height clamp (Chrome was normalizing -webkit-box to flow-root
+       on flex children, which silently disabled line-clamp). max-height of
+       ~3.6em with overflow:hidden truncates to 3 visible lines reliably. */
     word-break: break-word; overflow-wrap: break-word;
     display: block;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
     line-height: 1.2;
-    max-height: calc(1.2em * 3 + 2px);
+    max-height: 3.6em;
+    overflow: hidden;
   }
   /* Side toggle (collapse Unscheduled/Archived sidebar) */
   .cal-side-toggle {
