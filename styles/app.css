@@ -624,7 +624,12 @@
   .cal-year-row.is-group .cal-year-label { font-weight: 700; color: #92400e; }
   .cal-year-row.is-child .cal-year-label { color: #555; font-weight: 500; }
   .cal-year-track {
+    /* Keep the bar lane a fixed 28px tall, but vertically center it within
+       its grid row so a row that's grown taller (because its label wrapped
+       to 2-3 lines) doesn't push the bar to the top. align-self:center on
+       a grid item beats the row's align-items:stretch default. */
     position: relative; height: 28px;
+    align-self: center;
   }
   .cal-year-bar {
     /* Vertically centered within the track so bars stay aligned even when
