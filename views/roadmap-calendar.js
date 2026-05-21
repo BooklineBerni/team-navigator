@@ -798,7 +798,11 @@ function renderRoadmapCalendar(roadmapId) {
         const isNested = opts.nested;
         const cls = ['cal-event'];
         let top, height, color, fontSize, label, extraHtml = '', extraStyle = '';
-        if (isNested) {
+        if (isNested && !isGroupEvent) {
+          // LEAF child inside an expanded parent group → mini solid chip.
+          // (Groups that are themselves nested fall through to the
+          // isGroupEvent branch below so they get dashed + transparent like
+          // the outer group, just positioned as a nested chip.)
           // Hide ALL children when group is collapsed (no "+N more" — kids vanish entirely).
           const parentId = s.event.task.groupId;
           const isParentExpanded = expandedSet.has(parentId);
@@ -811,6 +815,35 @@ function renderRoadmapCalendar(roadmapId) {
           fontSize = 9.5;
           cls.push('cal-event-child');
           label = escapeHtml(s.event.task.subject);
+        } else if (isNested && isGroupEvent) {
+          // NESTED GROUP (group inside another group). Hide when the outer
+          // parent is collapsed (same rule as leaf children).
+          const parentId = s.event.task.groupId;
+          const isParentExpanded = expandedSet.has(parentId);
+          if (!isParentExpanded) return;
+          // Render it WITH group styling (dashed + transparent) but sized like
+          // a sub-lane row so it fits inside the parent's expanded container.
+          const baseTop = laneTop[s.lane] + TITLE_STRIP;
+          top = baseTop + (s.subLane * (SUB_H + SUB_GAP));
+          height = SUB_H + 4;  // slightly taller than a leaf chip so the dashed border reads
+          const stHex = statusColors[s.event.task.slackStatus] || '#d97706';
+          const _h = stHex.length === 4 ? '#' + stHex[1]+stHex[1]+stHex[2]+stHex[2]+stHex[3]+stHex[3] : stHex;
+          const _r = parseInt(_h.slice(1,3), 16), _g = parseInt(_h.slice(3,5), 16), _b = parseInt(_h.slice(5,7), 16);
+          color = 'rgba(' + _r + ',' + _g + ',' + _b + ',0.18)';
+          extraStyle = '; border:1.5px dashed ' + stHex + '; color:' + stHex;
+          fontSize = 10;
+          cls.push('cal-event-group');
+          cls.push('cal-event-nested-group');
+          const gid = s.event.task.id;
+          const totalSubLanes = (subLanesByParent[gid] || []).length;
+          const isExpanded = expandedSet.has(gid);
+          if (isExpanded) cls.push('expanded');
+          label = '📁 ' + escapeHtml(s.event.task.subject);
+          if (totalSubLanes > 0) {
+            const chev = isExpanded ? '▾' : '▸';
+            const ttl = isExpanded ? 'Collapse group' : 'Expand group';
+            label += ' <button type="button" class="cal-group-toggle" data-group-toggle="' + gid + '" title="' + ttl + '">' + chev + '</button>';
+          }
         } else if (isGroupEvent) {
           // Group container bar — tinted by status (transparent backdrop, dashed status-colored border)
           const gid = s.event.task.id;
