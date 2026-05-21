@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Navigator</title>
-<link rel="icon" type="image/gif" href="logo.gif?v=bn20260521w">
+<link rel="icon" type="image/gif" href="logo.gif?v=bn20260521x">
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260521w">
+<link rel="stylesheet" href="styles/app.css?v=bn20260521x">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -115,7 +115,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand" id="bnBrand" title="">
-        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260521w" alt="" referrerpolicy="no-referrer"></div>
+        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260521x" alt="" referrerpolicy="no-referrer"></div>
         <div class="brand-stack">
           <div class="brand-name" id="bnBrandName">Team Navigator</div>
           <!-- Permission line — shown ONLY during preview. -->
@@ -1005,15 +1005,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260521w"></script>
+<script src="data/team-directory.js?v=bn20260521x"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260521w"></script>
+<script src="data/holidays.js?v=bn20260521x"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260521w"></script>
+<script src="lib/supabase-auth.js?v=bn20260521x"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260521w"></script>
+<script src="lib/permissions.js?v=bn20260521x"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260521w"></script>
+<script src="lib/filters.js?v=bn20260521x"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -5474,6 +5474,16 @@ function renderRoadmapDetailInline(id) {
       '<div class="field"><label>Start date</label><input type="date" id="rmp_start" value="' + escapeHtml(r.startDate||"") + '"></div>' +
       '<div class="field"><label>End date</label><input type="date" id="rmp_end" value="' + escapeHtml(r.endDate||"") + '"></div>' +
     '</div>' +
+    // Private toggle. Only the owner of the roadmap can flip this — the
+    // checkbox is disabled (and the row dimmed) for everyone else. When the
+    // roadmap is currently private, the Responsible dropdown above is also
+    // disabled — so the owner can't accidentally hand a private roadmap off
+    // to someone else without un-privating it first.
+    '<div class="field" style="margin-top:4px"><label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-weight:500" id="rmp_private_row">' +
+      '<input type="checkbox" id="rmp_private"' + (r.isPrivate ? ' checked' : '') + '>' +
+      '<span>Private</span>' +
+      '<span id="rmp_private_hint" style="color:#9a9a9a; font-size:11.5px; font-weight:400"></span>' +
+    '</label></div>' +
     '<h4 style="margin:14px 0 8px; font-size:14px; font-weight:600">Assigned tasks <span style="color:#9a9a9a; font-weight:400; font-size:12px">(' + (r.tasks||[]).length + ')</span></h4>' +
     '<div class="rm-task-list" id="rmp_tasks"></div>' +
     '<div class="rm-add-task"><input type="text" id="rmp_taskSearch" class="rm-task-input-search" placeholder="Search a task to assign..." autocomplete="off"></div>' +
@@ -5484,6 +5494,33 @@ function renderRoadmapDetailInline(id) {
   // Populate responsible dropdown
   const resp = document.getElementById("rmp_resp");
   resp.innerHTML = '<option value="">(none)</option>' + TEAM.map(p => '<option value="' + p.id + '" ' + (r.responsibleId===p.id?"selected":"") + '>' + escapeHtml(p.name) + '</option>').join("");
+
+  // Privacy enable/disable rules + Responsible lock on private roadmaps.
+  function _applyPrivacyLock() {
+    const cb = document.getElementById('rmp_private');
+    const hint = document.getElementById('rmp_private_hint');
+    const respSel = document.getElementById('rmp_resp');
+    if (!cb || !respSel) return;
+    const ownsIt = bnCurrentUserOwnsRoadmap(r);
+    // Anyone who isn't the current owner can't toggle Private. (For a new
+    // roadmap with no owner yet, the creator counts as future owner, so we
+    // leave the toggle enabled.)
+    const isNew = (id == null);
+    const canTogglePrivate = isNew || ownsIt;
+    cb.disabled = !canTogglePrivate;
+    if (hint) {
+      if (!canTogglePrivate) hint.textContent = '— only the owner can change this';
+      else if (cb.checked) hint.textContent = '— only visible to you; uncheck to share';
+      else hint.textContent = '— share with the team';
+    }
+    // Responsible dropdown: locked when roadmap is private, so the owner has
+    // to make it public first before transferring ownership. (This protects
+    // against accidentally handing a private roadmap to someone else.)
+    respSel.disabled = !!cb.checked;
+    respSel.title = cb.checked ? 'Make the roadmap public first to change the owner' : '';
+  }
+  _applyPrivacyLock();
+  document.getElementById('rmp_private').addEventListener('change', _applyPrivacyLock);
 
   // Render assigned tasks
   function refreshTasks() {
@@ -5552,7 +5589,10 @@ function renderRoadmapDetailInline(id) {
   document.getElementById("rmpClose").addEventListener("click", () => { selectedRoadmapPageId = null; renderRoadmapsPage(); });
   document.getElementById("rmpDelete").addEventListener("click", () => {
     if (!confirm("Delete '" + (r.name||"this roadmap") + "'?")) return;
-    STORE.roadmaps = getRoadmaps().filter(x => x.id !== r.id);
+    // Filter against the RAW list (not the privacy-filtered view) so we
+    // don't accidentally restore other users' private roadmaps that
+    // happened to be missing from getRoadmaps() in this session.
+    STORE.roadmaps = rawAllRoadmaps().filter(x => x.id !== r.id);
     saveStore(STORE);
     selectedRoadmapPageId = null;
     renderRoadmapsPage();
@@ -5560,9 +5600,17 @@ function renderRoadmapDetailInline(id) {
   document.getElementById("rmpSave").addEventListener("click", () => {
     r.name = document.getElementById("rmp_name").value.trim();
     r.description = document.getElementById("rmp_desc").value;
-    r.responsibleId = document.getElementById("rmp_resp").value || null;
+    // Only honour a Responsible change if the dropdown isn't disabled by the
+    // privacy lock — otherwise keep whatever was there.
+    const respSel = document.getElementById("rmp_resp");
+    if (!respSel.disabled) r.responsibleId = respSel.value || null;
     r.startDate = document.getElementById("rmp_start").value || null;
     r.endDate = document.getElementById("rmp_end").value || null;
+    // Privacy toggle. Only persist if the checkbox is enabled (i.e. the
+    // current user is the owner or is creating a new roadmap). Server-side
+    // there's no enforcement yet — this UI gate is the line of defense.
+    const privCb = document.getElementById("rmp_private");
+    if (privCb && !privCb.disabled) r.isPrivate = !!privCb.checked;
     saveStore(STORE);
     renderRoadmapsPage();
   });
@@ -5624,11 +5672,38 @@ function roadmapBadgeHtml(taskId, rm) {
 }
 
 // ---- Roadmaps ----
-function getRoadmaps() {
+// rawAllRoadmaps() returns the full unfiltered list — used by save/delete paths
+// and the privacy filter itself. Everything that renders to the UI should call
+// getRoadmaps() instead, which respects per-user privacy.
+function rawAllRoadmaps() {
   STORE.roadmaps = STORE.roadmaps || [];
   return STORE.roadmaps;
 }
-function findRoadmap(id) { return getRoadmaps().find(r => r.id === id) || null; }
+// Privacy-filtered list. A roadmap with isPrivate:true is only returned to its
+// owner (responsibleId === bnCurrentPersonId()). Everyone else — admins
+// included, and admins in preview-as — never sees private roadmaps that aren't
+// theirs. Public roadmaps (no isPrivate flag, or isPrivate:false) pass through
+// unchanged.
+function getRoadmaps() {
+  const all = rawAllRoadmaps();
+  let myPid = '';
+  try { if (typeof bnCurrentPersonId === 'function') myPid = bnCurrentPersonId() || ''; } catch (_) {}
+  return all.filter(r => !r.isPrivate || (myPid && r.responsibleId === myPid));
+}
+function findRoadmap(id) {
+  // Look up against the raw list so save paths can find a private roadmap by
+  // id even if the viewer can't see it. UI-side renders that call getRoadmaps()
+  // already won't expose the privately-filtered ones.
+  return rawAllRoadmaps().find(r => r.id === id) || null;
+}
+// Owner check used by the edit modal to decide whether to enable the Private
+// toggle and the Responsible dropdown.
+function bnCurrentUserOwnsRoadmap(r) {
+  if (!r) return false;
+  let myPid = '';
+  try { if (typeof bnCurrentPersonId === 'function') myPid = bnCurrentPersonId() || ''; } catch (_) {}
+  return !!myPid && r.responsibleId === myPid;
+}
 function rmId() { return "rm" + Math.random().toString(36).slice(2, 10); }
 
 let editingRoadmapId = null;
@@ -6303,45 +6378,45 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260521w"></script>
+<script src="views/bulk-create.js?v=bn20260521x"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260521w"></script>
+<script src="lib/bulk-popovers.js?v=bn20260521x"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260521w"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260521x"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260521w"></script>
+<script src="views/home.js?v=bn20260521x"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260521w"></script>
-<script src="views/files.js?v=bn20260521w"></script>
+<script src="lib/files-integration.js?v=bn20260521x"></script>
+<script src="views/files.js?v=bn20260521x"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260521w"></script>
-<script src="views/requests.js?v=bn20260521w"></script>
+<script src="lib/requests-feature.js?v=bn20260521x"></script>
+<script src="views/requests.js?v=bn20260521x"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260521w"></script>
+<script src="views/tasks.js?v=bn20260521x"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260521w"></script>
+<script src="views/team.js?v=bn20260521x"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260521w"></script>
+<script src="views/profile.js?v=bn20260521x"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260521w"></script>
-<script src="views/roadmaps.js?v=bn20260521w"></script>
+<script src="views/roadmap-calendar.js?v=bn20260521x"></script>
+<script src="views/roadmaps.js?v=bn20260521x"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260521w"></script>
+<script src="lib/date-picker.js?v=bn20260521x"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260521w"></script>
+<script src="lib/trash.js?v=bn20260521x"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260521w"></script>
+<script src="lib/backup.js?v=bn20260521x"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260521w"></script>
+<script src="lib/pickers.js?v=bn20260521x"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260521w"></script>
-<script src="views/modals/add-member.js?v=bn20260521w"></script>
-<script src="views/modals/tag-manager.js?v=bn20260521w"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260521w"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260521w"></script>
+<script src="views/modals/person-tags.js?v=bn20260521x"></script>
+<script src="views/modals/add-member.js?v=bn20260521x"></script>
+<script src="views/modals/tag-manager.js?v=bn20260521x"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260521x"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260521x"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
