@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Navigator</title>
-<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522c">
+<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522d">
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260522c">
+<link rel="stylesheet" href="styles/app.css?v=bn20260522d">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -115,7 +115,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand" id="bnBrand" title="">
-        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522c" alt="" referrerpolicy="no-referrer"></div>
+        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522d" alt="" referrerpolicy="no-referrer"></div>
         <div class="brand-stack">
           <div class="brand-name" id="bnBrandName">Team Navigator</div>
           <!-- Permission line — shown ONLY during preview. -->
@@ -579,7 +579,7 @@ Weekly metrics by country" spellcheck="false"></textarea>
     <select id="bulkAddTagSel" title="Add a task tag to selected"><option value="">+ Add task tag…</option></select>
     <select id="bulkRemoveTagSel" title="Remove a task tag from selected"><option value="">− Remove task tag…</option></select>
     <span class="sep"></span>
-    <select id="bulkSetStatus" title="Set status on selected"><option value="">Set status…</option><option value="Proposed">Proposed</option><option value="Under Review">Under Review</option><option value="In Progress">In Progress</option><option value="Waiting">Waiting</option><option value="Later / Next">Later / Next</option><option value="Completed">Completed</option><option value="Archived">Archived</option><option value="Discarded">Discarded</option></select>
+    <select id="bulkSetStatus" title="Set status on selected"><option value="">Set status…</option><option value="__empty">(empty)</option><option value="Proposed">Proposed</option><option value="Under Review">Under Review</option><option value="In Progress">In Progress</option><option value="Waiting">Waiting</option><option value="Later / Next">Later / Next</option><option value="Completed">Completed</option><option value="Archived">Archived</option><option value="Discarded">Discarded</option></select>
     <select id="bulkSetType" title="Set task type on selected"><option value="">Set type…</option><option value="__empty">(clear)</option><option value="Project">Project</option><option value="Responsability">Responsability</option><option value="Request">Request</option><option value="ERROR">ERROR</option><option value="Infinite">Infinite</option></select>
     <select id="bulkSetPriority" title="Set priority on selected"><option value="">Set priority…</option><option value="__empty">(clear)</option><option value="Critical">Critical</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option><option value="Very Low">Very Low</option></select>
     <select id="bulkSetResponsible" title="Set responsible on selected"><option value="">Set responsible…</option></select>
@@ -1045,15 +1045,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260522c"></script>
+<script src="data/team-directory.js?v=bn20260522d"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260522c"></script>
+<script src="data/holidays.js?v=bn20260522d"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260522c"></script>
+<script src="lib/supabase-auth.js?v=bn20260522d"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260522c"></script>
+<script src="lib/permissions.js?v=bn20260522d"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260522c"></script>
+<script src="lib/filters.js?v=bn20260522d"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -1386,6 +1386,13 @@ STORE.tasks.forEach(t => {
 });
 if (migrated > 0) saveStore(STORE);
 // One-time migration: derive slackStatus from legacy panelStatus when missing/empty.
+// CRITICAL: guarded by a localStorage flag so it only runs ONCE per device —
+// without the guard it fired every page load, and any task you'd intentionally
+// left with empty status got auto-promoted to whatever PANEL_TO_SLACK mapped
+// from its legacy panelStatus (Responsability tasks were the most affected
+// because they're legitimately allowed to have empty status).
+// Also: Responsability tasks are exempt by design — they're not Slack-style
+// states, so the mapping doesn't apply.
 const PANEL_TO_SLACK = {
   pending: "Proposed",
   in_progress: "In Progress",
@@ -1393,14 +1400,18 @@ const PANEL_TO_SLACK = {
   archived: "Archived",
   discarded: "Discarded"
 };
-let migratedStatus = 0;
-STORE.tasks.forEach(t => {
-  if (!t.slackStatus || t.slackStatus === "" || t.slackStatus === "Empty") {
-    const mapped = PANEL_TO_SLACK[t.panelStatus];
-    if (mapped) { t.slackStatus = mapped; migratedStatus++; }
-  }
-});
-if (migratedStatus > 0) saveStore(STORE);
+if (!localStorage.getItem('bn-migrated-status-from-panel-v1')) {
+  let migratedStatus = 0;
+  STORE.tasks.forEach(t => {
+    if (t.type === 'Responsability') return; // empty is legit for these
+    if (!t.slackStatus || t.slackStatus === "" || t.slackStatus === "Empty") {
+      const mapped = PANEL_TO_SLACK[t.panelStatus];
+      if (mapped) { t.slackStatus = mapped; migratedStatus++; }
+    }
+  });
+  if (migratedStatus > 0) saveStore(STORE);
+  try { localStorage.setItem('bn-migrated-status-from-panel-v1', '1'); } catch (_) {}
+}
 // One-time migration: entries whose startSrcLabel starts with "end of " predate the predecessor
 // (+1 day) semantics — shift startDate forward by 1 day. Same for endSrcLabel "start of " → −1 day.
 // Guarded by a localStorage flag so it runs at most once per device.
@@ -6394,11 +6405,16 @@ document.getElementById("bulkRemoveTagSel").addEventListener("change", e => {
 document.getElementById("bulkSetStatus").addEventListener("change", e => {
   const ps = e.target.value;
   if (!ps || selectedTaskIds.size === 0) { e.target.value = ""; return; }
-  if (!confirm("Set status to '" + ps + "' on " + selectedTaskIds.size + " task(s)?")) { e.target.value = ""; return; }
+  // '__empty' is the sentinel for "clear status" (legitimate for Responsability
+  // tasks). Treat empty-string ('') in storage as the actual cleared value.
+  const isClear = (ps === '__empty');
+  const newStatus = isClear ? '' : ps;
+  const human = isClear ? '(empty)' : ps;
+  if (!confirm("Set status to '" + human + "' on " + selectedTaskIds.size + " task(s)?")) { e.target.value = ""; return; }
   selectedTaskIds.forEach(tid => {
     const t = bnTaskById(tid);
     if (!t) return;
-    t.slackStatus = ps;
+    t.slackStatus = newStatus;
     t._pendingSync = true;
   });
   saveStore(STORE);
@@ -6560,45 +6576,45 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260522c"></script>
+<script src="views/bulk-create.js?v=bn20260522d"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260522c"></script>
+<script src="lib/bulk-popovers.js?v=bn20260522d"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260522c"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260522d"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260522c"></script>
+<script src="views/home.js?v=bn20260522d"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260522c"></script>
-<script src="views/files.js?v=bn20260522c"></script>
+<script src="lib/files-integration.js?v=bn20260522d"></script>
+<script src="views/files.js?v=bn20260522d"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260522c"></script>
-<script src="views/requests.js?v=bn20260522c"></script>
+<script src="lib/requests-feature.js?v=bn20260522d"></script>
+<script src="views/requests.js?v=bn20260522d"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260522c"></script>
+<script src="views/tasks.js?v=bn20260522d"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260522c"></script>
+<script src="views/team.js?v=bn20260522d"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260522c"></script>
+<script src="views/profile.js?v=bn20260522d"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260522c"></script>
-<script src="views/roadmaps.js?v=bn20260522c"></script>
+<script src="views/roadmap-calendar.js?v=bn20260522d"></script>
+<script src="views/roadmaps.js?v=bn20260522d"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260522c"></script>
+<script src="lib/date-picker.js?v=bn20260522d"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260522c"></script>
+<script src="lib/trash.js?v=bn20260522d"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260522c"></script>
+<script src="lib/backup.js?v=bn20260522d"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260522c"></script>
+<script src="lib/pickers.js?v=bn20260522d"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260522c"></script>
-<script src="views/modals/add-member.js?v=bn20260522c"></script>
-<script src="views/modals/tag-manager.js?v=bn20260522c"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260522c"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260522c"></script>
+<script src="views/modals/person-tags.js?v=bn20260522d"></script>
+<script src="views/modals/add-member.js?v=bn20260522d"></script>
+<script src="views/modals/tag-manager.js?v=bn20260522d"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260522d"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260522d"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
