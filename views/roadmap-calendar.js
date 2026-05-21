@@ -726,15 +726,27 @@ function renderRoadmapCalendar(roadmapId) {
         if (!expandedSet.has(groupId)) return 0;
         return all;
       }
+      // Nested-group rows take a taller height (22px) than leaf chips (12px)
+      // so their name + chevron are readable. Compute lane height accordingly:
+      // sum up the per-sub-lane height each child needs.
+      const NEST_ROW_H = 22 + SUB_GAP; // nested-group sub-lane height
+      const LEAF_ROW_H = SUB_H + SUB_GAP; // leaf child sub-lane height
       const laneHeights = lanes.map(laneSegs => {
-        let maxSub = 0;
+        let maxNeeded = 0;
         laneSegs.forEach(s => {
           if (!s.event.task.isGroup) return;
-          const visibleSub = groupVisibleSubLanesCount(s.event.task.id);
-          if (visibleSub > maxSub) maxSub = visibleSub;
+          if (!expandedSet.has(s.event.task.id)) return; // collapsed: no kids visible
+          const myChildren = (subLanesByParent[s.event.task.id] || []);
+          // Find heights of each sub-lane: nested-group rows are taller
+          let needed = 0;
+          myChildren.forEach(subSegs => {
+            const anyNestedGroup = (subSegs || []).some(ss => !!ss.event.task.isGroup);
+            needed += anyNestedGroup ? NEST_ROW_H : LEAF_ROW_H;
+          });
+          if (needed > maxNeeded) maxNeeded = needed;
         });
-        if (maxSub === 0) return normalLaneHeight;
-        return TITLE_STRIP + maxSub * (SUB_H + SUB_GAP) + 4;
+        if (maxNeeded === 0) return normalLaneHeight;
+        return TITLE_STRIP + maxNeeded + 4;
       });
       // Pre-compute Y offset for each lane
       const laneTop = [];
@@ -798,18 +810,23 @@ function renderRoadmapCalendar(roadmapId) {
         const isNested = opts.nested;
         const cls = ['cal-event'];
         let top, height, color, fontSize, label, extraHtml = '', extraStyle = '';
+        // Decide per-sub-lane row height: if ANY child in this parent's
+        // sub-lanes is a nested group, ALL sub-lanes use the taller 22px
+        // height so positions stay consistent. Otherwise the leaf chip
+        // height (12px) is fine.
+        const _parentHasNestedGroup = (sg) => {
+          if (!sg) return false;
+          const myChildren = (subLanesByParent[sg.event.task.groupId] || []);
+          return myChildren.some(subSegs => (subSegs || []).some(ss => !!ss.event.task.isGroup));
+        };
         if (isNested && !isGroupEvent) {
           // LEAF child inside an expanded parent group → mini solid chip.
-          // (Groups that are themselves nested fall through to the
-          // isGroupEvent branch below so they get dashed + transparent like
-          // the outer group, just positioned as a nested chip.)
-          // Hide ALL children when group is collapsed (no "+N more" — kids vanish entirely).
           const parentId = s.event.task.groupId;
           const isParentExpanded = expandedSet.has(parentId);
           if (!isParentExpanded) return;
-          // Mini chip inside the parent group's expanded lane
           const baseTop = laneTop[s.lane] + TITLE_STRIP;          // first 22px = the group title strip
-          top = baseTop + (s.subLane * (SUB_H + SUB_GAP));
+          const _rowH = _parentHasNestedGroup(s) ? (22 + SUB_GAP) : (SUB_H + SUB_GAP);
+          top = baseTop + (s.subLane * _rowH);
           height = SUB_H;
           color = statusColors[s.event.task.slackStatus] || '#1a1a1a';
           fontSize = 9.5;
@@ -821,17 +838,18 @@ function renderRoadmapCalendar(roadmapId) {
           const parentId = s.event.task.groupId;
           const isParentExpanded = expandedSet.has(parentId);
           if (!isParentExpanded) return;
-          // Render it WITH group styling (dashed + transparent) but sized like
-          // a sub-lane row so it fits inside the parent's expanded container.
+          // Render it WITH group styling (dashed + transparent). 22px tall
+          // so the name + chevron are readable, like a top-level group title.
+          const NEST_H = 22;
           const baseTop = laneTop[s.lane] + TITLE_STRIP;
-          top = baseTop + (s.subLane * (SUB_H + SUB_GAP));
-          height = SUB_H + 4;  // slightly taller than a leaf chip so the dashed border reads
+          top = baseTop + (s.subLane * (NEST_H + SUB_GAP));
+          height = NEST_H;
           const stHex = statusColors[s.event.task.slackStatus] || '#d97706';
           const _h = stHex.length === 4 ? '#' + stHex[1]+stHex[1]+stHex[2]+stHex[2]+stHex[3]+stHex[3] : stHex;
           const _r = parseInt(_h.slice(1,3), 16), _g = parseInt(_h.slice(3,5), 16), _b = parseInt(_h.slice(5,7), 16);
           color = 'rgba(' + _r + ',' + _g + ',' + _b + ',0.18)';
           extraStyle = '; border:1.5px dashed ' + stHex + '; color:' + stHex;
-          fontSize = 10;
+          fontSize = 11;
           cls.push('cal-event-group');
           cls.push('cal-event-nested-group');
           const gid = s.event.task.id;
@@ -839,11 +857,12 @@ function renderRoadmapCalendar(roadmapId) {
           const isExpanded = expandedSet.has(gid);
           if (isExpanded) cls.push('expanded');
           label = '📁 ' + escapeHtml(s.event.task.subject);
-          if (totalSubLanes > 0) {
-            const chev = isExpanded ? '▾' : '▸';
-            const ttl = isExpanded ? 'Collapse group' : 'Expand group';
-            label += ' <button type="button" class="cal-group-toggle" data-group-toggle="' + gid + '" title="' + ttl + '">' + chev + '</button>';
-          }
+          // Always render the chevron for nested groups — the user expects to
+          // be able to expand them, even when they have no rendered children
+          // YET (collapsed state shows ▸ to advertise the affordance).
+          const chev = isExpanded ? '▾' : '▸';
+          const ttl = isExpanded ? 'Collapse group' : 'Expand group';
+          label += ' <button type="button" class="cal-group-toggle" data-group-toggle="' + gid + '" title="' + ttl + '">' + chev + '</button>';
         } else if (isGroupEvent) {
           // Group container bar — tinted by status (transparent backdrop, dashed status-colored border)
           const gid = s.event.task.id;
