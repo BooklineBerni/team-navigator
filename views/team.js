@@ -40,31 +40,19 @@ function renderMembersPage() {
     // Groups count as tasks too.
     return (STORE.tasks || []).some(t => t.responsibleId === pid);
   }
-  // Build the set of people who live inside a custom group. They're rendered
-  // as chips under the group's card, not as their own card. Also build a
-  // lookup so we can determine the "effective section" of group members —
-  // adding someone to a group that lives in Team puts them in Team too.
-  const groupMemberIdsSet = new Set();
-  const groupOf = new Map(); // memberId → group person id
-  ((STORE && STORE.customMembers) || []).forEach(m => {
-    if (m && m.isPeopleGroup && Array.isArray(m.memberIds)) {
-      m.memberIds.forEach(id => { groupMemberIdsSet.add(id); groupOf.set(id, m.id); });
-    }
-  });
-  // Effective section for placement: if the person is in a group, use the
-  // group's section. Otherwise their own explicit section.
+  // Section placement for the People page:
+  //   - The group's OWN card lives in the group's section (Team/Supplementary/etc.).
+  //   - Members of the group still render as chips inside that group's card.
+  //   - Each member ALSO renders as their own independent card. That card
+  //     follows the PERSON'S own section, regardless of which section the
+  //     group is in. So if "Pau" is in section Supplementary but belongs
+  //     to a group that lives in Team, Pau's individual card appears under
+  //     Supplementary (and Pau is also listed as a chip under the Team group).
+  // No groupOf indirection here — sections are read straight from each
+  // person's own profile.
   function effectiveSection(pid) {
-    const grpId = groupOf.get(pid);
-    if (grpId) return getPersonSection(grpId) || '';
     return getPersonSection(pid);
   }
-  // The classify pass uses effectiveSection so members follow their group.
-  // Previously we filtered group members out of the individual lists so a
-  // person only ever appeared inside their group's chip strip. The user
-  // wants them visible in BOTH places now — as a member chip under the
-  // group's card AND as their own independent card in the section their
-  // effective section resolves to. So we drop the `!groupMemberIdsSet`
-  // exclusion from every section filter below.
   // Team: ONLY people whose effective section is "team"
   const teamActive    = pool.filter(p => effectiveSection(p.id) === "team" && matchesQuery(p));
   const supplementary = pool.filter(p => effectiveSection(p.id) === "supplementary" && matchesQuery(p));
