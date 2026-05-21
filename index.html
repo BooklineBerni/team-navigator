@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Navigator</title>
-<link rel="icon" type="image/gif" href="logo.gif?v=bn20260521z">
+<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522a">
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260521z">
+<link rel="stylesheet" href="styles/app.css?v=bn20260522a">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -115,7 +115,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand" id="bnBrand" title="">
-        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260521z" alt="" referrerpolicy="no-referrer"></div>
+        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522a" alt="" referrerpolicy="no-referrer"></div>
         <div class="brand-stack">
           <div class="brand-name" id="bnBrandName">Team Navigator</div>
           <!-- Permission line — shown ONLY during preview. -->
@@ -349,6 +349,26 @@
               <option value="private">Private (only me)</option>
               <option value="team">Team (everyone)</option>
             </select>
+          </div>
+        </div>
+        <!-- Optional: link this file to specific tasks and/or roadmaps. The
+             linked task/roadmap modals show the file in their own "Linked
+             files" section. Stored on the file record as taskIds[] /
+             roadmapIds[] (empty by default). -->
+        <div class="field">
+          <label>Linked tasks <span style="color:#9a9a9a; font-weight:400; font-size:11.5px">(optional)</span></label>
+          <div id="ff_linkTasksChips" class="ff-link-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:4px; min-height:0"></div>
+          <div style="position:relative">
+            <input type="text" id="ff_linkTasksSearch" placeholder="Type to search a task to link…" autocomplete="off" style="width:100%">
+            <div id="ff_linkTasksResults" style="position:absolute; left:0; right:0; top:100%; background:#fff; border:1px solid #ececea; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.08); max-height:180px; overflow-y:auto; z-index:50; display:none"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Linked roadmaps <span style="color:#9a9a9a; font-weight:400; font-size:11.5px">(optional)</span></label>
+          <div id="ff_linkRmChips" class="ff-link-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:4px; min-height:0"></div>
+          <div style="position:relative">
+            <input type="text" id="ff_linkRmSearch" placeholder="Type to search a roadmap to link…" autocomplete="off" style="width:100%">
+            <div id="ff_linkRmResults" style="position:absolute; left:0; right:0; top:100%; background:#fff; border:1px solid #ececea; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.08); max-height:180px; overflow-y:auto; z-index:50; display:none"></div>
           </div>
         </div>
         <div class="modal-actions">
@@ -1014,15 +1034,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260521z"></script>
+<script src="data/team-directory.js?v=bn20260522a"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260521z"></script>
+<script src="data/holidays.js?v=bn20260522a"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260521z"></script>
+<script src="lib/supabase-auth.js?v=bn20260522a"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260521z"></script>
+<script src="lib/permissions.js?v=bn20260522a"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260521z"></script>
+<script src="lib/filters.js?v=bn20260522a"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -3191,12 +3211,15 @@ document.getElementById("saveBtn").addEventListener("click", () => {
   if (!editingId) return;
   const subject = document.getElementById("f_subject").value.trim();
   const isGroup = document.getElementById("f_isGroup").checked;
-  // Tasks (group or not) require the same fields
+  // Validate ALL required fields BEFORE any mutation so the modal can stay
+  // open and the user fixes the issue. Includes the privacy rule for
+  // shareWith='Private' (only allowed when current user is the Responsible).
   {
     const slackStatus = document.getElementById("f_slackStatus").value;
     const priority = document.getElementById("f_priority").value;
     const type = document.getElementById("f_type").value;
     const shareWith = document.getElementById("f_shareWith").value;
+    const responsibleId = document.getElementById("f_responsibleId").value;
     const missing = [];
     if (!subject) missing.push("Title");
     // Status is optional for Responsability tasks (they live without a Slack-style state).
@@ -3206,6 +3229,14 @@ document.getElementById("saveBtn").addEventListener("click", () => {
     if (!shareWith) missing.push("Share with");
     if (!Array.isArray(proposedSelectedIds) || proposedSelectedIds.length === 0) missing.push("Proposed by (at least one)");
     if (missing.length > 0) { alert("Please fill in: " + missing.join(", ")); return; }
+    // Privacy gate — keep the modal open if the rule fails so the user can
+    // fix Responsible or pick a less-restrictive shareWith.
+    let _myPid = '';
+    try { if (typeof bnCurrentPersonId === 'function') _myPid = bnCurrentPersonId() || ''; } catch (_) {}
+    if (shareWith === 'Private' && (!_myPid || responsibleId !== _myPid)) {
+      alert("A task can only be marked Private when YOU are its Responsible. Either change the Responsible to yourself first, or pick Team/Everyone instead.");
+      return;
+    }
   }
   const newCarry = document.getElementById("modal").__newTask;
   let t = bnTaskById(editingId);
@@ -3254,23 +3285,9 @@ document.getElementById("saveBtn").addEventListener("click", () => {
         if (eIn) eIn.value = _today;
       }
     }
-    {
-      const _newShareWith = document.getElementById("f_shareWith").value;
-      // 'Private' = only the responsible person sees it. So you can only set
-      // Private on a task whose Responsible is YOU. Admins are NOT exempt —
-      // even admins can't create or change tasks Private to someone else's
-      // name (it would let them spawn invisible work assigned to others).
-      let _myPid = '';
-      try { if (typeof bnCurrentPersonId === 'function') _myPid = bnCurrentPersonId() || ''; } catch (_) {}
-      if (_newShareWith === 'Private' && (!_myPid || t.responsibleId !== _myPid)) {
-        alert("A task can only be marked Private when YOU are its Responsible. Either change the Responsible to yourself first, or pick Team/Everyone instead.");
-        // Revert to whatever the task had before. Default to Everyone for
-        // brand-new tasks (no prior value) so the save still goes through.
-        t.shareWith = (t.shareWith && t.shareWith !== 'Private') ? t.shareWith : 'Everyone';
-      } else {
-        t.shareWith = _newShareWith;
-      }
-    }
+    // shareWith already validated up top (privacy rule + missing field) — at
+    // this point the value is safe to persist as-is.
+    t.shareWith = document.getElementById("f_shareWith").value;
     // Completion is now derived from status — no separate completed/sharing booleans.
     // Persist the manual Start/End so it pre-fills new roadmap entries and the picker shows it.
     // For tasks already in roadmaps, these get auto-recomputed on next roadmap-entry change.
@@ -6461,45 +6478,45 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260521z"></script>
+<script src="views/bulk-create.js?v=bn20260522a"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260521z"></script>
+<script src="lib/bulk-popovers.js?v=bn20260522a"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260521z"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260522a"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260521z"></script>
+<script src="views/home.js?v=bn20260522a"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260521z"></script>
-<script src="views/files.js?v=bn20260521z"></script>
+<script src="lib/files-integration.js?v=bn20260522a"></script>
+<script src="views/files.js?v=bn20260522a"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260521z"></script>
-<script src="views/requests.js?v=bn20260521z"></script>
+<script src="lib/requests-feature.js?v=bn20260522a"></script>
+<script src="views/requests.js?v=bn20260522a"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260521z"></script>
+<script src="views/tasks.js?v=bn20260522a"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260521z"></script>
+<script src="views/team.js?v=bn20260522a"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260521z"></script>
+<script src="views/profile.js?v=bn20260522a"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260521z"></script>
-<script src="views/roadmaps.js?v=bn20260521z"></script>
+<script src="views/roadmap-calendar.js?v=bn20260522a"></script>
+<script src="views/roadmaps.js?v=bn20260522a"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260521z"></script>
+<script src="lib/date-picker.js?v=bn20260522a"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260521z"></script>
+<script src="lib/trash.js?v=bn20260522a"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260521z"></script>
+<script src="lib/backup.js?v=bn20260522a"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260521z"></script>
+<script src="lib/pickers.js?v=bn20260522a"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260521z"></script>
-<script src="views/modals/add-member.js?v=bn20260521z"></script>
-<script src="views/modals/tag-manager.js?v=bn20260521z"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260521z"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260521z"></script>
+<script src="views/modals/person-tags.js?v=bn20260522a"></script>
+<script src="views/modals/add-member.js?v=bn20260522a"></script>
+<script src="views/modals/tag-manager.js?v=bn20260522a"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260522a"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260522a"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
