@@ -23,11 +23,15 @@ function renderFlatTasks() {
     return;
   }
   // Recursive renderer so that a subtask that is ITSELF a group expands its own children too.
+  // Subtask order: kids start in the user's chosen sort (sortTaskList), then we honour
+  // any manually-dragged order persisted on the parent (parent.subtaskOrder via
+  // bnApplySubtaskOrder). Unranked kids keep their default-sort position.
   function renderNode(t, depth) {
     let h = flatTaskHtml(t);
     if (t.isGroup) {
       const expanded = isGroupExpanded(t.id);
-      const kids = sortTaskList((STORE.tasks || []).filter(c => c.groupId === t.id && taskMatchesFilters(c, { allowGroups: true })));
+      let kids = sortTaskList((STORE.tasks || []).filter(c => c.groupId === t.id && taskMatchesFilters(c, { allowGroups: true })));
+      if (typeof bnApplySubtaskOrder === 'function') kids = bnApplySubtaskOrder(t, kids);
       h += '<div class="group-children' + (expanded ? '' : ' collapsed') + '" data-gid="' + escapeHtml(t.id) + '">';
       if (kids.length === 0) {
         h += '<div class="group-empty" style="padding:6px 8px">No subtasks match the current filters.</div>';
@@ -41,6 +45,16 @@ function renderFlatTasks() {
   let html = '';
   topLevel.forEach(t => { html += renderNode(t, 0); });
   cont.innerHTML = html;
+  // Wire drag-reorder for every expanded group's children container. Each child of a
+  // group is the immediate next sibling of the parent's .flat-task, so we look up the
+  // parent's data-gid on the children wrapper.
+  if (typeof bnWireSubtaskReorder === 'function') {
+    cont.querySelectorAll('.group-children').forEach(wrap => {
+      const gid = wrap.dataset.gid;
+      const parent = gid ? (typeof bnTaskById === 'function' ? bnTaskById(gid) : (STORE.tasks || []).find(x => x.id === gid)) : null;
+      if (parent) bnWireSubtaskReorder(wrap, parent, '.flat-task');
+    });
+  }
 
   cont.querySelectorAll(".flat-task").forEach(node => {
     const tid = node.dataset.tid;
