@@ -1275,6 +1275,52 @@ function bnBulkSave(){
   if (bnBulkDrafts.length === 0) { alert('No tasks to create.'); return; }
   if (typeof bnRotateAutoSnapshot === 'function') bnRotateAutoSnapshot('pre-bulk-create');
 
+  // Auto-merge defaults into each draft on Save. Previously this only happened
+  // when the user explicitly clicked "Apply to all" — users (including me)
+  // expect that values typed in the defaults panel automatically apply to
+  // every draft when Save is clicked, especially for proposed_by which is a
+  // required field downstream. We preserve any value the user already set
+  // ON a specific row (defaults DON'T overwrite a row-level value).
+  {
+    const D = bnBulkDefaultsDraft || {};
+    const scalarKeys = ['type','slackStatus','priority','responsibleId','shareWith',
+                        'startDate','endDate','durationDays','estimatedHours',
+                        'dedicatedHours','parentGroupId','startAnchor','endAnchor'];
+    scalarKeys.forEach(k => {
+      if (D[k] !== '' && D[k] != null) {
+        bnBulkDrafts.forEach(d => { if (d[k] === '' || d[k] == null) d[k] = D[k]; });
+      }
+    });
+    // Arrays: union (defaults UNION row-level). This matches "Apply to all"
+    // semantics, which adds defaults' proposers/roadmaps/tags on top of any
+    // the user already picked per row.
+    if (Array.isArray(D.proposedByIds) && D.proposedByIds.length) {
+      bnBulkDrafts.forEach(d => {
+        if (!Array.isArray(d.proposedByIds)) d.proposedByIds = d.proposedById ? [d.proposedById] : [];
+        D.proposedByIds.forEach(pid => { if (!d.proposedByIds.includes(pid)) d.proposedByIds.push(pid); });
+        d.proposedById = d.proposedByIds[0] || '';
+      });
+    }
+    if (Array.isArray(D.roadmapIds) && D.roadmapIds.length) {
+      bnBulkDrafts.forEach(d => {
+        if (!Array.isArray(d.roadmapIds)) d.roadmapIds = d.roadmapId ? [d.roadmapId] : [];
+        D.roadmapIds.forEach(rid => { if (!d.roadmapIds.includes(rid)) d.roadmapIds.push(rid); });
+        d.roadmapId = d.roadmapIds[0] || '';
+      });
+    }
+    if (Array.isArray(D.taskTags) && D.taskTags.length) {
+      bnBulkDrafts.forEach(d => {
+        if (!Array.isArray(d.taskTags)) d.taskTags = d.taskTag ? [d.taskTag] : [];
+        D.taskTags.forEach(t => { if (!d.taskTags.includes(t)) d.taskTags.push(t); });
+        d.taskTag = d.taskTags[0] || '';
+      });
+    }
+    // isGroup: if defaults set true, propagate to drafts that didn't override.
+    if (D.isGroup) {
+      bnBulkDrafts.forEach(d => { if (!d.isGroup) d.isGroup = true; });
+    }
+  }
+
   // Step 1: pre-generate real IDs for each draft, so cross-draft anchors can resolve.
   const tmpToReal = {};
   bnBulkDrafts.forEach(d => { tmpToReal[d._tmpId] = uid(); });
