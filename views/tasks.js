@@ -45,15 +45,25 @@ function renderFlatTasks() {
   let html = '';
   topLevel.forEach(t => { html += renderNode(t, 0); });
   cont.innerHTML = html;
-  // Wire drag-reorder for every expanded group's children container. Each child of a
-  // group is the immediate next sibling of the parent's .flat-task, so we look up the
-  // parent's data-gid on the children wrapper.
+  // Drag-reorder + cross-group move:
+  //   - bnWireAllRowsAsDragSources: every .flat-task can be picked up.
+  //   - bnWireSubtaskReorder: each expanded group's children wrapper accepts
+  //     drops on its inner rows (reorder) and on its empty area (adopt).
+  //   - bnWireTopLevelGroupDropTargets: even a COLLAPSED top-level group row
+  //     accepts drops so users can move a subtask into a group without having
+  //     to expand it first.
+  if (typeof bnWireAllRowsAsDragSources === 'function') {
+    bnWireAllRowsAsDragSources(cont, '.flat-task');
+  }
   if (typeof bnWireSubtaskReorder === 'function') {
     cont.querySelectorAll('.group-children').forEach(wrap => {
       const gid = wrap.dataset.gid;
       const parent = gid ? (typeof bnTaskById === 'function' ? bnTaskById(gid) : (STORE.tasks || []).find(x => x.id === gid)) : null;
       if (parent) bnWireSubtaskReorder(wrap, parent, '.flat-task');
     });
+  }
+  if (typeof bnWireTopLevelGroupDropTargets === 'function') {
+    bnWireTopLevelGroupDropTargets(cont, '.flat-task');
   }
 
   cont.querySelectorAll(".flat-task").forEach(node => {

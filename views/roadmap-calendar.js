@@ -1020,13 +1020,26 @@ function renderRoadmapCalendar(roadmapId) {
     // ---- Active unscheduled ----
     if (unscheduled.length > 0) {
       const pendingCount = unscheduled.filter(e => parseDate(effectiveDatesFor(e).startStr)).length;
-      html += '<div class="rm-unscheduled" style="margin-top:14px; padding:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px">' +
+      // Collapsible (per-roadmap), persisted in localStorage so it survives reloads.
+      // Default: expanded. Toggling the caret/header flips and persists.
+      if (!window.__rmUnscheduledCollapsed) {
+        try {
+          const raw = localStorage.getItem('bn-rm-unscheduled-collapsed');
+          window.__rmUnscheduledCollapsed = raw ? JSON.parse(raw) : {};
+        } catch (_) { window.__rmUnscheduledCollapsed = {}; }
+      }
+      const unsCollapsed = !!window.__rmUnscheduledCollapsed[r.id];
+      html += '<div class="rm-unscheduled' + (unsCollapsed ? ' collapsed' : ' expanded') + '" data-rmid="' + escapeHtml(r.id) + '" style="margin-top:14px; padding:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px">' +
         '<div class="rm-unscheduled-head">' +
-          '<strong style="font-size:13px">Unscheduled (' + unscheduled.length + ')</strong>' +
+          '<button type="button" class="rm-unscheduled-toggle" id="rmUnscheduledToggle" title="' + (unsCollapsed ? 'Expand' : 'Collapse') + '" style="appearance:none; border:none; background:transparent; cursor:pointer; padding:0; display:inline-flex; align-items:center; gap:6px; color:inherit">' +
+            '<span class="rm-arch-caret">▶</span>' +
+            '<strong style="font-size:13px">Unscheduled (' + unscheduled.length + ')</strong>' +
+          '</button>' +
           '<button class="btn primary" id="rmApplyDatesBtn"' + (pendingCount === 0 ? ' disabled' : '') + '>Apply' + (pendingCount > 0 ? ' (' + pendingCount + ')' : '') + '</button>' +
-        '</div>';
+        '</div>' +
+        '<div class="rm-unscheduled-body" id="rmUnscheduledBody" style="' + (unsCollapsed ? 'display:none;' : '') + '">';
       unscheduled.forEach(entry => { html += buildSideRowHtml(entry); });
-      html += '</div>';
+      html += '</div></div>';
     }
     // ---- Archived (own collapsible section below) ----
     if (archivedEntries.length > 0) {
@@ -1720,6 +1733,26 @@ function renderRoadmapCalendar(roadmapId) {
     applyBtn.addEventListener('click', () => {
       window.__rmPendingApply.clear();
       renderRoadmapCalendar(roadmapId);
+    });
+  }
+  // Unscheduled section: expand/collapse toggle. State persisted to
+  // localStorage so a user that prefers to keep it collapsed survives reloads.
+  const unsToggle = document.getElementById('rmUnscheduledToggle');
+  if (unsToggle) {
+    unsToggle.addEventListener('click', () => {
+      if (!window.__rmUnscheduledCollapsed) window.__rmUnscheduledCollapsed = {};
+      // Toggle current state. Default is expanded so absent key + click → collapsed.
+      window.__rmUnscheduledCollapsed[r.id] = !window.__rmUnscheduledCollapsed[r.id];
+      try { localStorage.setItem('bn-rm-unscheduled-collapsed', JSON.stringify(window.__rmUnscheduledCollapsed)); } catch (_) {}
+      const wrap = unsToggle.closest('.rm-unscheduled');
+      const body = wrap && wrap.querySelector('.rm-unscheduled-body');
+      if (wrap && body) {
+        const collapsed = !!window.__rmUnscheduledCollapsed[r.id];
+        wrap.classList.toggle('collapsed', collapsed);
+        wrap.classList.toggle('expanded', !collapsed);
+        body.style.display = collapsed ? 'none' : '';
+        unsToggle.title = collapsed ? 'Expand' : 'Collapse';
+      }
     });
   }
   // Archived section: expand/collapse toggle (state per roadmap, in-memory)

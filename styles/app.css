@@ -489,6 +489,42 @@
   .subtask-row.subtask-drag-over-after {
     box-shadow: 0 2px 0 0 #d97706 inset, 0 2px 0 0 #d97706;
   }
+  /* Cross-group drag indicators for list/by-person views.
+     - .bn-drop-target-group highlights an entire group row / children area
+       to signal "drop here to make this the new parent".
+     - .subtask-drag-over-before/after on .flat-task or .task indicates an
+       in-place reorder within the same group. */
+  .flat-task.bn-subtask-draggable,
+  .task.bn-subtask-draggable { cursor: grab; }
+  .flat-task.bn-subtask-draggable:active,
+  .task.bn-subtask-draggable:active { cursor: grabbing; }
+  .flat-task.subtask-dragging,
+  .task.subtask-dragging { opacity: 0.4; }
+  .flat-task.bn-drop-target-group,
+  .task.bn-drop-target-group {
+    outline: 2px dashed #d97706;
+    outline-offset: -2px;
+    background: rgba(217, 119, 6, 0.08);
+  }
+  .group-children.bn-drop-target-group,
+  .card-group-children.bn-drop-target-group {
+    outline: 2px dashed #d97706;
+    outline-offset: -2px;
+    background: rgba(217, 119, 6, 0.06);
+    border-radius: 6px;
+  }
+  .flat-task.subtask-drag-over-before {
+    box-shadow: 0 -2px 0 0 #d97706 inset, 0 -2px 0 0 #d97706;
+  }
+  .flat-task.subtask-drag-over-after {
+    box-shadow: 0 2px 0 0 #d97706 inset, 0 2px 0 0 #d97706;
+  }
+  .task.subtask-drag-over-before {
+    box-shadow: 0 -2px 0 0 #d97706 inset, 0 -2px 0 0 #d97706;
+  }
+  .task.subtask-drag-over-after {
+    box-shadow: 0 2px 0 0 #d97706 inset, 0 2px 0 0 #d97706;
+  }
   .subtask-picker {
     position: relative;
   }
@@ -986,6 +1022,20 @@
     border-bottom: 1px solid #fde68a;
     box-shadow: 0 6px 8px -6px rgba(0,0,0,0.18);
     z-index: 10;
+  }
+  /* Collapsible Unscheduled section: caret rotates 0→90deg when expanded.
+     Default (no class) is expanded; the .collapsed class is added by JS when
+     the user folds it. Caret styling matches the Archived/Files sections. */
+  .rm-side-area .rm-unscheduled .rm-unscheduled-toggle .rm-arch-caret {
+    font-size: 10px; color: #6b6b6b;
+    transition: transform .15s;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px;
+  }
+  .rm-side-area .rm-unscheduled.expanded .rm-unscheduled-toggle .rm-arch-caret { transform: rotate(90deg); }
+  .rm-side-area .rm-unscheduled.collapsed { padding-bottom: 12px !important; }
+  .rm-side-area .rm-unscheduled.collapsed .rm-unscheduled-head {
+    border-bottom: none; box-shadow: none;
   }
 
   /* Fixed full-height sidebar (independent of scroll) */
