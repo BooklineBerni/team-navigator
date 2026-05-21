@@ -58,12 +58,16 @@ function renderMembersPage() {
     if (grpId) return getPersonSection(grpId) || '';
     return getPersonSection(pid);
   }
-  // The classify pass uses effectiveSection so members follow their group,
-  // but the actual rendering filters them out (they get nested under the
-  // group's card via memberCardHtml).
+  // The classify pass uses effectiveSection so members follow their group.
+  // Previously we filtered group members out of the individual lists so a
+  // person only ever appeared inside their group's chip strip. The user
+  // wants them visible in BOTH places now — as a member chip under the
+  // group's card AND as their own independent card in the section their
+  // effective section resolves to. So we drop the `!groupMemberIdsSet`
+  // exclusion from every section filter below.
   // Team: ONLY people whose effective section is "team"
-  const teamActive    = pool.filter(p => effectiveSection(p.id) === "team" && matchesQuery(p) && !groupMemberIdsSet.has(p.id));
-  const supplementary = pool.filter(p => effectiveSection(p.id) === "supplementary" && matchesQuery(p) && !groupMemberIdsSet.has(p.id));
+  const teamActive    = pool.filter(p => effectiveSection(p.id) === "team" && matchesQuery(p));
+  const supplementary = pool.filter(p => effectiveSection(p.id) === "supplementary" && matchesQuery(p));
   const proposerIds = getAllProposerIds();
   // Bookline: section is empty AND has at least one PROPOSED-BY task.
   //   - Owning tasks via responsibleId doesn't count toward "With tasks" here —
@@ -74,7 +78,6 @@ function renderMembersPage() {
   // Bookline · Sin tasks: section is empty AND NOT in proposerIds.
   const booklineNoTasks = [];
   for (const p of pool) {
-    if (groupMemberIdsSet.has(p.id)) continue;
     if (effectiveSection(p.id) !== "") continue;
     if (!matchesQuery(p)) continue;
     if (proposerIds.has(p.id)) bookline.push(p);
@@ -87,7 +90,7 @@ function renderMembersPage() {
   booklineNoTasks.sort((a, b) => (a.name||'').localeCompare(b.name||''));
   supplementary.sort((a, b) => (a.name||'').localeCompare(b.name||''));
   // Disabled: everyone whose section is "disabled"
-  const disabled = pool.filter(p => effectiveSection(p.id) === "disabled" && matchesQuery(p) && !groupMemberIdsSet.has(p.id));
+  const disabled = pool.filter(p => effectiveSection(p.id) === "disabled" && matchesQuery(p));
 
   // Sort team using existing sort
   const teamSorted = sortPersons(teamActive.map(p => p.id), STORE.tasks).map(id => findPerson(id)).filter(Boolean);
