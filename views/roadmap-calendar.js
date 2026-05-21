@@ -386,8 +386,11 @@ function renderRoadmapCalendar(roadmapId) {
     '</div></div>';
 
   // Toolbar with navigation. The user can hide the side panel; when empty OR hidden we expand calendar full width.
-  const hasSide = (unscheduled.length > 0 || archivedEntries.length > 0) && !roadmapCalState.sideHidden;
-  const hasSideContent = unscheduled.length > 0 || archivedEntries.length > 0;
+  // Count linked files so the side panel opens even when there's no
+  // unscheduled/archived content but there ARE files attached to this roadmap.
+  const _linkedFilesCount = ((STORE.driveFiles || []).filter(f => Array.isArray(f.roadmapIds) && f.roadmapIds.includes(r.id))).length;
+  const hasSide = (unscheduled.length > 0 || archivedEntries.length > 0 || _linkedFilesCount > 0) && !roadmapCalState.sideHidden;
+  const hasSideContent = unscheduled.length > 0 || archivedEntries.length > 0 || _linkedFilesCount > 0;
   html += '<div class="rm-content-row' + (hasSide ? '' : ' no-side') + '"><div class="rm-cal-area">';
   const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   let periodLabel;
@@ -1036,6 +1039,29 @@ function renderRoadmapCalendar(roadmapId) {
         '</button>' +
         '<div class="rm-archived-body" style="' + (archExpanded ? '' : 'display:none;') + ' padding:0 12px 12px">';
       archivedEntries.forEach(entry => { html += buildSideRowHtml(entry); });
+      html += '</div></div>';
+    }
+    // ---- Linked files (same collapsible pattern as Archived) ----
+    const linkedFiles = (STORE.driveFiles || []).filter(f => Array.isArray(f.roadmapIds) && f.roadmapIds.includes(r.id));
+    if (linkedFiles.length > 0) {
+      if (!window.__rmFilesExpanded) window.__rmFilesExpanded = {};
+      const filesExpanded = !!window.__rmFilesExpanded[r.id];
+      html += '<div class="rm-archived' + (filesExpanded ? ' expanded' : '') + '" data-rmid="' + escapeHtml(r.id) + '" id="rmFilesSection" style="margin-top:14px; padding:0; background:#f5f5f4; border:1px solid #d8d6d1; border-radius:10px">' +
+        '<button type="button" class="rm-archived-head" id="rmFilesToggle">' +
+          '<span class="rm-arch-caret">▶</span>' +
+          '<strong style="font-size:13px; color:#64748b">📎 Files (' + linkedFiles.length + ')</strong>' +
+        '</button>' +
+        '<div class="rm-archived-body" id="rmFilesBody" style="' + (filesExpanded ? '' : 'display:none;') + ' padding:0 12px 12px">';
+      linkedFiles.forEach(f => {
+        const ic = (typeof fileIconForType === 'function') ? fileIconForType(f.type) : null;
+        const iconSvg = ic && ic.svg ? '<svg width="14" height="16" viewBox="0 0 36 44" preserveAspectRatio="xMidYMid meet" style="flex-shrink:0">' + ic.svg.replace(/<svg[^>]*>/, '').replace('</svg>', '') + '</svg>' : '';
+        html += '<div class="rm-file-row" data-fid="' + escapeHtml(f.id) + '" style="display:flex; align-items:center; gap:6px; padding:6px 8px; margin-top:6px; background:#fff; border:1px solid #ececea; border-radius:6px; font-size:12.5px">' +
+          '<a href="' + escapeHtml(f.url || '#') + '" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; color:#1a1a1a; text-decoration:none; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">' +
+            iconSvg + '<span style="overflow:hidden; text-overflow:ellipsis">' + escapeHtml(f.name || '(unnamed)') + '</span>' +
+          '</a>' +
+          '<button type="button" class="rm-file-unlink" data-fid="' + escapeHtml(f.id) + '" title="Unlink file from this roadmap" style="appearance:none; border:none; background:transparent; cursor:pointer; color:#6b6b6b; font-size:16px; padding:0 4px; line-height:1; flex-shrink:0">×</button>' +
+        '</div>';
+      });
       html += '</div></div>';
     }
     html += '</div>';
@@ -1710,6 +1736,39 @@ function renderRoadmapCalendar(roadmapId) {
       }
     });
   }
+  // Files section: same expand/collapse pattern as Archived, separate state.
+  const filesToggle = document.getElementById('rmFilesToggle');
+  if (filesToggle) {
+    filesToggle.addEventListener('click', () => {
+      if (!window.__rmFilesExpanded) window.__rmFilesExpanded = {};
+      window.__rmFilesExpanded[r.id] = !window.__rmFilesExpanded[r.id];
+      const wrap = filesToggle.closest('.rm-archived');
+      const body = wrap && wrap.querySelector('.rm-archived-body');
+      if (wrap && body) {
+        wrap.classList.toggle('expanded', !!window.__rmFilesExpanded[r.id]);
+        body.style.display = window.__rmFilesExpanded[r.id] ? '' : 'none';
+      }
+    });
+  }
+  // Files section unlink × — strips this roadmap's id from the file's
+  // roadmapIds array, persists, and re-renders the calendar so the section
+  // updates (or disappears when empty).
+  document.querySelectorAll('.rm-file-unlink').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const fid = btn.dataset.fid;
+      const f = (STORE.driveFiles || []).find(x => x.id === fid);
+      if (!f || !Array.isArray(f.roadmapIds)) return;
+      f.roadmapIds = f.roadmapIds.filter(x => x !== r.id);
+      try { saveStore(STORE); } catch (_) {}
+      // Keep the section open after the unlink so the user can keep editing.
+      if (!window.__rmFilesExpanded) window.__rmFilesExpanded = {};
+      window.__rmFilesExpanded[r.id] = true;
+      try { renderRoadmapCalendar(roadmapId); } catch (_) {}
+      if (typeof bnSyncTeamFilesAfterChange === 'function') { try { bnSyncTeamFilesAfterChange(); } catch (_) {} }
+    });
+  });
 }
 
 // Roadmap name picker — clickable title in the summary card that drops down to switch roadmap.

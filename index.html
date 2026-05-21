@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Navigator</title>
-<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522b">
+<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522c">
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260522b">
+<link rel="stylesheet" href="styles/app.css?v=bn20260522c">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -115,7 +115,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand" id="bnBrand" title="">
-        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522b" alt="" referrerpolicy="no-referrer"></div>
+        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522c" alt="" referrerpolicy="no-referrer"></div>
         <div class="brand-stack">
           <div class="brand-name" id="bnBrandName">Team Navigator</div>
           <!-- Permission line — shown ONLY during preview. -->
@@ -1045,15 +1045,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260522b"></script>
+<script src="data/team-directory.js?v=bn20260522c"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260522b"></script>
+<script src="data/holidays.js?v=bn20260522c"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260522b"></script>
+<script src="lib/supabase-auth.js?v=bn20260522c"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260522b"></script>
+<script src="lib/permissions.js?v=bn20260522c"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260522b"></script>
+<script src="lib/filters.js?v=bn20260522c"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -3107,26 +3107,42 @@ function openModal(tid, overrides) {
   renderTaskTagsInModal(t);
   renderRoadmapsInModal(t);
   renderSubtasksInModal(t);
-  // Render the read-only "Linked files" section. Iterates STORE.driveFiles
-  // and surfaces the ones with this task in their taskIds[] array.
-  {
+  // Linked files: list every file whose taskIds[] includes this task. Each
+  // chip is a clickable Drive link with an × that unlinks (removes this
+  // task's id from the file's taskIds — the file itself stays in Files).
+  function _renderTaskLinkedFiles() {
     const cont = document.getElementById('f_linkedFiles');
-    const wrap = document.getElementById('f_linkedFilesField');
-    if (cont && wrap) {
-      const files = (STORE.driveFiles || []).filter(f => Array.isArray(f.taskIds) && f.taskIds.includes(t.id));
-      if (files.length === 0) {
-        cont.innerHTML = '<span style="color:#9a9a9a; font-size:12px">No files linked yet — link a file from the Files page.</span>';
-      } else {
-        cont.innerHTML = files.map(f => {
-          const ic = (typeof fileIconForType === 'function') ? fileIconForType(f.type) : null;
-          const iconSvg = ic && ic.svg ? '<svg width="14" height="16" viewBox="0 0 36 44" preserveAspectRatio="xMidYMid meet" style="flex-shrink:0">' + ic.svg.replace(/<svg[^>]*>/, '').replace('</svg>', '') + '</svg>' : '';
-          return '<a href="' + escapeHtml(f.url || '#') + '" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; padding:4px 8px; background:#faf9f7; border:1px solid #ececea; border-radius:6px; font-size:12.5px; color:#1a1a1a; text-decoration:none; max-width:fit-content">' +
-            iconSvg + escapeHtml(f.name || '(unnamed)') +
-          '</a>';
-        }).join('');
-      }
+    if (!cont) return;
+    const files = (STORE.driveFiles || []).filter(f => Array.isArray(f.taskIds) && f.taskIds.includes(t.id));
+    if (files.length === 0) {
+      cont.innerHTML = '<span style="color:#9a9a9a; font-size:12px">No files linked yet — link a file from the Files page.</span>';
+      return;
     }
+    cont.innerHTML = files.map(f => {
+      const ic = (typeof fileIconForType === 'function') ? fileIconForType(f.type) : null;
+      const iconSvg = ic && ic.svg ? '<svg width="14" height="16" viewBox="0 0 36 44" preserveAspectRatio="xMidYMid meet" style="flex-shrink:0">' + ic.svg.replace(/<svg[^>]*>/, '').replace('</svg>', '') + '</svg>' : '';
+      return '<div class="f-linked-row" style="display:inline-flex; align-items:center; gap:4px; padding:4px 4px 4px 8px; background:#faf9f7; border:1px solid #ececea; border-radius:6px; font-size:12.5px; max-width:fit-content">' +
+        '<a href="' + escapeHtml(f.url || '#') + '" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; color:#1a1a1a; text-decoration:none">' +
+          iconSvg + escapeHtml(f.name || '(unnamed)') +
+        '</a>' +
+        '<button type="button" class="f-unlink-x" data-fid="' + escapeHtml(f.id) + '" title="Unlink file from this task" style="appearance:none; border:none; background:transparent; cursor:pointer; color:#6b6b6b; font-size:14px; padding:0 4px; line-height:1">×</button>' +
+      '</div>';
+    }).join('');
+    cont.querySelectorAll('.f-unlink-x').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const fid = btn.dataset.fid;
+        const f = (STORE.driveFiles || []).find(x => x.id === fid);
+        if (!f || !Array.isArray(f.taskIds)) return;
+        f.taskIds = f.taskIds.filter(x => x !== t.id);
+        try { saveStore(STORE); } catch (_) {}
+        _renderTaskLinkedFiles();
+        if (typeof bnSyncTeamFilesAfterChange === 'function') { try { bnSyncTeamFilesAfterChange(); } catch (_) {} }
+      });
+    });
   }
+  _renderTaskLinkedFiles();
   applyGroupModeToModal(isG);
   // Schedule (synced with roadmaps) — only meaningful when the task is in ≥1 roadmap
   const tStartEl = document.getElementById("f_taskStart");
@@ -5932,24 +5948,41 @@ function openRoadmapEdit(id) {
       refreshLock();
     }
   }
-  // Linked files for this roadmap (read-only display).
-  {
+  // Linked files for this roadmap. Each row has a × to unlink (clears this
+  // roadmap's id from the file's roadmapIds array — the file stays in Files).
+  function _renderRoadmapLinkedFiles() {
     const cont = document.getElementById('rmf_linkedFiles');
-    if (cont) {
-      const files = (STORE.driveFiles || []).filter(f => Array.isArray(f.roadmapIds) && f.roadmapIds.includes(r.id));
-      if (files.length === 0) {
-        cont.innerHTML = '<span style="color:#9a9a9a; font-size:12px">No files linked yet — link a file from the Files page.</span>';
-      } else {
-        cont.innerHTML = files.map(f => {
-          const ic = (typeof fileIconForType === 'function') ? fileIconForType(f.type) : null;
-          const iconSvg = ic && ic.svg ? '<svg width="14" height="16" viewBox="0 0 36 44" preserveAspectRatio="xMidYMid meet" style="flex-shrink:0">' + ic.svg.replace(/<svg[^>]*>/, '').replace('</svg>', '') + '</svg>' : '';
-          return '<a href="' + escapeHtml(f.url || '#') + '" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; padding:4px 8px; background:#faf9f7; border:1px solid #ececea; border-radius:6px; font-size:12.5px; color:#1a1a1a; text-decoration:none; max-width:fit-content">' +
-            iconSvg + escapeHtml(f.name || '(unnamed)') +
-          '</a>';
-        }).join('');
-      }
+    if (!cont) return;
+    const files = (STORE.driveFiles || []).filter(f => Array.isArray(f.roadmapIds) && f.roadmapIds.includes(r.id));
+    if (files.length === 0) {
+      cont.innerHTML = '<span style="color:#9a9a9a; font-size:12px">No files linked yet — link a file from the Files page.</span>';
+      return;
     }
+    cont.innerHTML = files.map(f => {
+      const ic = (typeof fileIconForType === 'function') ? fileIconForType(f.type) : null;
+      const iconSvg = ic && ic.svg ? '<svg width="14" height="16" viewBox="0 0 36 44" preserveAspectRatio="xMidYMid meet" style="flex-shrink:0">' + ic.svg.replace(/<svg[^>]*>/, '').replace('</svg>', '') + '</svg>' : '';
+      return '<div class="f-linked-row" style="display:inline-flex; align-items:center; gap:4px; padding:4px 4px 4px 8px; background:#faf9f7; border:1px solid #ececea; border-radius:6px; font-size:12.5px; max-width:fit-content">' +
+        '<a href="' + escapeHtml(f.url || '#') + '" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; color:#1a1a1a; text-decoration:none">' +
+          iconSvg + escapeHtml(f.name || '(unnamed)') +
+        '</a>' +
+        '<button type="button" class="f-unlink-x" data-fid="' + escapeHtml(f.id) + '" title="Unlink file from this roadmap" style="appearance:none; border:none; background:transparent; cursor:pointer; color:#6b6b6b; font-size:14px; padding:0 4px; line-height:1">×</button>' +
+      '</div>';
+    }).join('');
+    cont.querySelectorAll('.f-unlink-x').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const fid = btn.dataset.fid;
+        const f = (STORE.driveFiles || []).find(x => x.id === fid);
+        if (!f || !Array.isArray(f.roadmapIds)) return;
+        f.roadmapIds = f.roadmapIds.filter(x => x !== r.id);
+        try { saveStore(STORE); } catch (_) {}
+        _renderRoadmapLinkedFiles();
+        if (typeof bnSyncTeamFilesAfterChange === 'function') { try { bnSyncTeamFilesAfterChange(); } catch (_) {} }
+      });
+    });
   }
+  _renderRoadmapLinkedFiles();
   rmfRefreshSaveButton();
   document.getElementById("roadmapEditBg").classList.add("show");
 }
@@ -6527,45 +6560,45 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260522b"></script>
+<script src="views/bulk-create.js?v=bn20260522c"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260522b"></script>
+<script src="lib/bulk-popovers.js?v=bn20260522c"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260522b"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260522c"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260522b"></script>
+<script src="views/home.js?v=bn20260522c"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260522b"></script>
-<script src="views/files.js?v=bn20260522b"></script>
+<script src="lib/files-integration.js?v=bn20260522c"></script>
+<script src="views/files.js?v=bn20260522c"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260522b"></script>
-<script src="views/requests.js?v=bn20260522b"></script>
+<script src="lib/requests-feature.js?v=bn20260522c"></script>
+<script src="views/requests.js?v=bn20260522c"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260522b"></script>
+<script src="views/tasks.js?v=bn20260522c"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260522b"></script>
+<script src="views/team.js?v=bn20260522c"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260522b"></script>
+<script src="views/profile.js?v=bn20260522c"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260522b"></script>
-<script src="views/roadmaps.js?v=bn20260522b"></script>
+<script src="views/roadmap-calendar.js?v=bn20260522c"></script>
+<script src="views/roadmaps.js?v=bn20260522c"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260522b"></script>
+<script src="lib/date-picker.js?v=bn20260522c"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260522b"></script>
+<script src="lib/trash.js?v=bn20260522c"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260522b"></script>
+<script src="lib/backup.js?v=bn20260522c"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260522b"></script>
+<script src="lib/pickers.js?v=bn20260522c"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260522b"></script>
-<script src="views/modals/add-member.js?v=bn20260522b"></script>
-<script src="views/modals/tag-manager.js?v=bn20260522b"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260522b"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260522b"></script>
+<script src="views/modals/person-tags.js?v=bn20260522c"></script>
+<script src="views/modals/add-member.js?v=bn20260522c"></script>
+<script src="views/modals/tag-manager.js?v=bn20260522c"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260522c"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260522c"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
