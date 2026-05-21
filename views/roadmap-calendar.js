@@ -549,7 +549,18 @@ function renderRoadmapCalendar(roadmapId) {
     if (orderedRows.length === 0) {
       html += '<div class="rm-empty" style="margin:14px">No scheduled tasks in ' + (viewMode === '6m' ? 'this range' : Y) + '.</div>';
     } else {
-      orderedRows.forEach(row => {
+      // Pre-compute which rows ACTUALLY have children rendered immediately
+      // after them (i.e. expanded groups whose children are in orderedRows).
+      // We use this to decide whether to suppress the group's own bar — if a
+      // group is "expanded" by state but has 0 actually-rendered children
+      // (no descendant rows in this view), we still need to show its bar or
+      // the row would have nothing in the timeline column.
+      const _rowHasRenderedChildren = orderedRows.map((row, i) => {
+        const myDepth = row.depth || 0;
+        const next = orderedRows[i + 1];
+        return !!(next && (next.depth || 0) > myDepth);
+      });
+      orderedRows.forEach((row, _rowIdx) => {
         const ev = row.ev;
         const isG = !!ev.task.isGroup;
         const startMs = Math.max(ev.start.getTime(), yearStartMs);
@@ -574,14 +585,16 @@ function renderRoadmapCalendar(roadmapId) {
         const labelChev = isG
           ? '<button type="button" class="cal-group-toggle-y' + (gExpanded ? ' expanded' : '') + '" data-gid="' + ev.task.id + '" title="' + (gExpanded ? 'Collapse group' : 'Expand group') + '">▶</button>'
           : '';
-        // When a group is EXPANDED, hide its own dashed bar in the timeline —
-        // the children below already span the same range with their own bars,
-        // and stacking parent-dashed + child-dashed (especially for nested
-        // groups like "Marketing Navigator > Testing linked-in channel" where
-        // the inner is also a group) was reading as visual noise. The chevron
-        // + label still occupy the row so the group hierarchy stays clear,
-        // and collapsing the group brings back the aggregate dashed bar.
-        const hideOwnBar = isG && gExpanded;
+        // When a group is EXPANDED AND has actually-rendered children below,
+        // hide its own dashed bar — the children represent the same range and
+        // stacking parent-dashed + child-dashed (especially for nested groups
+        // like "Marketing Navigator > Testing linked-in channel") was reading
+        // as visual noise. The chevron + label still occupy the row so the
+        // hierarchy stays clear, and collapsing the group brings back the
+        // aggregate dashed bar. Groups that are flagged as expanded but have
+        // NO children rendered (degenerate "groups of one") keep their bar
+        // so the timeline column isn't blank.
+        const hideOwnBar = isG && gExpanded && _rowHasRenderedChildren[_rowIdx];
         html += '<div class="cal-year-row' + (row.depth ? ' is-child' : '') + (isG ? ' is-group' : '') + (hideOwnBar ? ' is-expanded-group' : '') + '" data-tid="' + ev.task.id + '">' +
           '<div class="cal-year-label" title="' + escapeHtml(ev.task.subject) + '" style="padding-left:' + (8 + row.depth * 14) + 'px">' +
             labelChev +
