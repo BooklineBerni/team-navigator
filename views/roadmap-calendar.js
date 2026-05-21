@@ -503,20 +503,26 @@ function renderRoadmapCalendar(roadmapId) {
     });
     const orderedRows = [];
     const seen = new Set();
+    // Recursive walk so groups nested ANY number of levels deep render their
+    // children (and grandchildren) when expanded. Previously the loop only
+    // descended one level, so a group-inside-a-group couldn't be expanded
+    // (no grandchildren rows ever appeared).
+    const _pushSubtree = (e, depth) => {
+      if (seen.has(e.task.id)) return;
+      orderedRows.push({ ev: e, depth });
+      seen.add(e.task.id);
+      if (!e.task.isGroup) return;
+      // Respect the per-group collapsed state at every depth.
+      if (!isGroupExpanded(e.task.id)) return;
+      const kids = (childrenByParent[e.task.id] || []).slice().sort(
+        (x, y) => (x.start - y.start) || (x.task.subject || '').localeCompare(y.task.subject || '')
+      );
+      kids.forEach(c => _pushSubtree(c, depth + 1));
+    };
     eventsScheduled
       .filter(e => !e.task.groupId || !evByTaskId[e.task.groupId])
       .sort((a, b) => (a.start - b.start) || (a.task.subject || '').localeCompare(b.task.subject || ''))
-      .forEach(e => {
-        if (seen.has(e.task.id)) return;
-        orderedRows.push({ ev: e, depth: 0 });
-        seen.add(e.task.id);
-        if (e.task.isGroup) {
-          // Hide kids when the group is collapsed in the global expansion map
-          if (!isGroupExpanded(e.task.id)) return;
-          const kids = (childrenByParent[e.task.id] || []).slice().sort((x, y) => (x.start - y.start) || (x.task.subject || '').localeCompare(y.task.subject || ''));
-          kids.forEach(c => { if (!seen.has(c.task.id)) { orderedRows.push({ ev: c, depth: 1 }); seen.add(c.task.id); } });
-        }
-      });
+      .forEach(e => _pushSubtree(e, 0));
 
     // Month header
     html += '<div class="cal-year">';
@@ -577,7 +583,10 @@ function renderRoadmapCalendar(roadmapId) {
         html += '<div class="cal-year-row' + (row.depth ? ' is-child' : '') + (isG ? ' is-group' : '') + '" data-tid="' + ev.task.id + '">' +
           '<div class="cal-year-label" title="' + escapeHtml(ev.task.subject) + '" style="padding-left:' + (8 + row.depth * 14) + 'px">' +
             labelChev +
-            (row.depth ? '· ' : (isG ? '<span class="folder-emoji">📁</span> ' : '')) +
+            // Folder emoji only on depth-0 groups. Nested rows (including
+            // nested groups) rely on padding-left for the indent — no '· '
+            // prefix anymore, which used to clutter every child row label.
+            (!row.depth && isG ? '<span class="folder-emoji">📁</span> ' : '') +
             // Render the FULL label text — the CSS .cal-year-label-text has
             // max-height: 3.6em + overflow: hidden, so long names wrap to ~3
             // lines instead of being truncated at 42 chars by JS.
