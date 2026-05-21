@@ -574,7 +574,15 @@ function renderRoadmapCalendar(roadmapId) {
         const labelChev = isG
           ? '<button type="button" class="cal-group-toggle-y' + (gExpanded ? ' expanded' : '') + '" data-gid="' + ev.task.id + '" title="' + (gExpanded ? 'Collapse group' : 'Expand group') + '">▶</button>'
           : '';
-        html += '<div class="cal-year-row' + (row.depth ? ' is-child' : '') + (isG ? ' is-group' : '') + '" data-tid="' + ev.task.id + '">' +
+        // When a group is EXPANDED, hide its own dashed bar in the timeline —
+        // the children below already span the same range with their own bars,
+        // and stacking parent-dashed + child-dashed (especially for nested
+        // groups like "Marketing Navigator > Testing linked-in channel" where
+        // the inner is also a group) was reading as visual noise. The chevron
+        // + label still occupy the row so the group hierarchy stays clear,
+        // and collapsing the group brings back the aggregate dashed bar.
+        const hideOwnBar = isG && gExpanded;
+        html += '<div class="cal-year-row' + (row.depth ? ' is-child' : '') + (isG ? ' is-group' : '') + (hideOwnBar ? ' is-expanded-group' : '') + '" data-tid="' + ev.task.id + '">' +
           '<div class="cal-year-label" title="' + escapeHtml(ev.task.subject) + '" style="padding-left:' + (8 + row.depth * 14) + 'px">' +
             labelChev +
             (row.depth ? '· ' : (isG ? '<span class="folder-emoji">📁</span> ' : '')) +
@@ -586,9 +594,11 @@ function renderRoadmapCalendar(roadmapId) {
             '<span class="cal-year-label-text">' + escapeHtml(labelText) + '</span>' +
           '</div>' +
           '<div class="cal-year-track">' +
-            '<div class="cal-event cal-year-bar' + (isG ? ' cal-event-group' : '') + '" data-tid="' + ev.task.id + '" title="' + escapeHtml(ev.task.subject + ' — ' + (ev.entry.startDate||'?') + ' → ' + (ev.entry.endDate||'?')) + '" style="left:' + leftPct + '%; width:' + widthPct + '%; ' + barStyle + '">' +
-              (continuesLeft ? '◂ ' : '') + escapeHtml(ev.task.subject) + (continuesRight ? ' ▸' : '') +
-            '</div>' +
+            (hideOwnBar
+              ? ''  // collapsed-state bar is gone while children render their own
+              : '<div class="cal-event cal-year-bar' + (isG ? ' cal-event-group' : '') + '" data-tid="' + ev.task.id + '" title="' + escapeHtml(ev.task.subject + ' — ' + (ev.entry.startDate||'?') + ' → ' + (ev.entry.endDate||'?')) + '" style="left:' + leftPct + '%; width:' + widthPct + '%; ' + barStyle + '">' +
+                  (continuesLeft ? '◂ ' : '') + escapeHtml(ev.task.subject) + (continuesRight ? ' ▸' : '') +
+                '</div>') +
           '</div>' +
         '</div>';
       });
