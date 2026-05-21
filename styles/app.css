@@ -470,6 +470,25 @@
     flex-shrink: 0;
   }
   .subtask-detach:hover { background: rgba(0,0,0,0.06); color: #1a1a1a; }
+  /* Drag-reorder support for subtask rows */
+  .subtask-row[draggable="true"] { cursor: grab; }
+  .subtask-row[draggable="true"]:active { cursor: grabbing; }
+  .subtask-drag-handle {
+    flex-shrink: 0;
+    color: #b5b1a0; font-size: 12px; line-height: 1;
+    padding: 0 2px;
+    user-select: none;
+    letter-spacing: -2px;
+    cursor: grab;
+  }
+  .subtask-row:hover .subtask-drag-handle { color: #6b6b6b; }
+  .subtask-row.subtask-dragging { opacity: 0.4; }
+  .subtask-row.subtask-drag-over-before {
+    box-shadow: 0 -2px 0 0 #d97706 inset, 0 -2px 0 0 #d97706;
+  }
+  .subtask-row.subtask-drag-over-after {
+    box-shadow: 0 2px 0 0 #d97706 inset, 0 2px 0 0 #d97706;
+  }
   .subtask-picker {
     position: relative;
   }

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Navigator</title>
-<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522g">
+<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522h">
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260522g">
+<link rel="stylesheet" href="styles/app.css?v=bn20260522h">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -120,7 +120,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand" id="bnBrand" title="">
-        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522g" alt="" referrerpolicy="no-referrer"></div>
+        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522h" alt="" referrerpolicy="no-referrer"></div>
         <div class="brand-stack">
           <div class="brand-name" id="bnBrandName">Team Navigator</div>
           <!-- Permission line — shown ONLY during preview. -->
@@ -1050,15 +1050,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260522g"></script>
+<script src="data/team-directory.js?v=bn20260522h"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260522g"></script>
+<script src="data/holidays.js?v=bn20260522h"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260522g"></script>
+<script src="lib/supabase-auth.js?v=bn20260522h"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260522g"></script>
+<script src="lib/permissions.js?v=bn20260522h"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260522g"></script>
+<script src="lib/filters.js?v=bn20260522h"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -3539,19 +3539,24 @@ function bnEndFromStartAndDuration(startStr, n) {
     row.style.display = '';
     startEl.value = (t && t.startDate) || '';
     endEl.value   = (t && t.endDate)   || '';
-    if (daysEl) daysEl.value = (t && typeof t.durationDays === 'number' && t.durationDays >= 1) ? String(t.durationDays) : '';
+    // Days input is a HINT of the inclusive span, not the source of truth. The user's
+    // intent to "lock duration" is signalled separately by the END pill (the "N days" label).
+    if (daysEl) {
+      const sv = startEl.value, ev = endEl.value;
+      const span = (sv && ev) ? bnDaysInclusive(sv, ev) : 0;
+      daysEl.value = span > 0 ? String(span) : '';
+    }
     window.__quickApplyStartSrcLbl = (t && t.startSrcLabel) || '';
     window.__quickApplyEndSrcLbl   = (t && t.endSrcLabel)   || '';
     window.__quickApplyStartSrcTid = (t && t.startSrcTaskId) || '';
     window.__quickApplyEndSrcTid   = (t && t.endSrcTaskId)   || '';
     // Show pills when the task has labelled sources
     setSourceChip(sSrcEl, window.__quickApplyStartSrcLbl, window.__quickApplyStartSrcTid);
-    // For end: prefer explicit label; else show "N days" if duration is set
-    let eLbl = window.__quickApplyEndSrcLbl;
-    if (!eLbl && t && typeof t.durationDays === 'number' && t.durationDays >= 1) {
-      eLbl = t.durationDays + ' day' + (t.durationDays === 1 ? '' : 's');
-    }
-    setSourceChip(eSrcEl, eLbl, window.__quickApplyEndSrcTid);
+    // For end: ONLY use the explicitly persisted label. Previously we auto-derived a "N days"
+    // pill from `t.durationDays`, which made every task with start+end behave as duration-locked
+    // and dragged end whenever start changed. The "N days" label is now persisted explicitly
+    // in autoSave when the user activates the pill, so we just trust that.
+    setSourceChip(eSrcEl, window.__quickApplyEndSrcLbl, window.__quickApplyEndSrcTid);
     if (btnEl) btnEl.title = 'Save schedule — applies to every roadmap this task is in';
     if (fbEl) fbEl.style.display = 'none';
   };
@@ -3588,15 +3593,31 @@ function bnEndFromStartAndDuration(startStr, n) {
       if (daysEl) daysEl.value = '';   // End cleared ⇒ days no longer drives anything
     }
   });
-  // Manually editing the start clears its source AND (if days is set) recomputes the end.
+  // Manually editing the start clears its source. If the user explicitly enabled the days
+  // pill ("N days" label), drag end with start to preserve duration; otherwise leave end as-is
+  // and let the days hint recompute naturally (so the user can change start without losing
+  // their end date).
   startEl.addEventListener('input', () => {
     setSourceChip(sSrcEl, '');
-    if (daysEl && daysEl.value) recomputeEndFromDays();
+    const eLbl = window.__quickApplyEndSrcLbl || '';
+    if (/^\d+\s+day/i.test(eLbl) && daysEl && daysEl.value) {
+      recomputeEndFromDays();
+    } else if (daysEl) {
+      // Refresh days hint from the new span.
+      const sv = startEl.value, ev = endEl.value;
+      const span = (sv && ev) ? bnDaysInclusive(sv, ev) : 0;
+      daysEl.value = span > 0 ? String(span) : '';
+    }
   });
-  // Manually editing the end clears its source AND any days (days are no longer driving it).
+  // Manually editing the end clears its source (any pill) and refreshes the days hint from
+  // the new inclusive span.
   endEl.addEventListener('input', () => {
     setSourceChip(eSrcEl, '');
-    if (daysEl) daysEl.value = '';
+    if (daysEl) {
+      const sv = startEl.value, ev = endEl.value;
+      const span = (sv && ev) ? bnDaysInclusive(sv, ev) : 0;
+      daysEl.value = span > 0 ? String(span) : '';
+    }
   });
   // Days input: drives End. Empty ⇒ no effect (End stays as-is). Valid N + Start ⇒ End = Start + (N−1) days.
   if (daysEl) {
@@ -3817,7 +3838,10 @@ function bnEndFromStartAndDuration(startStr, n) {
     const daysNum     = daysEl ? parseInt(daysEl.value, 10) : NaN;
     // Explicit task-source pill on END takes priority over days hint.
     const endHasTaskSource = !!endSrcTid || (endSrcLbl && /^(start|end)\s+of\s+/i.test(endSrcLbl)) || (endSrcLbl === 'group-start' || endSrcLbl === 'group-end');
-    const hasDays = Number.isFinite(daysNum) && daysNum >= 1 && !endHasTaskSource;
+    // Same fix as in the task-dates autoSave below: only treat as duration-lock when the
+    // END pill is explicitly the "N days" variant. The daysEl.value alone is just a hint.
+    const daysPillActive = /^\d+\s+day/i.test(endSrcLbl || '');
+    const hasDays = daysPillActive && Number.isFinite(daysNum) && daysNum >= 1 && !endHasTaskSource;
     t.startDate = startV;
     t.endDate   = endV;
     t.startAnchor = '';
@@ -3826,7 +3850,8 @@ function bnEndFromStartAndDuration(startStr, n) {
     if (startSrcTid) t.startSrcTaskId = startSrcTid; else delete t.startSrcTaskId;
     if (hasDays) {
       t.durationDays = daysNum;
-      delete t.endSrcLabel;
+      // Persist the "N days" label so the pill survives reload.
+      t.endSrcLabel = endSrcLbl;
       delete t.endSrcTaskId;
     } else {
       delete t.durationDays;
@@ -3963,13 +3988,11 @@ function bnEndFromStartAndDuration(startStr, n) {
     // Stale "N days" label (stored value no longer matches the actual span)? Drop it.
     if (eLbl && /^\d+\s+day/.test(eLbl) && !_matchesDays(eLbl)) { eLbl = ''; eTid = ''; }
     if (sLbl && /^\d+\s+day/.test(sLbl) && !_matchesDays(sLbl)) { sLbl = ''; sTid = ''; }
-    // If end still has no source but durationDays matches the span, show "N days" pill.
-    if (!eLbl) {
-      const sDays = (t && typeof t.durationDays === 'number' && t.durationDays >= 1) ? t.durationDays : 0;
-      if (sDays > 0 && sDays === cDays) {
-        eLbl = cDays + ' day' + (cDays === 1 ? '' : 's');
-      }
-    }
+    // NOTE (bug fix): previously, if `durationDays === cDays` we'd auto-activate the "N days"
+    // pill even when the user had never asked for duration-lock. That broke start-date edits
+    // because the pill being active causes start changes to drag the end forward (since "days
+    // drives end"). The pill now only appears when the user explicitly enabled it (which we
+    // detect via `t.endSrcLabel === 'N days'`, persisted in autoSave above).
     setSourceChip(sSrcEl, sLbl, sTid);
     setSourceChip(eSrcEl, eLbl, eTid);
   };
@@ -3996,7 +4019,13 @@ function bnEndFromStartAndDuration(startStr, n) {
     // An explicit task-source pill on END ("start of X" / "end of X" / "group-start" / "group-end")
     // takes priority over the days hint — keep the source, drop durationDays.
     const endHasTaskSource = !!endSrcTid || (endSrcLbl && /^(start|end)\s+of\s+/i.test(endSrcLbl)) || (endSrcLbl === 'group-start' || endSrcLbl === 'group-end');
-    const hasDays = Number.isFinite(daysNum) && daysNum >= 1 && !endHasTaskSource;
+    // `hasDays` means "end follows start by N days" (duration-lock). The signal MUST be the
+    // END pill explicitly being a "N days" label (the user typed in the days input or activated
+    // the pill). The daysEl.value alone is just a UI hint of the inclusive span and must NOT
+    // trigger duration-lock by itself — otherwise every task with start+end gets locked, and
+    // editing start drags end instead of preserving the end date.
+    const daysPillActive = /^\d+\s+day/i.test(endSrcLbl || '');
+    const hasDays = daysPillActive && Number.isFinite(daysNum) && daysNum >= 1 && !endHasTaskSource;
     t.startDate = startV;
     t.endDate   = endV;
     t.startAnchor = '';
@@ -4005,7 +4034,9 @@ function bnEndFromStartAndDuration(startStr, n) {
     if (startSrcTid) t.startSrcTaskId = startSrcTid; else delete t.startSrcTaskId;
     if (hasDays) {
       t.durationDays = daysNum;
-      delete t.endSrcLabel;
+      // Persist the explicit "N days" label so the pill survives a reload (was previously
+      // auto-derived from durationDays===span, which is what caused the bug).
+      t.endSrcLabel = endSrcLbl;
       delete t.endSrcTaskId;
     } else {
       delete t.durationDays;
@@ -6590,45 +6621,45 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260522g"></script>
+<script src="views/bulk-create.js?v=bn20260522h"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260522g"></script>
+<script src="lib/bulk-popovers.js?v=bn20260522h"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260522g"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260522h"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260522g"></script>
+<script src="views/home.js?v=bn20260522h"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260522g"></script>
-<script src="views/files.js?v=bn20260522g"></script>
+<script src="lib/files-integration.js?v=bn20260522h"></script>
+<script src="views/files.js?v=bn20260522h"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260522g"></script>
-<script src="views/requests.js?v=bn20260522g"></script>
+<script src="lib/requests-feature.js?v=bn20260522h"></script>
+<script src="views/requests.js?v=bn20260522h"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260522g"></script>
+<script src="views/tasks.js?v=bn20260522h"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260522g"></script>
+<script src="views/team.js?v=bn20260522h"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260522g"></script>
+<script src="views/profile.js?v=bn20260522h"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260522g"></script>
-<script src="views/roadmaps.js?v=bn20260522g"></script>
+<script src="views/roadmap-calendar.js?v=bn20260522h"></script>
+<script src="views/roadmaps.js?v=bn20260522h"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260522g"></script>
+<script src="lib/date-picker.js?v=bn20260522h"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260522g"></script>
+<script src="lib/trash.js?v=bn20260522h"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260522g"></script>
+<script src="lib/backup.js?v=bn20260522h"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260522g"></script>
+<script src="lib/pickers.js?v=bn20260522h"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260522g"></script>
-<script src="views/modals/add-member.js?v=bn20260522g"></script>
-<script src="views/modals/tag-manager.js?v=bn20260522g"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260522g"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260522g"></script>
+<script src="views/modals/person-tags.js?v=bn20260522h"></script>
+<script src="views/modals/add-member.js?v=bn20260522h"></script>
+<script src="views/modals/tag-manager.js?v=bn20260522h"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260522h"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260522h"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
