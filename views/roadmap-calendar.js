@@ -549,17 +549,6 @@ function renderRoadmapCalendar(roadmapId) {
     if (orderedRows.length === 0) {
       html += '<div class="rm-empty" style="margin:14px">No scheduled tasks in ' + (viewMode === '6m' ? 'this range' : Y) + '.</div>';
     } else {
-      // Pre-compute which rows ACTUALLY have children rendered immediately
-      // after them (i.e. expanded groups whose children are in orderedRows).
-      // We use this to decide whether to suppress the group's own bar — if a
-      // group is "expanded" by state but has 0 actually-rendered children
-      // (no descendant rows in this view), we still need to show its bar or
-      // the row would have nothing in the timeline column.
-      const _rowHasRenderedChildren = orderedRows.map((row, i) => {
-        const myDepth = row.depth || 0;
-        const next = orderedRows[i + 1];
-        return !!(next && (next.depth || 0) > myDepth);
-      });
       orderedRows.forEach((row, _rowIdx) => {
         const ev = row.ev;
         const isG = !!ev.task.isGroup;
@@ -585,33 +574,19 @@ function renderRoadmapCalendar(roadmapId) {
         const labelChev = isG
           ? '<button type="button" class="cal-group-toggle-y' + (gExpanded ? ' expanded' : '') + '" data-gid="' + ev.task.id + '" title="' + (gExpanded ? 'Collapse group' : 'Expand group') + '">▶</button>'
           : '';
-        // When a group is EXPANDED AND has actually-rendered children below,
-        // hide its own dashed bar — the children represent the same range and
-        // stacking parent-dashed + child-dashed (especially for nested groups
-        // like "Marketing Navigator > Testing linked-in channel") was reading
-        // as visual noise. The chevron + label still occupy the row so the
-        // hierarchy stays clear, and collapsing the group brings back the
-        // aggregate dashed bar. Groups that are flagged as expanded but have
-        // NO children rendered (degenerate "groups of one") keep their bar
-        // so the timeline column isn't blank.
-        const hideOwnBar = isG && gExpanded && _rowHasRenderedChildren[_rowIdx];
-        html += '<div class="cal-year-row' + (row.depth ? ' is-child' : '') + (isG ? ' is-group' : '') + (hideOwnBar ? ' is-expanded-group' : '') + '" data-tid="' + ev.task.id + '">' +
+        html += '<div class="cal-year-row' + (row.depth ? ' is-child' : '') + (isG ? ' is-group' : '') + '" data-tid="' + ev.task.id + '">' +
           '<div class="cal-year-label" title="' + escapeHtml(ev.task.subject) + '" style="padding-left:' + (8 + row.depth * 14) + 'px">' +
             labelChev +
             (row.depth ? '· ' : (isG ? '<span class="folder-emoji">📁</span> ' : '')) +
             // Render the FULL label text — the CSS .cal-year-label-text has
             // max-height: 3.6em + overflow: hidden, so long names wrap to ~3
-            // lines instead of being truncated at 42 chars by JS (which used
-            // to leave names like "Diferenciar entre inbound llamada y Demo c…"
-            // visibly clipped even when there was vertical room to grow).
+            // lines instead of being truncated at 42 chars by JS.
             '<span class="cal-year-label-text">' + escapeHtml(labelText) + '</span>' +
           '</div>' +
           '<div class="cal-year-track">' +
-            (hideOwnBar
-              ? ''  // collapsed-state bar is gone while children render their own
-              : '<div class="cal-event cal-year-bar' + (isG ? ' cal-event-group' : '') + '" data-tid="' + ev.task.id + '" title="' + escapeHtml(ev.task.subject + ' — ' + (ev.entry.startDate||'?') + ' → ' + (ev.entry.endDate||'?')) + '" style="left:' + leftPct + '%; width:' + widthPct + '%; ' + barStyle + '">' +
-                  (continuesLeft ? '◂ ' : '') + escapeHtml(ev.task.subject) + (continuesRight ? ' ▸' : '') +
-                '</div>') +
+            '<div class="cal-event cal-year-bar' + (isG ? ' cal-event-group' : '') + '" data-tid="' + ev.task.id + '" title="' + escapeHtml(ev.task.subject + ' — ' + (ev.entry.startDate||'?') + ' → ' + (ev.entry.endDate||'?')) + '" style="left:' + leftPct + '%; width:' + widthPct + '%; ' + barStyle + '">' +
+              (continuesLeft ? '◂ ' : '') + escapeHtml(ev.task.subject) + (continuesRight ? ' ▸' : '') +
+            '</div>' +
           '</div>' +
         '</div>';
       });

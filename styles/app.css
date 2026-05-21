@@ -667,15 +667,17 @@
   }
   .cal-year-label .cal-group-toggle-y:hover { background: #fff5dc; color: #92400e; border-color: #d6b962; }
   .cal-year-label .cal-group-toggle-y.expanded { transform: rotate(90deg); }
-  /* Block layout (not flex). Flex was vertically clamping the text span
-     to the parent's height even with align-items:center, so 3-line wrap
-     never visually expanded the row. With block layout the parent grows
-     with the wrapped content, and align-items:stretch on the grid row
-     lets the timeline track match. */
-  .cal-year-label { display: block; }
-  .cal-year-label .cal-group-toggle-y { float: left; margin-right: 4px; }
-  .cal-year-label .folder-emoji { float: left; margin-right: 4px; }
+  /* Flex with align-items:flex-start so chevron + "· " prefix sit inline at
+     the top-left, and the label-text (block-level flex child) wraps to up
+     to 3 lines via max-height. Earlier I tried `display:block` here so the
+     text could clamp, but that pushed "· " to its own line above the name
+     in 6MFN/Year views. flex-start fixes that AND lets the child reach
+     its 3.6em max-height because flex-start doesn't constrain cross-axis. */
+  .cal-year-label { display: flex; align-items: flex-start; gap: 0; }
+  .cal-year-label .cal-group-toggle-y { flex-shrink: 0; }
+  .cal-year-label .folder-emoji { margin-right: 4px; flex-shrink: 0; }
   .cal-year-label .cal-year-label-text {
+    flex: 1 1 auto; min-width: 0;
     display: block;
     word-break: break-word; overflow-wrap: break-word;
     line-height: 1.2;
