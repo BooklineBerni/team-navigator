@@ -21,12 +21,20 @@ function renderRoadmapsTimelinePage() {
     cont.innerHTML = '<div class="rm-empty">No roadmaps yet. Click "+ New roadmap" to create one.</div>';
     return;
   }
+  // Hide the standalone selector strip — the picker lives inline in the summary card.
+  if (sel) sel.innerHTML = "";
+  // Joint mode (admin-only). Renders a multi-roadmap 6MFN aggregated view.
+  // Only admins (NOT in preview-as) get to use this — for everyone else we
+  // silently fall back to the single-roadmap view.
+  const _isAdminLive = (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'admin') &&
+                       !(typeof bnPreviewAsEmail !== 'undefined' && bnPreviewAsEmail);
+  if (_isAdminLive && typeof bnIsJointMode === 'function' && bnIsJointMode() && typeof renderJointRoadmapsView === 'function') {
+    renderJointRoadmapsView();
+    return;
+  }
   if (!selectedRoadmapTimelineId || !rms.some(r => r.id === selectedRoadmapTimelineId)) {
     selectedRoadmapTimelineId = rms[0].id;
     localStorage.setItem("bookline-selectedRoadmap", selectedRoadmapTimelineId);
   }
-  // Hide the standalone selector strip — the picker now lives inline with the
-  // roadmap title inside renderRoadmapCalendar's summary card.
-  if (sel) sel.innerHTML = "";
   renderRoadmapCalendar(selectedRoadmapTimelineId);
 }

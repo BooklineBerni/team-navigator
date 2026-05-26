@@ -366,6 +366,15 @@ function renderRoadmapCalendar(roadmapId) {
     : '<em>no owner</em>';
   // Clickable title that opens a roadmap picker popover (alphabetical, with search) — matches the Profile pattern.
   const rmOpen = !!window.__rmPickerOpen;
+  // "Joint" toggle — admin-only, opens the multi-roadmap 6MFN aggregated view.
+  // Rendered as a small pill next to the name trigger so it's discoverable but
+  // doesn't dominate the summary card. Non-admins (or admins in preview-as)
+  // don't see it at all.
+  const _isAdminLiveSummary = (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'admin') &&
+                              !(typeof bnPreviewAsEmail !== 'undefined' && bnPreviewAsEmail);
+  const jointBtnHtml = _isAdminLiveSummary
+    ? '<button type="button" class="btn bn-joint-toggle-btn" id="bnJointToggleBtn" title="Open Joint Roadmaps view — combine several roadmaps in a single 6MFN timeline">Joint</button>'
+    : '';
   let html = '<div class="rm-summary-card">' +
     '<div class="rm-name-wrapper" style="position:relative; display:inline-block">' +
       '<div class="rm-name-trigger' + (rmOpen ? ' open' : '') + '" id="rmNameTrigger" title="Switch roadmap">' +
@@ -373,6 +382,7 @@ function renderRoadmapCalendar(roadmapId) {
         '<span class="arrow">▾</span>' +
       '</div>' +
     '</div>' +
+    jointBtnHtml +
     '<div class="rm-summary-meta">' +
       ownerHtml +
       '<span class="sep">·</span>' +
@@ -1465,6 +1475,12 @@ function renderRoadmapCalendar(roadmapId) {
   // Roadmap picker trigger (alphabetical, with search) — matches the Profile pattern.
   wireRoadmapNamePicker(roadmapId);
   // Summary buttons
+  // Joint mode toggle: switch into the multi-roadmap aggregated view.
+  const jointBtn = document.getElementById('bnJointToggleBtn');
+  if (jointBtn) jointBtn.addEventListener('click', () => {
+    if (typeof bnSetJointMode === 'function') bnSetJointMode(true);
+    if (typeof renderRoadmapsTimelinePage === 'function') renderRoadmapsTimelinePage();
+  });
   const editBtn = document.getElementById('rmEditBtn');
   if (editBtn) editBtn.addEventListener('click', () => openRoadmapEdit(roadmapId));
   // Owner chip click → open the person modal (same UX as Team page)

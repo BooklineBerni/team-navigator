@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Navigator</title>
-<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522n">
+<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522o">
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260522n">
+<link rel="stylesheet" href="styles/app.css?v=bn20260522o">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -120,7 +120,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand" id="bnBrand" title="">
-        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522n" alt="" referrerpolicy="no-referrer"></div>
+        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522o" alt="" referrerpolicy="no-referrer"></div>
         <div class="brand-stack">
           <div class="brand-name" id="bnBrandName">Team Navigator</div>
           <!-- Permission line — shown ONLY during preview. -->
@@ -1050,15 +1050,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260522n"></script>
+<script src="data/team-directory.js?v=bn20260522o"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260522n"></script>
+<script src="data/holidays.js?v=bn20260522o"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260522n"></script>
+<script src="lib/supabase-auth.js?v=bn20260522o"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260522n"></script>
+<script src="lib/permissions.js?v=bn20260522o"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260522n"></script>
+<script src="lib/filters.js?v=bn20260522o"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -6725,48 +6725,51 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260522n"></script>
+<script src="views/bulk-create.js?v=bn20260522o"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260522n"></script>
+<script src="lib/bulk-popovers.js?v=bn20260522o"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260522n"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260522o"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260522n"></script>
+<script src="views/home.js?v=bn20260522o"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260522n"></script>
-<script src="views/files.js?v=bn20260522n"></script>
+<script src="lib/files-integration.js?v=bn20260522o"></script>
+<script src="views/files.js?v=bn20260522o"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260522n"></script>
-<script src="views/requests.js?v=bn20260522n"></script>
+<script src="lib/requests-feature.js?v=bn20260522o"></script>
+<script src="views/requests.js?v=bn20260522o"></script>
 <!-- Subtask drag-reorder helpers. Loaded BEFORE any view that renders group children
      (tasks.js, the by-person renderer in inline already executed, profile, modal). -->
-<script src="lib/subtask-reorder.js?v=bn20260522n"></script>
+<script src="lib/subtask-reorder.js?v=bn20260522o"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260522n"></script>
+<script src="views/tasks.js?v=bn20260522o"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260522n"></script>
+<script src="views/team.js?v=bn20260522o"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260522n"></script>
+<script src="views/profile.js?v=bn20260522o"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260522n"></script>
-<script src="views/roadmaps.js?v=bn20260522n"></script>
+<script src="views/roadmap-calendar.js?v=bn20260522o"></script>
+<!-- Joint Roadmaps (admin-only multi-roadmap 6MFN aggregator). Loaded after the
+     per-roadmap calendar so it can reuse globals like DAY_MS / effectiveDatesForTask. -->
+<script src="views/joint-roadmaps.js?v=bn20260522o"></script>
+<script src="views/roadmaps.js?v=bn20260522o"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260522n"></script>
+<script src="lib/date-picker.js?v=bn20260522o"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260522n"></script>
+<script src="lib/trash.js?v=bn20260522o"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260522n"></script>
+<script src="lib/backup.js?v=bn20260522o"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260522n"></script>
+<script src="lib/pickers.js?v=bn20260522o"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260522n"></script>
-<script src="views/modals/add-member.js?v=bn20260522n"></script>
-<script src="views/modals/tag-manager.js?v=bn20260522n"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260522n"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260522n"></script>
+<script src="views/modals/person-tags.js?v=bn20260522o"></script>
+<script src="views/modals/add-member.js?v=bn20260522o"></script>
+<script src="views/modals/tag-manager.js?v=bn20260522o"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260522o"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260522o"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>

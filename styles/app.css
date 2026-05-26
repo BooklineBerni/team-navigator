@@ -583,6 +583,88 @@
   }
   .rm-summary-meta .sep { color: #d8d6d1; }
   .rm-summary-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  /* === Joint Roadmaps (admin-only multi-roadmap 6MFN view) === */
+  .bn-joint-toggle-btn {
+    border: 1px solid #1a1a1a;
+    background: #fff; color: #1a1a1a;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 999px;
+    cursor: pointer;
+    margin-left: 2px;
+    flex-shrink: 0;
+  }
+  .bn-joint-toggle-btn:hover { background: #1a1a1a; color: #fff; }
+  .bn-joint-toggle-btn.active {
+    background: #1a1a1a; color: #fff;
+  }
+  .bn-joint-summary { display: block; padding: 14px 18px; }
+  .bn-joint-summary .bn-joint-toggle-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .bn-joint-summary .rm-name-trigger {
+    cursor: pointer;
+    padding: 4px 8px; border-radius: 8px;
+    transition: background .12s;
+  }
+  .bn-joint-summary .rm-name-trigger:hover { background: #faf9f7; }
+  .bn-joint-chips {
+    display: flex; flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #efeeea;
+  }
+  .bn-joint-chip {
+    appearance: none;
+    border: 1px solid #ececea;
+    background: #faf9f7; color: #1a1a1a;
+    font-size: 12px; font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .bn-joint-chip:hover { background: #f1efe9; border-color: #d8d6d1; }
+  .bn-joint-chip.selected {
+    background: #1a1a1a; color: #fff; border-color: #1a1a1a;
+  }
+  .bn-joint-chip.selected .bn-joint-chip-cnt { color: #d4d4d4; }
+  .bn-joint-chip-cnt {
+    font-size: 10.5px;
+    color: #9a9a9a;
+    background: rgba(0,0,0,0.06);
+    padding: 1px 5px; border-radius: 999px;
+  }
+  .bn-joint-chip.selected .bn-joint-chip-cnt { background: rgba(255,255,255,0.18); }
+  .bn-joint-chip-action {
+    appearance: none;
+    border: 1px dashed #d8d6d1;
+    background: transparent; color: #6b6b6b;
+    font-size: 11.5px; font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .bn-joint-chip-action:hover { color: #1a1a1a; border-color: #1a1a1a; }
+  .bn-joint-rm-badges {
+    display: inline-flex; gap: 4px; margin-left: 6px;
+    flex-wrap: wrap;
+  }
+  .bn-joint-rm-badge {
+    font-size: 9.5px; font-weight: 600;
+    background: #eef2ff; color: #3730a3;
+    padding: 1px 6px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .bn-joint-task-name {
+    appearance: none; background: transparent; border: none;
+    color: inherit; padding: 0; font: inherit; cursor: pointer;
+    text-align: left;
+  }
+  .bn-joint-task-name:hover { text-decoration: underline; color: #d97706; }
   .rm-empty { padding: 40px; text-align: center; color: #9a9a9a; font-size: 13px; }
   .rm-task-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; margin-top: 6px; }
   .rm-task-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; align-items: center; padding: 6px 8px; background: #faf9f7; border: 1px solid #efeeea; border-radius: 6px; font-size: 12px; }
