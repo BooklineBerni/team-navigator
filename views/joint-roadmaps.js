@@ -127,14 +127,10 @@ function renderJointRoadmapsView() {
     selected = new Set(allRoadmaps.map(r => r.id));
     bnSetJointSelection(selected);
   }
-  // ----- Summary card with joint toggle + multi-select chip picker -----
+  // ----- Summary: just the multi-roadmap chip picker. The Single/Joint toggle
+  // lives in the page header (next to the page title) and is wired separately. -----
   let html = '<div class="rm-summary-card bn-joint-summary">' +
-    '<div class="bn-joint-toggle-row">' +
-      '<div class="rm-name-trigger active" id="rmNameTrigger" title="Switch to single-roadmap view">' +
-        '<div class="rm-summary-name">Joint roadmaps</div>' +
-      '</div>' +
-      '<button type="button" class="btn bn-joint-toggle-btn active" id="bnJointToggleBtn" title="Currently in joint mode. Click to switch back to single-roadmap view.">Joint</button>' +
-    '</div>' +
+    '<div class="bn-joint-chips-label">Showing tasks from:</div>' +
     '<div class="bn-joint-chips" id="bnJointChips">';
   if (allRoadmaps.length === 0) {
     html += '<div class="rm-empty" style="margin:0">No roadmaps yet.</div>';
@@ -153,22 +149,6 @@ function renderJointRoadmapsView() {
   html += '</div></div>';
   cont.innerHTML = html;
 
-  // Wire the Joint toggle: clicking switches back to single mode.
-  const toggleBtn = document.getElementById('bnJointToggleBtn');
-  if (toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
-      bnSetJointMode(false);
-      if (typeof renderRoadmapsTimelinePage === 'function') renderRoadmapsTimelinePage();
-    });
-  }
-  // The name trigger also bounces back to single mode (it's just a label hint).
-  const nmTrig = document.getElementById('rmNameTrigger');
-  if (nmTrig) {
-    nmTrig.addEventListener('click', () => {
-      bnSetJointMode(false);
-      if (typeof renderRoadmapsTimelinePage === 'function') renderRoadmapsTimelinePage();
-    });
-  }
   // Wire chips: each click toggles inclusion of that roadmap in the selection.
   document.querySelectorAll('#bnJointChips .bn-joint-chip').forEach(chip => {
     chip.addEventListener('click', () => {
