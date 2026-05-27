@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Navigator</title>
-<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522q">
+<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522r">
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260522q">
+<link rel="stylesheet" href="styles/app.css?v=bn20260522r">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -120,7 +120,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand" id="bnBrand" title="">
-        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522q" alt="" referrerpolicy="no-referrer"></div>
+        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522r" alt="" referrerpolicy="no-referrer"></div>
         <div class="brand-stack">
           <div class="brand-name" id="bnBrandName">Team Navigator</div>
           <!-- Permission line — shown ONLY during preview. -->
@@ -880,10 +880,14 @@ Weekly metrics by country" spellcheck="false"></textarea>
     <!-- Suggested tags still render inline within #f_taskTagsContainer, after a divider. -->
     <div id="f_presetTaskTagsContainer" style="display:none"></div>
     <div class="field"><label>Title <span style="color:#dc2626">*</span></label><input type="text" id="f_subject"></div>
-    <!-- Linked files: read-only list of files whose taskIds[] includes this
-         task. Edit links from the file modal (Files page → file row → Edit). -->
+    <!-- Linked files: list of files whose taskIds[] includes this task. The
+         "+ Add file" button opens the Google Drive Picker and links the
+         picked file directly to this task (created in STORE.driveFiles if new). -->
     <div class="field" id="f_linkedFilesField" style="margin-top:8px">
-      <label>Linked files <span style="color:#9a9a9a; font-weight:400; font-size:11.5px">(manage from Files page)</span></label>
+      <label style="display:flex; align-items:center; gap:8px">
+        <span>Linked files</span>
+        <button type="button" class="btn" id="f_addLinkedFileBtn" style="padding:2px 10px; font-size:11.5px; font-weight:600">+ Add file</button>
+      </label>
       <div id="f_linkedFiles" style="display:flex; flex-direction:column; gap:4px"></div>
     </div>
     <div class="field"><label id="f_extraCommentsLabel">Extra comments</label><textarea id="f_extraComments"></textarea></div>
@@ -1056,15 +1060,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260522q"></script>
+<script src="data/team-directory.js?v=bn20260522r"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260522q"></script>
+<script src="data/holidays.js?v=bn20260522r"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260522q"></script>
+<script src="lib/supabase-auth.js?v=bn20260522r"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260522q"></script>
+<script src="lib/permissions.js?v=bn20260522r"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260522q"></script>
+<script src="lib/filters.js?v=bn20260522r"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -2836,11 +2840,58 @@ function render() {
         // Top-level = items the person owns whose parent group is NOT also owned by them
         // (so we surface deeply-nested orphans correctly).
         const topLevel = personItems.filter(t => !t.groupId || !personItemIds.has(t.groupId));
+        // Breadcrumb chain for a task whose immediate parent group isn't a member
+        // of personItems — walks UP collecting ancestors until one IS in personItems
+        // (or root). Same pattern as the list view.
+        function _personBcChain(t) {
+          const chain = [];
+          let cur = t.groupId;
+          while (cur) {
+            const parent = (STORE.tasks || []).find(x => x.id === cur);
+            if (!parent) break;
+            if (personItemIds.has(parent.id)) break;
+            chain.unshift(parent);
+            cur = parent.groupId;
+          }
+          return chain;
+        }
+        function _ancestorVisibleHere(anc) {
+          try {
+            if (typeof taskMatchesFilters === 'function') {
+              return taskMatchesFilters(anc, { allowGroups: true, skipStatus: true, skipPriority: true, skipType: true, skipTaskTag: true, skipPersonTag: true, skipRoadmap: true, skipShareWith: true, skipDateStatus: true, skipSearch: true });
+            }
+          } catch (_) {}
+          return true;
+        }
+        function _renderBcRow(anc, depth) {
+          const visible = _ancestorVisibleHere(anc);
+          const indent = depth * 14;
+          const nameHtml = visible
+            ? escapeHtml(anc.subject || '(unnamed)')
+            : '<span style="color:#bbb">…</span>';
+          return '<div class="bn-bc-row bn-bc-row--card" style="padding-left:' + (6 + indent) + 'px" data-gid="' + escapeHtml(anc.id) + '">' +
+            '<span class="bn-bc-arrow">↘</span>' +
+            '<span class="bn-bc-name">' + nameHtml + '</span>' +
+          '</div>';
+        }
         // Recursive renderer so nested groups expand to show their own subtasks.
         // Subtask order respects parent.subtaskOrder when set (via drag), with the
         // user's current sort as the fallback for unranked children.
-        function renderPersonNode(t) {
-          let h = taskHtml(t);
+        function renderPersonNode(t, isTop) {
+          let h = '';
+          if (isTop && t.groupId) {
+            const chain = _personBcChain(t);
+            chain.forEach((anc, i) => { h += _renderBcRow(anc, i); });
+            if (chain.length > 0) {
+              h += '<div class="bn-bc-wrap" style="padding-left:' + (chain.length * 14) + 'px">';
+              h += taskHtml(t);
+              h += '</div>';
+            } else {
+              h += taskHtml(t);
+            }
+          } else {
+            h += taskHtml(t);
+          }
           if (t.isGroup) {
             const expanded = isGroupExpanded(t.id);
             // Children rendered here can be ANY task (group or not) whose groupId is this group.
@@ -2852,14 +2903,14 @@ function render() {
             if (kids.length === 0) {
               h += '<div class="card-group-empty">No subtasks match the current filters.</div>';
             } else {
-              kids.forEach(k => { h += renderPersonNode(k); });
+              kids.forEach(k => { h += renderPersonNode(k, false); });
             }
             h += '</div>';
           }
           return h;
         }
         let out = '';
-        sortTaskList(topLevel).forEach(t => { out += renderPersonNode(t); });
+        sortTaskList(topLevel).forEach(t => { out += renderPersonNode(t, true); });
         return out;
       })()}</div>
       <form class="add-row" data-uid="${pid}">
@@ -2943,6 +2994,18 @@ function render() {
       }   // close: else { (skip-empty guard)
     }
   }
+
+  // Breadcrumb rows above promoted tasks (parent group filtered out or owned
+  // by someone else) → click opens the parent group's modal if the user can
+  // see it. If they can't, the row shows '↘ …' and the click no-ops.
+  grid.querySelectorAll('.bn-bc-row').forEach(row => {
+    row.addEventListener('click', e => {
+      e.stopPropagation();
+      const gid = row.dataset.gid;
+      if (!gid) return;
+      if (typeof openModal === 'function') openModal(gid);
+    });
+  });
 
   // Drag-reorder + cross-group move across all person cards:
   //   - every .task / .flat-task is a drag source
@@ -3202,6 +3265,27 @@ function openModal(tid, overrides) {
     });
   }
   _renderTaskLinkedFiles();
+  // "+ Add file" inside the task modal → Google Drive Picker → file ends up
+  // in STORE.driveFiles with this task already linked. Hidden in read-only.
+  const _addFileBtn = document.getElementById('f_addLinkedFileBtn');
+  if (_addFileBtn) {
+    const _ro = !!window.__bnReadOnly;
+    _addFileBtn.style.display = _ro ? 'none' : '';
+    if (!_ro) {
+      // Avoid stacking listeners across openModal calls.
+      const fresh = _addFileBtn.cloneNode(true);
+      _addFileBtn.parentNode.replaceChild(fresh, _addFileBtn);
+      fresh.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof bnPickDriveFileForTask === 'function') {
+          bnPickDriveFileForTask(t.id, () => _renderTaskLinkedFiles());
+        } else {
+          alert('Google Drive Picker not loaded yet — try again in a moment.');
+        }
+      });
+    }
+  }
   applyGroupModeToModal(isG);
   // Schedule (synced with roadmaps) — only meaningful when the task is in ≥1 roadmap
   const tStartEl = document.getElementById("f_taskStart");
@@ -6731,51 +6815,51 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260522q"></script>
+<script src="views/bulk-create.js?v=bn20260522r"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260522q"></script>
+<script src="lib/bulk-popovers.js?v=bn20260522r"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260522q"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260522r"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260522q"></script>
+<script src="views/home.js?v=bn20260522r"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260522q"></script>
-<script src="views/files.js?v=bn20260522q"></script>
+<script src="lib/files-integration.js?v=bn20260522r"></script>
+<script src="views/files.js?v=bn20260522r"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260522q"></script>
-<script src="views/requests.js?v=bn20260522q"></script>
+<script src="lib/requests-feature.js?v=bn20260522r"></script>
+<script src="views/requests.js?v=bn20260522r"></script>
 <!-- Subtask drag-reorder helpers. Loaded BEFORE any view that renders group children
      (tasks.js, the by-person renderer in inline already executed, profile, modal). -->
-<script src="lib/subtask-reorder.js?v=bn20260522q"></script>
+<script src="lib/subtask-reorder.js?v=bn20260522r"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260522q"></script>
+<script src="views/tasks.js?v=bn20260522r"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260522q"></script>
+<script src="views/team.js?v=bn20260522r"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260522q"></script>
+<script src="views/profile.js?v=bn20260522r"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260522q"></script>
+<script src="views/roadmap-calendar.js?v=bn20260522r"></script>
 <!-- Joint Roadmaps (admin-only multi-roadmap 6MFN aggregator). Loaded after the
      per-roadmap calendar so it can reuse globals like DAY_MS / effectiveDatesForTask. -->
-<script src="views/joint-roadmaps.js?v=bn20260522q"></script>
-<script src="views/roadmaps.js?v=bn20260522q"></script>
+<script src="views/joint-roadmaps.js?v=bn20260522r"></script>
+<script src="views/roadmaps.js?v=bn20260522r"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260522q"></script>
+<script src="lib/date-picker.js?v=bn20260522r"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260522q"></script>
+<script src="lib/trash.js?v=bn20260522r"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260522q"></script>
+<script src="lib/backup.js?v=bn20260522r"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260522q"></script>
+<script src="lib/pickers.js?v=bn20260522r"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260522q"></script>
-<script src="views/modals/add-member.js?v=bn20260522q"></script>
-<script src="views/modals/tag-manager.js?v=bn20260522q"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260522q"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260522q"></script>
+<script src="views/modals/person-tags.js?v=bn20260522r"></script>
+<script src="views/modals/add-member.js?v=bn20260522r"></script>
+<script src="views/modals/tag-manager.js?v=bn20260522r"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260522r"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260522r"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>

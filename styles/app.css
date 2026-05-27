@@ -725,6 +725,30 @@
   .bn-joint-chip-action:hover { color: #1a1a1a; border-color: #1a1a1a; background: #faf9f7; }
   /* Older .bn-joint-rm-badge styling removed — joint rows use .bn-joint-rm-pill
      defined further up. The badges now nowrap with a hue-stable color. */
+
+  /* ===== Breadcrumb rows for tasks whose parent group is filtered out =====
+     Used in both the Tasks list view and by-person cards. Each row is a
+     compact "↘ Parent name" line above a task whose parent didn't match the
+     current filter. Click → opens the parent's modal (when the user can see it).
+     If the user has no privacy access to the parent, the name renders as
+     "↘ …" and the click is harmless. */
+  .bn-bc-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 2px 8px;
+    font-size: 11px; color: #9a9a9a;
+    cursor: pointer;
+    border-radius: 4px;
+    user-select: none;
+    line-height: 1.4;
+  }
+  .bn-bc-row:hover { background: #faf9f7; color: #1a1a1a; }
+  .bn-bc-arrow { font-size: 12px; color: #c4b896; flex-shrink: 0; }
+  .bn-bc-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bn-bc-row--card {
+    padding: 1px 6px;
+    font-size: 10.5px;
+  }
+  .bn-bc-wrap { /* wrapper around the promoted task itself so it indents under the breadcrumb chain */ }
   .rm-empty { padding: 40px; text-align: center; color: #9a9a9a; font-size: 13px; }
   .rm-task-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; margin-top: 6px; }
   .rm-task-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; align-items: center; padding: 6px 8px; background: #faf9f7; border: 1px solid #efeeea; border-radius: 6px; font-size: 12px; }
