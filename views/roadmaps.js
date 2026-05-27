@@ -12,26 +12,46 @@
 // guard resolves correctly.
 // =============================================================================
 
-// Configure the Single/Joint segmented toggle in the Roadmaps page header.
-// Show only for admin-live; hide for everyone else. Highlights the active mode
-// and wires clicks to flip joint mode + re-render.
+// Configure the Roadmaps / Joint toggle that lives in place of the page title.
+// "Roadmaps" itself is the single-mode segment (looks like a title); "Joint"
+// is a small pill next to it. Non-admins only see "Roadmaps" (the joint
+// segment is hidden) so for them it just looks like a regular page title.
 function wireRoadmapsModeToggle() {
   const toggle = document.getElementById("bnRmModeToggle");
   if (!toggle) return;
+  const singleSeg = document.getElementById("bnRmSingleSeg");
+  const jointSeg  = document.getElementById("bnRmJointSeg");
+  const subtitle  = document.getElementById("bnRmSubtitle");
   const _isAdminLive = (typeof bnUserPermission !== 'undefined' && bnUserPermission === 'admin') &&
                        !(typeof bnPreviewAsEmail !== 'undefined' && bnPreviewAsEmail);
-  if (!_isAdminLive) { toggle.style.display = "none"; return; }
-  toggle.style.display = "";
-  const isJoint = (typeof bnIsJointMode === 'function') ? bnIsJointMode() : false;
+  // Non-admins: hide the Joint pill entirely so the title reads as plain
+  // "Roadmaps" without any toggle UI hint.
+  if (jointSeg) jointSeg.style.display = _isAdminLive ? "" : "none";
+  const isJoint = _isAdminLive && (typeof bnIsJointMode === 'function') && bnIsJointMode();
+  if (singleSeg) {
+    singleSeg.classList.toggle('active', !isJoint);
+    singleSeg.setAttribute('aria-selected', !isJoint ? 'true' : 'false');
+  }
+  if (jointSeg) {
+    jointSeg.classList.toggle('active', isJoint);
+    jointSeg.setAttribute('aria-selected', isJoint ? 'true' : 'false');
+  }
+  if (subtitle) {
+    subtitle.textContent = isJoint
+      ? 'Pick the roadmaps to combine in a single 6-month timeline.'
+      : 'Pick a roadmap to see its tasks on a timeline.';
+  }
+  // Replace listeners on each render to avoid duplicate wiring. We use cloning
+  // because the elements live in the static HTML — they're not rebuilt per
+  // render like dynamic content would be.
   toggle.querySelectorAll('.bn-rm-mode-seg').forEach(seg => {
-    const wantJoint = seg.dataset.mode === 'joint';
-    const active = wantJoint === isJoint;
-    seg.classList.toggle('active', active);
-    seg.setAttribute('aria-selected', active ? 'true' : 'false');
-    // Replace listeners on each render to avoid duplicate wiring across renders.
     const clone = seg.cloneNode(true);
     seg.parentNode.replaceChild(clone, seg);
+    // Non-admins can't interact with the toggle at all (the Joint seg is hidden
+    // and clicking "Roadmaps" is a no-op anyway — already in single mode).
+    if (!_isAdminLive && clone.dataset.mode === 'joint') return;
     clone.addEventListener('click', () => {
+      if (!_isAdminLive) return;
       const wantJointMode = clone.dataset.mode === 'joint';
       if (typeof bnSetJointMode === 'function') bnSetJointMode(wantJointMode);
       renderRoadmapsTimelinePage();

@@ -585,41 +585,105 @@
   .rm-summary-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
   /* === Joint Roadmaps (admin-only multi-roadmap 6MFN view) === */
-  /* Segmented Single/Joint toggle in the page header, next to the title. */
-  .bn-rm-mode-toggle {
-    display: inline-flex;
-    background: #f1efe9;
-    border: 1px solid #ececea;
-    border-radius: 999px;
-    padding: 2px;
-    gap: 0;
+  /* Title-as-toggle: "Roadmaps" reads as the page title; "Joint" is a small
+     pill next to it that turns dark when active. The whole control sits inline
+     in the page header (no chrome around it). */
+  .bn-rm-title-block { display: flex; flex-direction: column; gap: 4px; }
+  .bn-rm-mode-toggle { display: inline-flex; align-items: center; gap: 10px; }
+  .bn-rm-mode-seg { appearance: none; cursor: pointer; }
+  /* The "Roadmaps" segment looks like the page title — large, bold, no chrome. */
+  .bn-rm-title-seg {
+    font-size: 24px; font-weight: 700;
+    color: #1a1a1a;
+    background: transparent; border: none;
+    padding: 0; line-height: 1.1;
+    font-family: inherit;
+    transition: color .12s;
   }
-  .bn-rm-mode-seg {
-    appearance: none;
-    border: none; background: transparent;
+  .bn-rm-title-seg:hover { color: #d97706; }
+  .bn-rm-title-seg:not(.active) { color: #9a9a9a; font-weight: 600; }
+  .bn-rm-title-seg:not(.active):hover { color: #1a1a1a; }
+  /* The "Joint" segment is a pill that mirrors the title's energy when active. */
+  .bn-rm-joint-seg {
+    font-size: 13px; font-weight: 600;
+    background: transparent;
     color: #6b6b6b;
-    font-size: 12.5px; font-weight: 600;
+    border: 1px solid #ececea;
     padding: 5px 14px;
     border-radius: 999px;
-    cursor: pointer;
-    transition: background .12s, color .12s, box-shadow .12s;
+    transition: background .12s, color .12s, border-color .12s;
   }
-  .bn-rm-mode-seg:hover { color: #1a1a1a; }
-  .bn-rm-mode-seg.active {
-    background: #1a1a1a; color: #fff;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  .bn-rm-joint-seg:hover { color: #1a1a1a; border-color: #1a1a1a; }
+  .bn-rm-joint-seg.active {
+    background: #1a1a1a; color: #fff; border-color: #1a1a1a;
   }
 
-  .bn-joint-summary { display: block; padding: 12px 18px; }
+  /* ---- Joint summary card (chip picker + "Showing tasks from" label) ---- */
+  .bn-joint-summary {
+    display: block;
+    padding: 14px 18px;
+    background: #fff; border: 1px solid #ececea; border-radius: 12px;
+    margin-bottom: 14px;
+  }
   .bn-joint-chips-label {
-    font-size: 11.5px; color: #6b6b6b;
-    text-transform: uppercase; letter-spacing: 0.04em;
-    margin-bottom: 8px;
+    font-size: 11px; color: #9a9a9a;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 10px;
     font-weight: 600;
   }
   .bn-joint-chips {
     display: flex; flex-wrap: wrap;
     gap: 6px;
+    align-items: center;
+  }
+
+  /* ---- Joint rows: wider label column (300px), badges nowrap, cleaner pills ---- */
+  .cal-year-row.bn-joint-row {
+    grid-template-columns: 300px 1fr;
+    align-items: center;
+    min-height: 36px;
+  }
+  .cal-year-row.bn-joint-row:hover { background: #faf9f7; }
+  .bn-joint-label {
+    display: flex !important; align-items: center; gap: 8px;
+    padding: 6px 10px !important;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .bn-joint-task-name {
+    appearance: none; background: transparent; border: none;
+    color: #1a1a1a; padding: 0; font: inherit; font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    display: inline-flex; align-items: center; gap: 4px;
+    overflow: hidden;
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+  .cal-year-row.bn-joint-row.is-group .bn-joint-task-name { font-weight: 700; color: #92400e; }
+  .bn-joint-task-name:hover .bn-joint-name-text { text-decoration: underline; color: #d97706; }
+  .bn-joint-name-text {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 180px;
+  }
+  .bn-joint-folder { font-size: 13px; flex-shrink: 0; }
+  .bn-joint-rm-pills {
+    display: inline-flex; align-items: center; gap: 4px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .bn-joint-rm-pill {
+    font-size: 10px; font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+  }
+  .bn-joint-rm-more {
+    background: #f1efe9 !important;
+    color: #6b6b6b !important;
+    border: 1px solid #ececea !important;
   }
   .bn-joint-chip {
     appearance: none;
@@ -654,23 +718,13 @@
     cursor: pointer;
     text-transform: uppercase; letter-spacing: 0.04em;
   }
-  .bn-joint-chip-action:hover { color: #1a1a1a; border-color: #1a1a1a; }
-  .bn-joint-rm-badges {
-    display: inline-flex; gap: 4px; margin-left: 6px;
-    flex-wrap: wrap;
+  .bn-joint-chip-action {
+    border-style: solid;
+    background: #fff;
   }
-  .bn-joint-rm-badge {
-    font-size: 9.5px; font-weight: 600;
-    background: #eef2ff; color: #3730a3;
-    padding: 1px 6px; border-radius: 999px;
-    text-transform: uppercase; letter-spacing: 0.03em;
-  }
-  .bn-joint-task-name {
-    appearance: none; background: transparent; border: none;
-    color: inherit; padding: 0; font: inherit; cursor: pointer;
-    text-align: left;
-  }
-  .bn-joint-task-name:hover { text-decoration: underline; color: #d97706; }
+  .bn-joint-chip-action:hover { color: #1a1a1a; border-color: #1a1a1a; background: #faf9f7; }
+  /* Older .bn-joint-rm-badge styling removed — joint rows use .bn-joint-rm-pill
+     defined further up. The badges now nowrap with a hue-stable color. */
   .rm-empty { padding: 40px; text-align: center; color: #9a9a9a; font-size: 13px; }
   .rm-task-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; margin-top: 6px; }
   .rm-task-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; align-items: center; padding: 6px 8px; background: #faf9f7; border: 1px solid #efeeea; border-radius: 6px; font-size: 12px; }

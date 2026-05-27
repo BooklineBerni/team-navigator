@@ -268,6 +268,13 @@ function renderJointRoadmapsView() {
       calHtml += '<div class="rm-empty" style="margin:14px">No scheduled tasks in this range across the selected roadmaps.</div>';
     }
   } else {
+    // Pre-collect roadmap colors so badges can pick from a per-roadmap palette.
+    function _rmHueFor(rmId) {
+      // Stable hash → hue. Same roadmap always gets the same accent across rows.
+      let h = 0;
+      for (let i = 0; i < rmId.length; i++) h = (h * 31 + rmId.charCodeAt(i)) >>> 0;
+      return h % 360;
+    }
     orderedRows.forEach((row) => {
       const ev = row.ev;
       const isG = !!ev.task.isGroup;
@@ -286,19 +293,36 @@ function renderJointRoadmapsView() {
       const avatar = owner
         ? '<span class="cal-year-bar-av" style="background:' + escapeHtml(owner.color || '#9a9a9a') + '"><img src="' + escapeHtml(owner.photo || '') + '" alt="" onerror="this.remove()"><span class="ini">' + escapeHtml(initials(owner.name || '')) + '</span></span>'
         : '';
-      // Build the list of roadmap badges (only the roadmaps this task is in AND that are selected)
-      const rmBadges = Array.from(ev.roadmapIds).map(rid => {
+      // Build at most 2 roadmap dots + a "+N" indicator if more. Each dot uses
+      // a stable hash-derived hue so the same roadmap always reads the same.
+      // Hovering shows the full roadmap name in a tooltip. The whole
+      // roadmap-set is also available via the row-level title.
+      const rmList = Array.from(ev.roadmapIds).map(rid => {
         const rm = (STORE.roadmaps || []).find(x => x.id === rid);
-        return rm ? '<span class="bn-joint-rm-badge" title="In roadmap: ' + escapeHtml(rm.name || '') + '">' + escapeHtml((rm.name || '').slice(0, 14)) + '</span>' : '';
-      }).join('');
+        return rm ? { id: rid, name: rm.name || '(unnamed)' } : null;
+      }).filter(Boolean);
+      const visibleRmCount = Math.min(2, rmList.length);
+      let rmDotsHtml = '';
+      for (let i = 0; i < visibleRmCount; i++) {
+        const rm = rmList[i];
+        const hue = _rmHueFor(rm.id);
+        rmDotsHtml += '<span class="bn-joint-rm-pill" style="background: hsl(' + hue + ',55%,92%); color: hsl(' + hue + ',45%,30%); border:1px solid hsl(' + hue + ',45%,80%)" title="' + escapeHtml(rm.name) + '">' + escapeHtml(rm.name.slice(0, 12)) + (rm.name.length > 12 ? '…' : '') + '</span>';
+      }
+      if (rmList.length > visibleRmCount) {
+        const extra = rmList.slice(visibleRmCount).map(rm => rm.name).join(', ');
+        rmDotsHtml += '<span class="bn-joint-rm-pill bn-joint-rm-more" title="Also in: ' + escapeHtml(extra) + '">+' + (rmList.length - visibleRmCount) + '</span>';
+      }
       const indent = row.depth * 14;
-      calHtml += '<div class="cal-year-row" data-tid="' + escapeHtml(ev.task.id) + '">' +
-        '<div class="cal-year-label" style="padding-left:' + (8 + indent) + 'px">' +
-          (isG ? '<span style="margin-right:4px">📁</span>' : '') +
-          '<button type="button" class="cal-year-label-name bn-joint-task-name" data-tid="' + escapeHtml(ev.task.id) + '" title="Open task">' +
-            escapeHtml(ev.task.subject || '(unnamed)') +
+      const rowTitleAttr = rmList.length > 0
+        ? ' title="In roadmaps: ' + escapeHtml(rmList.map(x => x.name).join(', ')) + '"'
+        : '';
+      calHtml += '<div class="cal-year-row bn-joint-row' + (isG ? ' is-group' : '') + '" data-tid="' + escapeHtml(ev.task.id) + '"' + rowTitleAttr + '>' +
+        '<div class="cal-year-label bn-joint-label" style="padding-left:' + (8 + indent) + 'px">' +
+          '<button type="button" class="bn-joint-task-name" data-tid="' + escapeHtml(ev.task.id) + '" title="' + escapeHtml(ev.task.subject || '') + '">' +
+            (isG ? '<span class="bn-joint-folder">📁</span>' : '') +
+            '<span class="bn-joint-name-text">' + escapeHtml(ev.task.subject || '(unnamed)') + '</span>' +
           '</button>' +
-          (rmBadges ? '<span class="bn-joint-rm-badges">' + rmBadges + '</span>' : '') +
+          (rmDotsHtml ? '<span class="bn-joint-rm-pills">' + rmDotsHtml + '</span>' : '') +
         '</div>' +
         '<div class="cal-year-track" style="grid-template-columns: ' + monthsGridTemplate + '">' +
           '<div class="cal-year-track-inner">' +
