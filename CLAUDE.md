@@ -574,3 +574,190 @@ Decisiones clave que **NO debes revertir** sin pensarlo dos veces:
 ---
 
 Si llegas hasta aquí, ya sabes todo. Ahora ponte a trabajar 🚀
+
+---
+
+## 13. Features añadidas después del refactor (chat May 2026)
+
+Lista resumen del trabajo posterior al refactor base. Cada bullet incluye los
+archivos clave y el comportamiento esperado para que el siguiente chat no
+tenga que descubrirlo por sí mismo.
+
+### 13.1 Joint Roadmaps view (admin-only)
+
+`views/joint-roadmaps.js` (~280 líneas) + edits en `views/roadmaps.js`,
+`views/roadmap-calendar.js`, `styles/app.css`.
+
+- Toggle **Roadmaps / Joint** en el page header de la pestaña Roadmaps. La
+  propia palabra "Roadmaps" es el segmento single; "Joint" es un pill al lado.
+  Solo el admin live (no preview-as) ve el pill Joint.
+- Joint mode = vista 6 MFN única que combina las tasks de los roadmaps
+  seleccionados. Chips multi-select arriba con `All` / `None`.
+- Si una task está en varios roadmaps seleccionados sale UNA vez con badges
+  hue-stable (hash → HSL) indicando los roadmaps. Máximo 2 visibles + "+N".
+- Estado persistido: `bn-joint-mode`, `bn-joint-selection`, `bn-joint-anchor`.
+- Dispatcher en `renderRoadmapsTimelinePage()` decide joint vs single.
+- `wireRoadmapsModeToggle()` ajusta el subtitle y oculta el pill para
+  non-admins.
+
+### 13.2 Linked Files desde el task modal
+
+`lib/files-integration.js` (`bnPickDriveFileForTask`, `bnOpenGoogleDrivePickerWith`).
+
+- Botón **+ Add file** al lado del label "Linked files" en el task modal.
+  Click → abre el Google Drive Picker.
+- Al elegir un file: si el URL ya existe en `STORE.driveFiles` se reusa
+  añadiendo este taskId al `taskIds[]`; si es nuevo se crea entry con
+  `sharedWith='team'`, type detectado.
+- El listener se rebinda con clone en cada `openModal` para evitar dobles
+  handlers. Read-only oculta el botón.
+- `bnOpenGoogleDrivePickerWith(onPicked)` es ahora la primitiva genérica;
+  la antigua `bnOpenGoogleDrivePicker` legacy la usa internamente.
+
+### 13.3 Drag & drop de subtasks (intra-grupo + cross-group)
+
+`lib/subtask-reorder.js` (nuevo, ~250 líneas).
+
+- **Intra-grupo**: arrastra una subtask sobre otra del mismo grupo → reorder.
+  Indicador: barra naranja arriba/abajo. Orden se persiste en
+  `parent.subtaskOrder` (array de IDs). Helper `bnApplySubtaskOrder(parent,kids)`.
+- **Cross-group**: arrastra una task sobre un grupo (cualquiera) → adopta
+  ese grupo como nuevo parent (cambia `task.groupId`). Indicador: outline
+  naranja dashed sobre el grupo entero. Funciona incluso si el grupo
+  destino está colapsado.
+- También puedes soltar en el área vacía debajo de un grupo expandido.
+- Ciclos bloqueados por `bnWouldCreateGroupCycle()` (no puedes meter un
+  grupo dentro de su propio descendiente).
+- Funciona en: subtasks panel del modal, Tasks list view, by-person view.
+- API expuesta en `window`: `bnApplySubtaskOrder`, `bnWireSubtaskReorder`,
+  `bnWireAllRowsAsDragSources`, `bnWireTopLevelGroupDropTargets`,
+  `bnMoveTaskToGroup`, `bnWouldCreateGroupCycle`.
+
+### 13.4 Auto-refresh periódico desde Supabase
+
+`lib/supabase-auth.js`: `bnStartAutoPullLoop`, `bnMaybeAutoPull`.
+
+- Tras la auth gate arranca un `setInterval` cada 120s.
+- Solo pulsa cuando: tab visible, no modal abierto, activeElement no es
+  input/textarea/select/contenteditable, ≥60s desde el último pull, sin
+  push pendiente debounced.
+- `visibilitychange` también dispara un pull cuando vuelves a la pestaña.
+- Sesiones abiertas todo el día se mantienen sincronizadas sin tocar nada.
+
+### 13.5 Breadcrumb `↘ Parent` para tasks dentro de grupo no-matching
+
+Edits en `views/tasks.js` y en el by-person renderer dentro de inline,
+estilos en `styles/app.css` (`.bn-bc-row`, `.bn-bc-arrow`, `.bn-bc-name`).
+
+- Cuando una task matches el filter pero su grupo padre NO, la task se
+  promueve a top-level con una mini-fila `↘ NombreGrupo` encima por cada
+  ancestro no-matching, anidadas.
+- Si el ancestro no es visible por privacy → `↘ …` (sin nombre).
+- Click en breadcrumb → abre el modal del grupo (no-op si no visible).
+- `_bcChainFor(t)` y `_isPromotedToTop(t)` son los helpers locales en
+  views/tasks.js; by-person tiene `_personBcChain` análogo dentro del
+  inline.
+- Aplica en Tasks list view + by-person.
+
+### 13.6 Group puede anclar start/end a sus subtasks
+
+Edit en `bnOpenAggregatedPicker()` en inline (line ~5127).
+
+- Antes el filtro excluía `t.groupId === selfTaskId` (los hijos directos
+  del grupo siendo editado). Quitado: ahora un grupo puede usar "start of
+  <subtask>" o "end of <subtask>" como ancla.
+- Cycle safety vía visited-set de `effectiveDatesForTask`.
+- `bnPropagateAnchorChanges` propaga cambios de la subtask al grupo
+  automáticamente.
+
+### 13.7 Pills "start of X" / "end of X" refrescan nombre al renombrar source
+
+Edits en `__refreshTaskDatesRowFromTask`, Quick-Apply panel load,
+`bnRenderTaskAggBadge`, `bnDeriveSrcLabel`.
+
+- Antes el label "start of OldName" se quedaba congelado en
+  `t.startSrcLabel`. Ahora 4 sitios recomputan el label desde el subject
+  actual del source task vía `startSrcTaskId` / `endSrcTaskId`.
+- Es display-only: el campo persistido sigue stale hasta el próximo
+  guardado, pero el usuario siempre ve el nombre correcto.
+
+### 13.8 Fix: tasks ancladas no aparecen como Unscheduled
+
+Edits en `effectiveDatesForTask` y `taskDateStatus` en inline.
+
+- `effectiveDatesForTask` ahora también sigue el formato moderno
+  (`startSrcTaskId` + `startSrcLabel`) como fallback cuando no hay
+  `startAnchor` legacy. Resolución LIVE contra la source actual.
+- `taskDateStatus` leía `r.start` / `r.end` (no existen — el objeto
+  retorna `startStr` / `endStr`). Fix de una línea.
+- Resultado: el filtro Dates: Unscheduled ya no muestra tasks que tienen
+  fechas resolubles vía anchor moderno.
+
+### 13.9 Fix: editar startDate ya no convierte endDate en pill "N days"
+
+Edits en `autoSave` (×2) y `__refreshTaskDatesRowFromTask`.
+
+- Antes autoSave persistía `durationDays` SIEMPRE que había start+end
+  (porque daysEl mostraba el span como hint). En load, el pill "N days"
+  se autoactivaba si `durationDays === cDays`. Combinado, cualquier task
+  con dos fechas quedaba con duration-lock implícito.
+- Ahora: `hasDays` requiere que la pill esté EXPLÍCITAMENTE activa
+  (`endSrcLbl` matches `/^\d+\s+day/i`). El hint en daysEl no dispara
+  duration-lock. Self-healing en first edit para tasks legacy.
+
+### 13.10 Cross-group drag — UX en list y by-person
+
+Ver 13.3. Resumen: drag de cualquier task a cualquier grupo cambia el
+`groupId`. El subtaskOrder del antiguo padre se limpia, append al final
+del nuevo. Render global tras drop.
+
+### 13.11 Misc UI
+
+- **Unscheduled del roadmap calendar plegable** (header + caret). Estado
+  por roadmap en `localStorage['bn-rm-unscheduled-collapsed']`.
+- **Personas independientes aunque estén en grupo**: en People page, los
+  miembros de un custom group ahora aparecen TAMBIÉN como su propia
+  card independiente (no solo como chip bajo el grupo).
+- **Sección efectiva**: la card individual de una persona sigue SU
+  propia sección, no la del grupo. Si Pau está en Supplementary y
+  pertenece a un grupo en Team, su card sale en Supplementary.
+
+---
+
+## 14. Estado actual de archivos (post chat May 2026)
+
+```
+lib/
+  subtask-reorder.js       ← NUEVO. Drag & drop de subtasks (250 líneas).
+
+views/
+  joint-roadmaps.js        ← NUEVO. Joint Roadmaps 6 MFN admin-only.
+
+# Editados con cambios significativos:
+lib/files-integration.js   ← + bnPickDriveFileForTask, bnOpenGoogleDrivePickerWith.
+lib/supabase-auth.js       ← + auto-pull loop.
+lib/filters.js             ← shareWithVisibilityOK, unassignedVisibilityOK.
+views/tasks.js             ← Breadcrumb + drag wiring.
+views/roadmap-calendar.js  ← Unscheduled plegable + tag refresh + summary card.
+views/roadmaps.js          ← Joint dispatcher + wireRoadmapsModeToggle.
+views/team.js              ← effectiveSection respeta sección propia.
+views/modals/subtasks-panel.js ← Drag-reorder con handle visible.
+
+index.html                 ← Página header de Roadmaps con toggle Roadmaps/Joint,
+                              by-person renderer con breadcrumb, task modal
+                              con + Add file, effectiveDatesForTask follow modern
+                              anchor, taskDateStatus fix, autoSave fix de duration.
+styles/app.css             ← Estilos para: bn-rm-mode-toggle, bn-joint-summary,
+                              bn-joint-rm-pill, bn-bc-row, drag indicators,
+                              rm-unscheduled-toggle caret.
+```
+
+## 15. Cache buster actual
+
+`bn20260522r` (32 referencias en index.html). Cuando hagas un cambio,
+bumpea la última letra (`bn20260522s` → `bn20260523a` cuando paseis del
+día). El número del medio NO es la fecha real necesariamente.
+
+---
+
+Si llegas hasta aquí desde el chat May 2026, estás al día. Buena suerte.
