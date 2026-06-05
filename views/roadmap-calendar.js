@@ -327,11 +327,32 @@ function renderRoadmapCalendar(roadmapId) {
     lastWeekday = 6;
     totalWeeks = 0;   // year view doesn't render the weekly grid
   } else if (viewMode === '6m') {
-    if (!roadmapCalState.halfYearAnchor) {
-      const t = new Date();
-      roadmapCalState.halfYearAnchor = new Date(t.getFullYear(), t.getMonth(), 1);
+    // Default the 6 MFN window to the FIRST month of the current roadmap (its
+    // startDate, falling back to today if the roadmap has no startDate). The
+    // anchor is per-roadmap so switching between roadmaps doesn't carry an
+    // unrelated month over — but once the user navigates prev/next inside a
+    // roadmap, we remember that position until they leave the roadmap.
+    if (!roadmapCalState.halfYearAnchorByRoadmap) roadmapCalState.halfYearAnchorByRoadmap = {};
+    // If the roadmap changed since the last render, ignore the carried-over
+    // halfYearAnchor and use the per-roadmap stored one (or compute fresh from
+    // the roadmap's startDate). If we're STILL on the same roadmap, prefer
+    // halfYearAnchor — that's what prev/next/today just updated.
+    const sameRoadmap = roadmapCalState.halfYearAnchorRoadmapId === roadmapId;
+    let stored;
+    if (sameRoadmap && roadmapCalState.halfYearAnchor) {
+      stored = roadmapCalState.halfYearAnchor;
+    } else {
+      stored = roadmapCalState.halfYearAnchorByRoadmap[roadmapId];
+      if (!stored) {
+        const rmStart = parseDate(r.startDate);
+        const base = rmStart || new Date();
+        stored = new Date(base.getFullYear(), base.getMonth(), 1);
+      }
     }
-    const anchor = new Date(roadmapCalState.halfYearAnchor);
+    roadmapCalState.halfYearAnchorByRoadmap[roadmapId] = stored;
+    roadmapCalState.halfYearAnchor = stored;
+    roadmapCalState.halfYearAnchorRoadmapId = roadmapId;
+    const anchor = new Date(stored);
     anchor.setDate(1); anchor.setHours(0,0,0,0);
     halfYearStartDate = anchor;
     firstOfMonth = anchor;
