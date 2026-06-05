@@ -625,12 +625,26 @@
     background: #fff; border: 1px solid #ececea; border-radius: 12px;
     margin-bottom: 14px;
   }
+  .bn-joint-chips-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; gap: 12px;
+  }
   .bn-joint-chips-label {
     font-size: 11px; color: #9a9a9a;
     text-transform: uppercase; letter-spacing: 0.05em;
-    margin-bottom: 10px;
     font-weight: 600;
   }
+  .bn-joint-export-btn {
+    font-size: 12px;
+    padding: 5px 12px;
+    border: 1px solid #ececea;
+    background: #fff;
+    border-radius: 999px;
+    cursor: pointer;
+    color: #1a1a1a;
+    transition: background .12s, border-color .12s;
+  }
+  .bn-joint-export-btn:hover { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
   .bn-joint-chips {
     display: flex; flex-wrap: wrap;
     gap: 6px;

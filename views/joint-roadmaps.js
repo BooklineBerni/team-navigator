@@ -127,10 +127,13 @@ function renderJointRoadmapsView() {
     selected = new Set(allRoadmaps.map(r => r.id));
     bnSetJointSelection(selected);
   }
-  // ----- Summary: just the multi-roadmap chip picker. The Single/Joint toggle
-  // lives in the page header (next to the page title) and is wired separately. -----
+  // ----- Summary: chip picker + "Copy as text" button. The Single/Joint toggle
+  // lives in the page header and is wired separately. -----
   let html = '<div class="rm-summary-card bn-joint-summary">' +
-    '<div class="bn-joint-chips-label">Showing tasks from:</div>' +
+    '<div class="bn-joint-chips-header">' +
+      '<span class="bn-joint-chips-label">Showing tasks from:</span>' +
+      '<button type="button" class="btn bn-joint-export-btn" id="bnJointExportBtn" title="Copy a plain-text summary of the selected roadmaps to clipboard">📋 Copy as text</button>' +
+    '</div>' +
     '<div class="bn-joint-chips" id="bnJointChips">';
   if (allRoadmaps.length === 0) {
     html += '<div class="rm-empty" style="margin:0">No roadmaps yet.</div>';
@@ -149,6 +152,20 @@ function renderJointRoadmapsView() {
   html += '</div></div>';
   cont.innerHTML = html;
 
+  // Wire the "Copy as text" button: builds a plaintext summary of the selected
+  // roadmaps and copies it to clipboard. Format follows the user's spec:
+  //   * RoadmapName
+  //   TaskName [dd/mm - dd/mm]: STATUS
+  //   ...
+  // Section blank line between roadmaps. Tasks without dates appear with
+  // "[unscheduled]". Subtasks indented two spaces under their parent.
+  const exportBtn = document.getElementById('bnJointExportBtn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+      const text = bnBuildRoadmapsText(Array.from(selected));
+      bnCopyToClipboard(text, exportBtn);
+    });
+  }
   // Wire chips: each click toggles inclusion of that roadmap in the selection.
   document.querySelectorAll('#bnJointChips .bn-joint-chip').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -367,3 +384,103 @@ function renderJointRoadmapsView() {
   });
 }
 window.renderJointRoadmapsView = renderJointRoadmapsView;
+
+// ============================================================================
+// Plain-text export of roadmaps. Reused by the Joint view and by the
+// single-roadmap calendar summary card. Format:
+//   * RoadmapName
+//   TaskName [dd/mm - dd/mm]: STATUS
+//     SubtaskName [dd/mm - dd/mm]: STATUS
+//   ...
+//   (blank line)
+//   * NextRoadmap
+// Tasks without resolvable dates appear as "[unscheduled]". Status comes from
+// task.slackStatus, uppercased; tasks with no status show "(no status)".
+// ============================================================================
+function bnFormatDateShort(s) {
+  if (!s) return '';
+  // s is YYYY-MM-DD (or similar). Pull MM-DD and format dd/mm.
+  const parts = String(s).split('-');
+  if (parts.length === 3) return parts[2] + '/' + parts[1];
+  if (typeof bnFormatDateDMY === 'function') {
+    const f = bnFormatDateDMY(s);
+    // bnFormatDateDMY usually returns dd/mm/yyyy — strip the year.
+    return f ? f.split('/').slice(0, 2).join('/') : s;
+  }
+  return s;
+}
+function bnBuildRoadmapsText(roadmapIds) {
+  const rms = (STORE.roadmaps || []).filter(r => roadmapIds.indexOf(r.id) >= 0);
+  if (rms.length === 0) return '(no roadmaps selected)';
+  // Honour the user's roadmap order in STORE; if none, alpha by name.
+  rms.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const sections = [];
+  rms.forEach(rm => {
+    const lines = [];
+    lines.push('* ' + (rm.name || '(unnamed)'));
+    // Collect tasks for this roadmap. Group tasks render first; their subtasks
+    // indent under them. Standalone tasks render flat.
+    const entries = (rm.tasks || [])
+      .map(e => ({ entry: e, task: (STORE.tasks || []).find(t => t.id === e.taskId) }))
+      .filter(x => x.task);
+    const byId = new Map(entries.map(x => [x.task.id, x]));
+    function _row(task, depth) {
+      const eff = (typeof effectiveDatesForTask === 'function')
+        ? effectiveDatesForTask(task)
+        : { startStr: task.startDate || '', endStr: task.endDate || '' };
+      const sd = bnFormatDateShort(eff.startStr);
+      const ed = bnFormatDateShort(eff.endStr);
+      const dateLabel = (sd && ed) ? '[' + sd + ' - ' + ed + ']'
+                      : (sd && !ed) ? '[' + sd + ' - ?]'
+                      : (!sd && ed) ? '[? - ' + ed + ']'
+                      : '[unscheduled]';
+      const status = (task.slackStatus || '').toString().trim();
+      const statusLabel = status ? status.toUpperCase() : '(no status)';
+      const indent = '  '.repeat(depth);
+      const prefix = depth > 0 ? '· ' : '';
+      lines.push(indent + prefix + (task.subject || '(unnamed)') + ' ' + dateLabel + ': ' + statusLabel);
+      // Recurse into subtasks that ARE also in this roadmap (entries) so they appear nested.
+      const kids = entries.filter(x => x.task.groupId === task.id);
+      kids.sort((a, b) => (a.task.subject || '').localeCompare(b.task.subject || ''));
+      kids.forEach(k => { _row(k.task, depth + 1); });
+    }
+    const topLevel = entries.filter(x => !x.task.groupId || !byId.has(x.task.groupId));
+    topLevel.sort((a, b) => (a.task.subject || '').localeCompare(b.task.subject || ''));
+    topLevel.forEach(x => _row(x.task, 0));
+    if (entries.length === 0) lines.push('  (no tasks)');
+    sections.push(lines.join('\n'));
+  });
+  return sections.join('\n\n');
+}
+window.bnBuildRoadmapsText = bnBuildRoadmapsText;
+
+// Copy `text` to clipboard, then briefly mutate `btn` (if provided) to confirm.
+function bnCopyToClipboard(text, btn) {
+  const restore = btn ? { html: btn.innerHTML, title: btn.title } : null;
+  function ok() {
+    if (!btn) return;
+    btn.innerHTML = '✓ Copied';
+    btn.title = 'Copied to clipboard';
+    setTimeout(() => { if (restore) { btn.innerHTML = restore.html; btn.title = restore.title; } }, 1800);
+  }
+  function fail(err) {
+    console.warn('clipboard copy failed', err);
+    // Fallback: show a textarea so the user can manually copy.
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '50%'; ta.style.top = '50%'; ta.style.transform = 'translate(-50%, -50%)';
+    ta.style.width = '60vw'; ta.style.height = '60vh';
+    ta.style.zIndex = '99999';
+    document.body.appendChild(ta);
+    ta.select();
+    alert('Auto-copy failed. Press Cmd/Ctrl+C to copy, then close this textarea.');
+    setTimeout(() => { try { ta.remove(); } catch(_){} }, 8000);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(ok).catch(fail);
+  } else {
+    fail(new Error('clipboard API unavailable'));
+  }
+}
+window.bnCopyToClipboard = bnCopyToClipboard;

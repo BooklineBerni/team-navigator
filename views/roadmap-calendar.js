@@ -404,6 +404,7 @@ function renderRoadmapCalendar(roadmapId) {
       '<span>' + (r.tasks||[]).length + ' tasks</span>' +
     '</div>' +
     '<div class="rm-summary-actions">' +
+      '<button class="btn" id="rmExportTextBtn" title="Copy a plain-text summary of this roadmap to clipboard">📋 Copy as text</button>' +
       '<button class="btn" id="rmEditBtn">Edit</button>' +
       '<button class="btn danger" id="rmDeleteBtn">Delete</button>' +
     '</div></div>';
@@ -1488,6 +1489,15 @@ function renderRoadmapCalendar(roadmapId) {
   // Roadmap picker trigger (alphabetical, with search) — matches the Profile pattern.
   wireRoadmapNamePicker(roadmapId);
   // Summary buttons
+  // Export button → copies a plain-text summary of THIS roadmap to clipboard
+  // (same format as the Joint view's exporter — see bnBuildRoadmapsText).
+  const expBtn = document.getElementById('rmExportTextBtn');
+  if (expBtn) expBtn.addEventListener('click', () => {
+    if (typeof bnBuildRoadmapsText === 'function' && typeof bnCopyToClipboard === 'function') {
+      const text = bnBuildRoadmapsText([roadmapId]);
+      bnCopyToClipboard(text, expBtn);
+    }
+  });
   const editBtn = document.getElementById('rmEditBtn');
   if (editBtn) editBtn.addEventListener('click', () => openRoadmapEdit(roadmapId));
   // Owner chip click → open the person modal (same UX as Team page)
