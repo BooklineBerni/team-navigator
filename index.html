@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Navigator</title>
-<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522t">
+<link rel="icon" type="image/gif" href="logo.gif?v=bn20260522u">
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="styles/app.css?v=bn20260522t">
+<link rel="stylesheet" href="styles/app.css?v=bn20260522u">
 <!-- Pre-paint: decide what the user should see BEFORE the CSS engine paints anything.
      Four possible states (set on <html> as data-attributes, picked up by CSS):
        1. data-bn-oauth-callback="1" → just came back from Google consent. Show "Entrando…"
@@ -120,7 +120,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand" id="bnBrand" title="">
-        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522t" alt="" referrerpolicy="no-referrer"></div>
+        <div class="brand-logo" id="bnBrandLogo"><img src="logo.gif?v=bn20260522u" alt="" referrerpolicy="no-referrer"></div>
         <div class="brand-stack">
           <div class="brand-name" id="bnBrandName">Team Navigator</div>
           <!-- Permission line — shown ONLY during preview. -->
@@ -1060,15 +1060,15 @@ Weekly metrics by country" spellcheck="false"></textarea>
 </div>
 
 <!-- Data catalogs (people directory). Must load BEFORE the inline app script. -->
-<script src="data/team-directory.js?v=bn20260522t"></script>
+<script src="data/team-directory.js?v=bn20260522u"></script>
 <!-- Public holidays (Spain + Catalonia + Barcelona). Loaded before inline so helpers can read it. -->
-<script src="data/holidays.js?v=bn20260522t"></script>
+<script src="data/holidays.js?v=bn20260522u"></script>
 <!-- Supabase auth + cloud sync. Depends on the SDK and data/team-directory.js loaded above. -->
-<script src="lib/supabase-auth.js?v=bn20260522t"></script>
+<script src="lib/supabase-auth.js?v=bn20260522u"></script>
 <!-- Admin / permissions UI. Depends on lib/supabase-auth.js loaded above. -->
-<script src="lib/permissions.js?v=bn20260522t"></script>
+<script src="lib/permissions.js?v=bn20260522u"></script>
 <!-- Task-filter predicates. Pure helpers; the inline script feeds them state via bnGetFilterState(). -->
-<script src="lib/filters.js?v=bn20260522t"></script>
+<script src="lib/filters.js?v=bn20260522u"></script>
 <script>
 /* ===========================================================================
  * BERNI NAVIGATOR — what lives in THIS inline script (find-anchor strings)
@@ -4769,14 +4769,27 @@ function effectiveDatesForTask(task) {
       visited.add(curT.id + '|' + curSide);
       const anchorVal = curSide === 'start' ? curT.startAnchor : curT.endAnchor;
       let ref = parseAnchorRefGlobal({ taskId: curT.id }, anchorVal);
-      // Fallback: the modern pill format (startSrcTaskId + "start of X" / "end of X" label)
-      // doesn't set startAnchor (autoSave explicitly clears it). Historically the resolved
-      // absolute date was written to startDate at pick time, so reads worked. But that fails
-      // whenever the source task's date changes empty (or propagation hasn't run yet, or the
-      // anchor was set when the source had no date at all): startDate ends up empty and the
-      // task appears Unscheduled despite clearly having a pinned anchor. So follow the modern
-      // pill chain here too — it gives "live" resolution against the current source.
+      // Resolution priority:
+      //   1) Legacy startAnchor / endAnchor (authoritative when set).
+      //   2) Explicit startDate / endDate — at pick time autoSave writes the
+      //      RESOLVED absolute date to startDate; bnPropagateAnchorChanges keeps
+      //      it in sync when the source moves. This is the fast path and is
+      //      always trusted when present, even if the modern pill (startSrcTaskId)
+      //      is also set. CRITICAL: an earlier version followed the modern chain
+      //      first and returned '' whenever the chain broke (deleted source,
+      //      source with no dates, etc.) — that caused real dates to "disappear".
+      //   3) Modern pill chain (startSrcTaskId + "start/end of X" label) — only
+      //      used when startDate is empty AND we have a label that names which
+      //      side of the source to follow.
       if (!ref) {
+        const baseStr = (curSide === 'start' ? curT.startDate : curT.endDate) || '';
+        if (baseStr) {
+          if (dayOffset === 0) return baseStr;
+          const d = parseDate(baseStr);
+          if (!d) return baseStr;
+          return dateKey(addDays(d, dayOffset));
+        }
+        // No explicit date — try the modern pill chain.
         const tidKey = curSide === 'start' ? 'startSrcTaskId' : 'endSrcTaskId';
         const lblKey = curSide === 'start' ? 'startSrcLabel'  : 'endSrcLabel';
         const srcTid = curT[tidKey];
@@ -4786,14 +4799,7 @@ function effectiveDatesForTask(task) {
           ref = { taskId: srcTid, side: m[1].toLowerCase() };
         }
       }
-      if (!ref) {
-        const baseStr = (curSide === 'start' ? curT.startDate : curT.endDate) || '';
-        if (!baseStr) return '';
-        if (dayOffset === 0) return baseStr;
-        const d = parseDate(baseStr);
-        if (!d) return baseStr;
-        return dateKey(addDays(d, dayOffset));
-      }
+      if (!ref) return '';
       if (curSide === 'start' && ref.side === 'end') dayOffset += 1;
       else if (curSide === 'end' && ref.side === 'start') dayOffset -= 1;
       const next = (STORE.tasks || []).find(x => x.id === ref.taskId);
@@ -6815,51 +6821,51 @@ switchView(currentView);
 detectBlockedPhotos();
 </script>
 <!-- Bulk Create tasks (Stage 1 + Stage 2 UI). Wired by inline's bnInitBulkCreateUI() on DOMContentLoaded. -->
-<script src="views/bulk-create.js?v=bn20260522t"></script>
+<script src="views/bulk-create.js?v=bn20260522u"></script>
 <!-- Bulk-bar popovers (multi-roadmap, multi-proposed-by, set-parent). Called by inline event wirings at click time. -->
-<script src="lib/bulk-popovers.js?v=bn20260522t"></script>
+<script src="lib/bulk-popovers.js?v=bn20260522u"></script>
 <!-- Roadmaps assignment UI inside the task modal. -->
-<script src="lib/roadmap-task-modal.js?v=bn20260522t"></script>
+<script src="lib/roadmap-task-modal.js?v=bn20260522u"></script>
 <!-- Home / Dashboard view. -->
-<script src="views/home.js?v=bn20260522t"></script>
+<script src="views/home.js?v=bn20260522u"></script>
 <!-- Files page view. -->
 <!-- Files integration: Drive + Google Picker + Team Files cross-device sync. Must load BEFORE views/files.js. -->
-<script src="lib/files-integration.js?v=bn20260522t"></script>
-<script src="views/files.js?v=bn20260522t"></script>
+<script src="lib/files-integration.js?v=bn20260522u"></script>
+<script src="views/files.js?v=bn20260522u"></script>
 <!-- Requests page view. -->
 <!-- Requests feature: Slack-ingest, encrypted-blob fetch, notification trigger. Loads BEFORE views/requests.js. -->
-<script src="lib/requests-feature.js?v=bn20260522t"></script>
-<script src="views/requests.js?v=bn20260522t"></script>
+<script src="lib/requests-feature.js?v=bn20260522u"></script>
+<script src="views/requests.js?v=bn20260522u"></script>
 <!-- Subtask drag-reorder helpers. Loaded BEFORE any view that renders group children
      (tasks.js, the by-person renderer in inline already executed, profile, modal). -->
-<script src="lib/subtask-reorder.js?v=bn20260522t"></script>
+<script src="lib/subtask-reorder.js?v=bn20260522u"></script>
 <!-- Tasks page view (renderFlatTasks). -->
-<script src="views/tasks.js?v=bn20260522t"></script>
+<script src="views/tasks.js?v=bn20260522u"></script>
 <!-- Members (Team) page view. -->
-<script src="views/team.js?v=bn20260522t"></script>
+<script src="views/team.js?v=bn20260522u"></script>
 <!-- Profile page view (renders + state + helpers + wirings). -->
-<script src="views/profile.js?v=bn20260522t"></script>
+<script src="views/profile.js?v=bn20260522u"></script>
 <!-- Roadmaps tab view (renderRoadmapsTimelinePage + renderGantt + reorderRoadmap + reassignment). -->
 <!-- Per-roadmap calendar (Gantt). Loaded before roadmaps.js so its reassignment can resolve renderRoadmapCalendar. -->
-<script src="views/roadmap-calendar.js?v=bn20260522t"></script>
+<script src="views/roadmap-calendar.js?v=bn20260522u"></script>
 <!-- Joint Roadmaps (admin-only multi-roadmap 6MFN aggregator). Loaded after the
      per-roadmap calendar so it can reuse globals like DAY_MS / effectiveDatesForTask. -->
-<script src="views/joint-roadmaps.js?v=bn20260522t"></script>
-<script src="views/roadmaps.js?v=bn20260522t"></script>
+<script src="views/joint-roadmaps.js?v=bn20260522u"></script>
+<script src="views/roadmaps.js?v=bn20260522u"></script>
 <!-- Custom date-picker popover (replaces native <input type="date"> chrome). -->
-<script src="lib/date-picker.js?v=bn20260522t"></script>
+<script src="lib/date-picker.js?v=bn20260522u"></script>
 <!-- Trash (soft-delete) — bnSoftDeleteTask, bnRestoreFromTrash, bnPermanentlyDelete, bnEmptyTrash, bnRenderTrashPage. -->
-<script src="lib/trash.js?v=bn20260522t"></script>
+<script src="lib/trash.js?v=bn20260522u"></script>
 <!-- Backup (auto-snapshots + Export + Import + Rollback). Wired by inline bnInitBackupUI() at load time. -->
-<script src="lib/backup.js?v=bn20260522t"></script>
+<script src="lib/backup.js?v=bn20260522u"></script>
 <!-- Reusable picker components (Proposed-by, Responsible, Custom colored picklist, Group helpers). -->
-<script src="lib/pickers.js?v=bn20260522t"></script>
+<script src="lib/pickers.js?v=bn20260522u"></script>
 <!-- Modales (small task-related dialogs). Loaded after inline; wirings travel with their functions. -->
-<script src="views/modals/person-tags.js?v=bn20260522t"></script>
-<script src="views/modals/add-member.js?v=bn20260522t"></script>
-<script src="views/modals/tag-manager.js?v=bn20260522t"></script>
-<script src="views/modals/subtasks-panel.js?v=bn20260522t"></script>
-<script src="views/modals/task-tag-manager.js?v=bn20260522t"></script>
+<script src="views/modals/person-tags.js?v=bn20260522u"></script>
+<script src="views/modals/add-member.js?v=bn20260522u"></script>
+<script src="views/modals/tag-manager.js?v=bn20260522u"></script>
+<script src="views/modals/subtasks-panel.js?v=bn20260522u"></script>
+<script src="views/modals/task-tag-manager.js?v=bn20260522u"></script>
 <!-- All view scripts loaded; trigger one final render so the initial view paints
      correctly (the render() during inline boot was guarded to skip extracted views). -->
 <script>if (typeof render === 'function') { try { render(); } catch (_) {} }</script>
