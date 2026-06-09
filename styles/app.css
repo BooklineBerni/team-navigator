@@ -1182,21 +1182,20 @@
   .rm-cal-area > * { min-height: 0; }
   /* The actual calendar grid scrolls internally if needed */
   .rm-cal-area .cal-grid { flex: 1; min-height: 0; overflow-y: auto; }
+  /* Year / 6 MFN view uses .cal-year instead of .cal-grid. Needs the same
+     vertical scroll behaviour so long lists of task rows don't get clipped. */
+  .rm-cal-area .cal-year { flex: 1; min-height: 0; overflow-y: auto; }
   .rm-side-area {
     min-width: 0; min-height: 0;
     display: flex; flex-direction: column; align-items: stretch;
-    /* Make the whole sidebar scrollable so Unscheduled + Archived + Files all
-       share one scroll area. Previously overflow:hidden + per-section scrolls
-       meant that when Archived was expanded with many tasks they got cut off
-       below the viewport with no way to reach them. */
-    overflow-y: auto;
-    overflow-x: hidden;
-    gap: 0;
+    overflow: hidden;
   }
   .rm-side-area .rm-unscheduled {
     margin-top: 0 !important;
-    /* Within the now-scrollable parent the section just sizes to its content. */
-    flex: 0 0 auto;
+    /* Shrink-to-fit when there are few tasks; cap to available viewport height */
+    flex: 0 1 auto;
+    max-height: 100%;
+    overflow-y: auto;
     display: flex; flex-direction: column; gap: 6px;
   }
   .rm-side-area .rm-unscheduled .rm-unscheduled-head {
@@ -1279,7 +1278,13 @@
     width: 14px;
   }
   .rm-side-area .rm-archived.expanded .rm-arch-caret { transform: rotate(90deg); }
-  .rm-side-area .rm-archived-body { display: flex; flex-direction: column; gap: 6px; }
+  /* Archived (and Files) sections can grow tall — give the body its own scroll
+     so they don't get cut off when Unscheduled has eaten the available height.
+     Cap with vh so the section never grows past ~half the viewport. */
+  .rm-side-area .rm-archived-body {
+    display: flex; flex-direction: column; gap: 6px;
+    max-height: 50vh; overflow-y: auto;
+  }
   .rm-side-area .rm-archived-body .rm-task-row {
     background: #ebebe8 !important;
     opacity: 0.85;
