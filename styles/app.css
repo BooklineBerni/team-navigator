@@ -3612,8 +3612,13 @@
   /* Textareas DO get pointer-events because the user needs to scroll long
      comments and resize the box. Editing is blocked by the `readonly`
      attribute set in JS (openModal applies it when window.__bnReadOnly).
-     User-select stays enabled so they can copy text out. */
+     User-select stays enabled so they can copy text out.
+     CRITICAL: The PARENT .modal > * rule sets pointer-events:none on all the
+     direct field-wrappers, which would otherwise block events from reaching
+     the textarea. Explicit pointer-events:auto !important here overrides
+     that inheritance — without this the user can't scroll/click/select. */
   body.bn-read-only .modal-bg textarea {
+    pointer-events: auto !important;
     background: transparent !important;
     color: #1a1a1a !important;
     border-color: #eaeaea !important;
@@ -3621,7 +3626,21 @@
     opacity: 1 !important;
     cursor: text;
     user-select: text !important;
+    resize: vertical;   /* let the user resize vertically only */
   }
+  /* The wrapping .field also needs pointer-events back, otherwise the parent
+     .modal > * rule (pointer-events:none) still blocks the event chain even
+     though the textarea itself accepts events. We re-enable just the field
+     that wraps the comments textarea — narrowly scoped so other fields stay
+     fully read-only as designed. */
+  body.bn-read-only .modal-bg .field:has(> textarea),
+  body.bn-read-only .modal-bg .field:has(> label + textarea),
+  body.bn-read-only .modal-bg #f_extraCommentsLabel,
+  body.bn-read-only .modal-bg #f_extraComments {
+    pointer-events: auto !important;
+  }
+  /* Caret should be visible so the user can navigate with keys — readonly
+     textareas still let arrow-keys scroll/select. */
   body.bn-read-only .modal-bg textarea:focus {
     outline: 1px solid #d8d6d1;
   }
