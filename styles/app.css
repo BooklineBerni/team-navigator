@@ -3598,10 +3598,9 @@
   body.bn-read-only .modal-bg .modal > *:not(.modal-header):not(.modal-actions):not(.bn-ro-allow) {
     pointer-events: none !important;
   }
-  /* Inputs / textareas: text in BLACK (not gray), so the user can actually read it.
-     Background stays subtle; pointer-events:none so clicking does nothing. */
+  /* Inputs / selects: text in BLACK (not gray), pointer-events disabled so the
+     user can't open dropdowns or focus the field. */
   body.bn-read-only .modal-bg input:not([type="checkbox"]):not([type="radio"]):not(.bn-ro-allow),
-  body.bn-read-only .modal-bg textarea,
   body.bn-read-only .modal-bg select {
     pointer-events: none !important;
     background: transparent !important;
@@ -3609,6 +3608,22 @@
     border-color: #eaeaea !important;
     -webkit-text-fill-color: #1a1a1a !important;   /* Safari override */
     opacity: 1 !important;
+  }
+  /* Textareas DO get pointer-events because the user needs to scroll long
+     comments and resize the box. Editing is blocked by the `readonly`
+     attribute set in JS (openModal applies it when window.__bnReadOnly).
+     User-select stays enabled so they can copy text out. */
+  body.bn-read-only .modal-bg textarea {
+    background: transparent !important;
+    color: #1a1a1a !important;
+    border-color: #eaeaea !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+    opacity: 1 !important;
+    cursor: text;
+    user-select: text !important;
+  }
+  body.bn-read-only .modal-bg textarea:focus {
+    outline: 1px solid #d8d6d1;
   }
   body.bn-read-only .modal-bg input[disabled],
   body.bn-read-only .modal-bg textarea[disabled],
